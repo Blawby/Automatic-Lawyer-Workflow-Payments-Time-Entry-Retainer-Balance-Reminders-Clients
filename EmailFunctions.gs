@@ -8,8 +8,12 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
     return false;
   }
   
-  // Send to client
-  const clientSubject = "Low Balance Alert - Blawby";
+  const settings = loadSettings(SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Welcome"));
+  const isTestMode = settings[SETTINGS_KEYS.TEST_MODE] === "true";
+  const firmEmail = Session.getActiveUser().getEmail();
+  
+  // Send to client (or firm in test mode)
+  const clientSubject = isTestMode ? `[TEST] Low Balance Alert - ${clientName}` : "Low Balance Alert - Blawby";
   const clientBody = `
     Dear ${clientName},
     
@@ -26,28 +30,30 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
   `;
   
   MailApp.sendEmail({
-    to: email,
+    to: isTestMode ? firmEmail : email,
     subject: clientSubject,
     body: clientBody
   });
   
-  // Send to owner
-  const ownerSubject = `Low Balance Alert - ${clientName}`;
-  const ownerBody = `
-    Client: ${clientName}
-    Email: ${email}
-    Current Balance: $${balance.toFixed(2)}
-    Target Balance: $${targetBalance.toFixed(2)}
-    Last Active Lawyer: ${lawyerEmails[lastLawyerID] || 'Unknown'}
+  // Send to owner (only if not in test mode)
+  if (!isTestMode) {
+    const ownerSubject = `Low Balance Alert - ${clientName}`;
+    const ownerBody = `
+      Client: ${clientName}
+      Email: ${email}
+      Current Balance: $${balance.toFixed(2)}
+      Target Balance: $${targetBalance.toFixed(2)}
+      Last Active Lawyer: ${lawyerEmails[lastLawyerID] || 'Unknown'}
+      
+      Payment Link: ${paymentLink}
+    `;
     
-    Payment Link: ${paymentLink}
-  `;
-  
-  MailApp.sendEmail({
-    to: Session.getActiveUser().getEmail(),
-    subject: ownerSubject,
-    body: ownerBody
-  });
+    MailApp.sendEmail({
+      to: firmEmail,
+      subject: ownerSubject,
+      body: ownerBody
+    });
+  }
   
   // Mark as sent
   props.setProperty(emailKey, "1");
@@ -59,6 +65,7 @@ function sendDailyBalanceDigest() {
   const sheets = getSheets(ss);
   const data = loadSheetData(sheets);
   const settings = loadSettings(sheets.settingsSheet);
+  const isTestMode = settings[SETTINGS_KEYS.TEST_MODE] === "true";
   
   const lawyerData = buildLawyerMaps(data.lawyers);
   const clientsById = buildClientMap(data.clientData);
@@ -92,7 +99,8 @@ function sendDailyBalanceDigest() {
   lowBalanceClients.sort((a, b) => b.topUp - a.topUp);
   
   // Build email body
-  let body = "Daily Low Balance Digest\n\n";
+  let body = isTestMode ? "[TEST MODE] " : "";
+  body += "Daily Low Balance Digest\n\n";
   body += `Date: ${new Date().toLocaleDateString()}\n\n`;
   
   for (const client of lowBalanceClients) {
@@ -107,7 +115,7 @@ function sendDailyBalanceDigest() {
   // Send digest
   MailApp.sendEmail({
     to: Session.getActiveUser().getEmail(),
-    subject: "Daily Low Balance Digest - Blawby",
+    subject: isTestMode ? "[TEST] Daily Low Balance Digest - Blawby" : "Daily Low Balance Digest - Blawby",
     body: body
   });
 }

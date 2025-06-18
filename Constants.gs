@@ -70,7 +70,8 @@ const SETTINGS_KEYS = {
   LOW_BALANCE_THRESHOLD: "low_balance_threshold",
   EMAIL_NOTIFICATIONS: "email_notifications",
   AUTO_GENERATE_INVOICES: "auto_generate_invoices",
-  INVOICE_DAY: "invoice_day"
+  INVOICE_DAY: "invoice_day",
+  TEST_MODE: "test_mode"
 };
 
 const DEFAULT_SETTINGS = {
@@ -81,7 +82,8 @@ const DEFAULT_SETTINGS = {
   [SETTINGS_KEYS.LOW_BALANCE_THRESHOLD]: "1000",
   [SETTINGS_KEYS.EMAIL_NOTIFICATIONS]: "true",
   [SETTINGS_KEYS.AUTO_GENERATE_INVOICES]: "true",
-  [SETTINGS_KEYS.INVOICE_DAY]: "1"
+  [SETTINGS_KEYS.INVOICE_DAY]: "1",
+  [SETTINGS_KEYS.TEST_MODE]: "false"
 };
 
 const INVOICE_COLUMNS = {

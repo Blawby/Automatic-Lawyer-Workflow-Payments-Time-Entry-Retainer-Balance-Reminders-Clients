@@ -16,8 +16,21 @@ A simple, powerful spreadsheet system for managing legal retainers, built with G
    - Set your default currency (e.g., USD)
    - Set your low balance threshold (e.g., $1000)
    - Enable/disable email notifications
+   - Enable Test Mode to try the system safely
 
-### 3. Add Your Team
+### 3. Test Mode
+When Test Mode is enabled:
+- All emails will be sent to your firm's email instead of clients
+- You can safely test all features without affecting real clients
+- Sample data will be generated automatically
+- Real payments won't be processed
+- All automated functions will work but in a safe way
+- Use the "Blawby" menu to manually trigger the daily sync process
+  - Click "Blawby" in the menu bar
+  - Select "Run Daily Sync" to test the full process
+  - Check your email for the test digest
+
+### 4. Add Your Team
 1. Go to the "Lawyers" sheet
 2. Add each lawyer with their:
    - Email address
@@ -25,13 +38,13 @@ A simple, powerful spreadsheet system for managing legal retainers, built with G
    - Hourly rate
    - A unique ID (e.g., their initials)
 
-### 4. Connect Payments
+### 5. Connect Payments
 1. Set up a Zapier integration:
    - Trigger: New payment in Stripe
    - Action: Add row to Google Sheet
    - Map the payment data to the "Payments" sheet columns
 
-### 5. Start Using
+### 6. Start Using
 - Clients are automatically created when they make their first payment
 - Time logs are recorded in the "TimeLogs" sheet
 - Monthly summaries are generated automatically

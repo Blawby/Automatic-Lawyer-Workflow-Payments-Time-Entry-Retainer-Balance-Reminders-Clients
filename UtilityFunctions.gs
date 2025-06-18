@@ -330,6 +330,7 @@ function setupWelcomeSheet(ss) {
     ["Default Currency", "", "Default currency for all payments (USD, EUR, etc.)", "USD"],
     ["Low Balance Threshold", "", "Amount in default currency that triggers low balance alerts", "1000"],
     ["Email Notifications", "", "Send email notifications (true/false)", "true"],
+    ["Test Mode", "", "Enable test mode to try the system safely (true/false)", "false"],
     ["", "", "", ""],
     ["✅ Quick Start Guide", "", "", ""],
     ["Step", "Action", "Details", ""],
@@ -370,31 +371,41 @@ function setupWelcomeSheet(ss) {
              .setFontWeight("bold")
              .setBackground("#4285f4")
              .setFontColor("white")
-             .setHorizontalAlignment("center");
+             .setHorizontalAlignment("center")
+             .merge();
   
   // Format section headers
-  const sectionHeaders = [3, 10, 18, 26, 34];
+  const sectionHeaders = [3, 11, 19, 27, 35];
   sectionHeaders.forEach(row => {
     welcomeSheet.getRange(row, 1, 1, 4)
                 .setFontWeight("bold")
                 .setBackground("#f3f3f3")
-                .setFontSize(14);
+                .setFontSize(14)
+                .merge();
   });
   
   // Format settings table
-  const settingsRange = welcomeSheet.getRange(4, 1, 5, 4);
+  const settingsRange = welcomeSheet.getRange(4, 1, 6, 4);
   settingsRange.setBorder(true, true, true, true, true, true)
                .setHorizontalAlignment("left");
   
   // Format quick start guide
-  const guideRange = welcomeSheet.getRange(11, 1, 6, 4);
+  const guideRange = welcomeSheet.getRange(12, 1, 6, 4);
   guideRange.setBorder(true, true, true, true, true, true)
             .setHorizontalAlignment("left");
   
   // Format sheet overview
-  const overviewRange = welcomeSheet.getRange(19, 1, 7, 4);
+  const overviewRange = welcomeSheet.getRange(20, 1, 7, 4);
   overviewRange.setBorder(true, true, true, true, true, true)
                .setHorizontalAlignment("left");
+  
+  // Format how retainers work
+  const retainersRange = welcomeSheet.getRange(28, 1, 6, 4);
+  retainersRange.setHorizontalAlignment("left");
+  
+  // Format need help
+  const helpRange = welcomeSheet.getRange(36, 1, 2, 4);
+  helpRange.setHorizontalAlignment("left");
   
   // Auto-resize columns
   welcomeSheet.autoResizeColumns(1, 4);
@@ -402,6 +413,9 @@ function setupWelcomeSheet(ss) {
   // Freeze header row
   welcomeSheet.setFrozenRows(1);
   
-  // Add a note about editing settings
-  welcomeSheet.getRange(4, 1, 1, 4).setNote("Edit the 'Value' column to configure your settings. The 'Description' and 'Default' columns are for reference only.");
+  // Set column widths
+  welcomeSheet.setColumnWidth(1, 200);
+  welcomeSheet.setColumnWidth(2, 200);
+  welcomeSheet.setColumnWidth(3, 400);
+  welcomeSheet.setColumnWidth(4, 200);
 } 

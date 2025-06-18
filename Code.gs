@@ -91,4 +91,68 @@ function checkServiceResumption() {
       notifyServiceResumed(clientID, email, clientName, balance, settings.today);
     }
   }
+}
+
+/**
+ * Creates a custom menu when the spreadsheet is opened.
+ * This function is automatically triggered when the spreadsheet is opened.
+ */
+function onOpen(e) {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu('Blawby')
+    .addItem('Run Daily Sync', 'manualDailySync')
+    .addSeparator()
+    .addItem('Generate Invoices', 'generateInvoicesForAllClients')
+    .addToUi();
+}
+
+/**
+ * Manually triggers the daily sync process.
+ * Only works when Test Mode is enabled.
+ */
+function manualDailySync() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const settings = loadSettings(ss.getSheetByName("Welcome"));
+  const isTestMode = settings[SETTINGS_KEYS.TEST_MODE] === "true";
+  
+  if (!isTestMode) {
+    const ui = SpreadsheetApp.getUi();
+    const response = ui.alert(
+      'Test Mode Required',
+      'Please enable Test Mode in the Welcome sheet before running manual sync.',
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+  
+  console.log('🔄 Starting manual daily sync...');
+  
+  // Run the daily sync process
+  dailySync();
+  
+  // Show completion message
+  const ui = SpreadsheetApp.getUi();
+  ui.alert(
+    'Sync Complete',
+    'The daily sync process has completed. Check your email for the digest.',
+    ui.ButtonSet.OK
+  );
+}
+
+/**
+ * Creates a manual trigger for testing purposes.
+ * This function can be run manually from the script editor.
+ */
+function createManualTrigger() {
+  // Delete any existing triggers
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(trigger => ScriptApp.deleteTrigger(trigger));
+  
+  // Create a new trigger for onOpen
+  ScriptApp.newTrigger('onOpen')
+    .forSpreadsheet(SpreadsheetApp.getActive())
+    .onOpen()
+    .create();
+    
+  console.log('✅ Manual trigger created successfully');
 } 

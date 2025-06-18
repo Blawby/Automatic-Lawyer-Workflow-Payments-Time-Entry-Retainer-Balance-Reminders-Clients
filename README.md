@@ -2,11 +2,11 @@
 
 A Google Apps Script integration for managing legal retainers, client payments, and invoicing through Google Sheets.
 
-## Template Access
+## Getting Started
 
-- **Template Spreadsheet**: [Blawby Retainer Management Template](https://docs.google.com/spreadsheets/d/e/2PACX-1vTkw4BXHelve9SssCVKzkSRI2ElldT6BmkfKhCv9v8VEC8t6IYOIV8EaB0--EmTkB7GJXaoSMjboxp7/pubhtml)
-- **Web App URL**: https://script.google.com/macros/s/AKfycbyoXtrqgStstN_h0jwHLePeSs9N3YUFOa5pVMGoU1q828sHoGzx_iLY0nk-wTygHs2u/exec
-- **Library URL**: https://script.google.com/macros/library/d/1cumtsBoAthgsWi2RJZK9JlDXa_dJJWHgDZl7aJ6o1Vc-tjTNrc1qygLO/1
+1. **Make a Copy**: To get started, [click here to copy the template](https://docs.google.com/spreadsheets/d/1cumtsBoAthgsWi2RJZK9JlDXa_dJJWHgDZl7aJ6o1Vc/copy)
+2. **Deploy the Web App**: After copying, deploy using [this script](https://script.google.com/macros/s/AKfycbyoXtrqgStstN_h0jwHLePeSs9N3YUFOa5pVMGoU1q828sHoGzx_iLY0nk-wTygHs2u/exec)
+3. **Library Access**: Available as a [library](https://script.google.com/macros/library/d/1cumtsBoAthgsWi2RJZK9JlDXa_dJJWHgDZl7aJ6o1Vc-tjTNrc1qygLO/1) for other projects
 
 ## Project Structure
 
@@ -75,11 +75,10 @@ The system uses multiple sheets:
 
 ## Setup Instructions
 
-1. Open the [template spreadsheet](https://docs.google.com/spreadsheets/d/e/2PACX-1vTkw4BXHelve9SssCVKzkSRI2ElldT6BmkfKhCv9v8VEC8t6IYOIV8EaB0--EmTkB7GJXaoSMjboxp7/pubhtml)
-2. Make a copy for your own use
-3. Go to Extensions > Apps Script
-4. The script files will be automatically included
-5. Deploy as a web app:
+1. Click the "Make a Copy" link above to create your own version
+2. In your copy, go to Extensions > Apps Script
+3. The script files will be automatically included
+4. Deploy as a web app:
    - Click "Deploy" > "New deployment"
    - Choose "Web app"
    - Set "Execute as" to your account

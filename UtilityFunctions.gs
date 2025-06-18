@@ -218,39 +218,53 @@ function setupPaymentsSheet(sheet) {
   // Add instructions in a separate section below the data area
   const instructionsStartRow = lastRow + 3;
   const instructions = [
-    ["Instructions:", "", "", "", "", ""],
-    ["Date", "Date of payment (YYYY-MM-DD)", "", "", "", ""],
-    ["Client Email", "Must be a valid email address", "", "", "", ""],
-    ["Amount", "Payment amount (must be greater than 0)", "", "", "", ""],
-    ["Currency", "Payment currency (USD, EUR, GBP, CAD, AUD)", "", "", "", ""],
-    ["Status", "Payment status (Pending, Completed, Failed)", "", "", "", ""],
-    ["Receipt ID", "Optional - payment receipt identifier", "", "", "", ""]
+    ["⚠️ INSTRUCTIONS (DO NOT MODIFY OR DELETE THIS SECTION) ⚠️", "", "", "", "", ""],
+    ["Field", "Description", "Format", "Required", "Example", "Notes"],
+    ["Date", "Date of payment", "YYYY-MM-DD", "Yes", "2025-01-01", "Must be a valid date"],
+    ["Client Email", "Client's email address", "email@domain.com", "Yes", "lawyer@firm.com", "Must be valid email"],
+    ["Amount", "Payment amount", "Number > 0", "Yes", "1000.00", "Must be positive"],
+    ["Currency", "Payment currency", "USD/EUR/GBP/CAD/AUD", "Yes", "USD", "Must be from list"],
+    ["Status", "Payment status", "Pending/Completed/Failed", "Yes", "Completed", "Must be from list"],
+    ["Receipt ID", "Payment receipt ID", "Any text", "No", "INV-2025-001", "Optional identifier"]
   ];
   
   // Add a visual separator before instructions
-  sheet.getRange(lastRow + 2, 1, 1, 6).setBackground('#f3f3f3');
+  const separatorRange = sheet.getRange(lastRow + 2, 1, 1, 6);
+  separatorRange.setBackground('#f3f3f3');
+  separatorRange.setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID);
   
   // Add and format instructions
   const instructionsRange = sheet.getRange(instructionsStartRow, 1, instructions.length, 6);
   instructionsRange.setValues(instructions);
-  sheet.getRange(instructionsStartRow, 1, 1, 6).merge().setFontWeight("bold");
+  
+  // Format header row
+  const headerRange = sheet.getRange(instructionsStartRow, 1, 1, 6);
+  headerRange.merge();
+  headerRange.setBackground('#f4cccc');  // Light red background
+  headerRange.setFontWeight("bold");
+  headerRange.setHorizontalAlignment("center");
+  
+  // Format the instruction table
+  const tableRange = sheet.getRange(instructionsStartRow + 1, 1, instructions.length - 1, 6);
+  tableRange.setBackground('#f3f3f3');  // Light gray background
+  tableRange.setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID);
+  
+  // Make the "Field" column bold
+  sheet.getRange(instructionsStartRow + 1, 1, instructions.length - 1, 1).setFontWeight("bold");
   
   // Add a note to clarify these are instructions
-  sheet.getRange(instructionsStartRow, 1).setNote("These are instructions for data entry. Do not modify or delete this section.");
-  
-  try {
-    // Try to protect the instructions range if we have permission
-    const protection = instructionsRange.protect().setDescription('Instructions - Do Not Modify');
-    protection.removeEditors(protection.getEditors());
-    if (Session.getEffectiveUser) {
-      protection.addEditor(Session.getEffectiveUser());
-    }
-  } catch (e) {
-    console.log('Could not set up protection for instructions range:', e.message);
-  }
+  headerRange.setNote("These instructions are protected. They provide guidance for entering payment data correctly. Please enter your data in the rows above this section.");
   
   // Auto-resize columns
   sheet.autoResizeColumns(1, 6);
+  
+  // Set column widths to ensure readability
+  sheet.setColumnWidth(1, 150);  // Date
+  sheet.setColumnWidth(2, 200);  // Email
+  sheet.setColumnWidth(3, 100);  // Amount
+  sheet.setColumnWidth(4, 100);  // Currency
+  sheet.setColumnWidth(5, 100);  // Status
+  sheet.setColumnWidth(6, 150);  // Receipt ID
 }
 
 function setupClientsSheet(sheet) {

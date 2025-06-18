@@ -155,4 +155,33 @@ function createManualTrigger() {
     .create();
     
   console.log('✅ Manual trigger created successfully');
+}
+
+/**
+ * Handles GET requests to the web app.
+ * This function is required for the web app deployment.
+ * @param {Object} e The event object from the request
+ * @return {HTMLOutput} The HTML output that redirects to the template
+ */
+function doGet(e) {
+  // Replace this ID with your template spreadsheet ID
+  const templateId = SpreadsheetApp.getActiveSpreadsheet().getId();
+  const url = `https://docs.google.com/spreadsheets/d/${templateId}/copy`;
+  
+  const output = HtmlService.createHtmlOutput(
+    `<html>
+      <head>
+        <title>Redirecting to Blawby Template...</title>
+        <script>
+          window.location.href = "${url}";
+        </script>
+      </head>
+      <body>
+        <p>Redirecting to the Blawby template spreadsheet...</p>
+        <p>If you are not redirected, <a href="${url}">click here</a>.</p>
+      </body>
+    </html>`
+  );
+  
+  return output;
 } 

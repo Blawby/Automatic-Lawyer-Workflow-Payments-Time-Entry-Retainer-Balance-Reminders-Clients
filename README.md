@@ -5,9 +5,19 @@ A simple, powerful spreadsheet system for managing legal retainers, built with G
 ## 🚀 Quick Start Guide
 
 ### 1. Make a Copy
-1. Open this [template spreadsheet](https://docs.google.com/spreadsheets/d/your-template-id/copy)
-2. Click "Make a Copy" to create your own version
-3. Rename it to something like "Your Law Firm - Retainer Management"
+To get started with your own copy of the template:
+
+**Option 1: Direct Link**
+1. Visit [https://docs.google.com/spreadsheets/d/YOUR-TEMPLATE-ID/copy](https://docs.google.com/spreadsheets/d/YOUR-TEMPLATE-ID/copy)
+2. Click "Make a Copy" when prompted
+3. Choose a name for your copy (e.g., "Your Law Firm - Retainer Management")
+
+**Option 2: Web App Link (If Direct Link Doesn't Work)**
+1. Visit [https://script.google.com/macros/s/YOUR-DEPLOYMENT-ID/exec](https://script.google.com/macros/s/YOUR-DEPLOYMENT-ID/exec)
+2. You'll be automatically redirected to make a copy
+3. Follow the prompts to create your copy
+
+> Note: If you get a "Script function not found: doGet" error, please use Option 1 or contact support for the correct link.
 
 ### 2. Set Up Your Firm
 1. Open the "Welcome" sheet
@@ -144,9 +154,16 @@ All settings are managed in the Welcome sheet:
 - Test functions manually in the Apps Script editor
 
 ### Deployment
-1. Deploy directly from the Apps Script editor
-2. Set up triggers for automated functions
-3. Verify deployment by running test functions
+1. Deploy as a web app:
+   - Open the Apps Script editor
+   - Click "Deploy" > "New deployment"
+   - Choose "Web app" as the type
+   - Set "Execute as" to "Me"
+   - Set "Who has access" to "Anyone"
+   - Click "Deploy"
+2. Update the template ID in `doGet()` function
+3. Share the deployment URL or direct spreadsheet copy link
+4. Test both access methods before sharing with users
 
 ## 📝 License
 MIT License - See LICENSE file for details 

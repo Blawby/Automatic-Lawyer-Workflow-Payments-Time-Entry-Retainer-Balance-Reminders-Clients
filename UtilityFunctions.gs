@@ -124,6 +124,12 @@ function buildClientMap(clientData) {
   
   for (let i = 1; i < clientData.length; i++) {
     const row = clientData[i];
+    
+    // Skip instruction rows
+    if (!row[0] || row[0].includes("⚠️ INSTRUCTIONS") || row[0].includes("Field")) {
+      continue;
+    }
+    
     let clientID = row[9];
     
     if (!clientID) {
@@ -305,23 +311,23 @@ function setupClientsSheet(sheet) {
   );
   
   // Add instructions in a separate section below the data area
-  const instructionsStartRow = lastRow + 3;
+  const instructionsStartRow = lastRow + 4; // Increased spacing
   const instructions = [
-    ["⚠️ INSTRUCTIONS (DO NOT MODIFY OR DELETE THIS SECTION) ⚠️", "", "", "", ""],
-    ["Field", "Description", "Format", "Required", "Notes"],
-    ["Email", "Client's email address", "email@domain.com", "Yes", "Must be a valid email"],
-    ["Name", "Client's full name", "Text", "Yes", "Individual or company name"],
-    ["Target Balance", "Desired retainer balance", "Number > 0", "Yes", "Minimum balance to maintain"],
-    ["Total Paid", "Sum of all payments", "Number", "Auto", "Automatically calculated"],
-    ["Total Hours", "Sum of all time logs", "Number", "Auto", "Automatically calculated"],
-    ["Total Used", "Total amount billed", "Number", "Auto", "Automatically calculated"],
-    ["Balance", "Current retainer balance", "Number", "Auto", "Total Paid - Total Used"],
-    ["Top Up", "Suggested payment", "Number", "Auto", "Amount needed to reach target"],
-    ["Payment Link", "Client's payment URL", "URL", "Auto", "Generated payment link"],
-    ["Client ID", "Unique identifier", "UUID", "Auto", "System-generated ID"]
+    ["⚠️ INSTRUCTIONS (DO NOT MODIFY OR DELETE THIS SECTION) ⚠️", "", "", "", "", "", "", "", "", ""],
+    ["Field", "Description", "Format", "Required", "Notes", "", "", "", "", ""],
+    ["Email", "Client's email address", "email@domain.com", "Yes", "Must be a valid email", "", "", "", "", ""],
+    ["Name", "Client's full name", "Text", "Yes", "Individual or company name", "", "", "", "", ""],
+    ["Target Balance", "Desired retainer balance", "Number > 0", "Yes", "Minimum balance to maintain", "", "", "", "", ""],
+    ["Total Paid", "Sum of all payments", "Number", "Auto", "Automatically calculated", "", "", "", "", ""],
+    ["Total Hours", "Sum of all time logs", "Number", "Auto", "Automatically calculated", "", "", "", "", ""],
+    ["Total Used", "Total amount billed", "Number", "Auto", "Automatically calculated", "", "", "", "", ""],
+    ["Balance", "Current retainer balance", "Number", "Auto", "Total Paid - Total Used", "", "", "", "", ""],
+    ["Top Up", "Suggested payment", "Number", "Auto", "Amount needed to reach target", "", "", "", "", ""],
+    ["Payment Link", "Client's payment URL", "URL", "Auto", "Generated payment link", "", "", "", "", ""],
+    ["Client ID", "Unique identifier", "UUID", "Auto", "System-generated ID", "", "", "", "", ""]
   ];
   
-  addInstructionTable(sheet, instructionsStartRow, instructions, 5);
+  addInstructionTable(sheet, instructionsStartRow, instructions, 10);
 }
 
 function setupTimeLogsSheet(sheet) {
@@ -842,8 +848,8 @@ function sendInvoiceEmail(invoice) {
 
 // Helper function to add formatted instruction table
 function addInstructionTable(sheet, startRow, instructions, columnCount) {
-  // Add a visual separator before instructions
-  const separatorRange = sheet.getRange(startRow - 1, 1, 1, columnCount);
+  // Add a visual separator before instructions (2 rows)
+  const separatorRange = sheet.getRange(startRow - 2, 1, 2, columnCount);
   separatorRange.setBackground('#f3f3f3');
   separatorRange.setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID);
   
@@ -869,9 +875,6 @@ function addInstructionTable(sheet, startRow, instructions, columnCount) {
   // Add a note to clarify these are instructions
   headerRange.setNote("These instructions are protected. They provide guidance for entering data correctly. Please enter your data in the rows above this section.");
   
-  // Auto-resize columns
-  sheet.autoResizeColumns(1, columnCount);
-  
   // Set reasonable column widths
   for (let i = 1; i <= columnCount; i++) {
     sheet.setColumnWidth(i, 150);
@@ -879,4 +882,18 @@ function addInstructionTable(sheet, startRow, instructions, columnCount) {
   
   // Make description column wider
   sheet.setColumnWidth(2, 200);
+  
+  // Freeze the header row
+  sheet.setFrozenRows(1);
+  
+  // Protect the instruction section
+  const protection = sheet.protect();
+  protection.setDescription('Instructions Section');
+  protection.setUnprotectedRanges([sheet.getRange(2, 1, startRow - 3, columnCount)]); // Only allow editing in data area
+  protection.setWarningOnly(true);
+  
+  // Add a named range for the instruction section to help identify it
+  const instructionRange = sheet.getRange(startRow, 1, instructions.length, columnCount);
+  const ss = sheet.getParent();
+  ss.setNamedRange('INSTRUCTIONS_SECTION_' + sheet.getName(), instructionRange);
 } 

@@ -1,6 +1,132 @@
-# Blawby Retainer Management
+# Blawby Google Sheets Integration
 
-A simple, powerful spreadsheet system for managing legal retainers, built with Google Sheets and Apps Script.
+A Google Apps Script integration for managing legal retainers, client payments, and invoicing through Google Sheets.
+
+## Features
+
+- **Client Management**: Track client information, balances, and payment history
+- **Payment Processing**: Automatically process and record client payments
+- **Invoice Generation**: Automated invoice generation on specified days
+- **Time Tracking**: Record and manage billable hours
+- **Balance Monitoring**: Track retainer balances and notify when top-up is needed
+- **Email Notifications**: Automated email notifications for invoices and low balances
+
+## Sheet Structure
+
+The system uses multiple sheets:
+
+1. **Clients**: Tracks client information and balances
+   - Email
+   - Name
+   - Target Balance
+   - Total Paid
+   - Total Hours
+   - Total Used
+   - Balance
+   - Top Up Amount
+   - Payment Link
+   - Client ID
+
+2. **Payments**: Records all payment transactions
+   - Date
+   - Description
+   - Client Email
+   - Amount
+   - Currency
+   - Status
+   - Receipt ID
+
+3. **Time Logs**: Records billable hours
+   - Date
+   - Client Email
+   - Matter ID
+   - Hours
+   - Description
+
+4. **Settings**: System configuration
+   - Payment Link
+   - Default Currency
+   - Target Balance Percentage
+   - Minimum Target Balance
+   - Low Balance Threshold
+   - Email Notifications Toggle
+   - Auto Invoice Generation Toggle
+   - Invoice Day
+   - Test Mode Toggle
+
+## Setup Instructions
+
+1. Open your Google Sheet
+2. Go to Extensions > Apps Script
+3. Copy the code files into your Apps Script project:
+   - Code.gs
+   - ClientSync.gs
+   - InvoiceGeneration.gs
+   - UtilityFunctions.gs
+
+4. Deploy as a web app:
+   - Click "Deploy" > "New deployment"
+   - Choose "Web app"
+   - Set "Execute as" to your account
+   - Set "Who has access" to appropriate level
+   - Click "Deploy"
+
+5. Set up trigger for daily sync:
+   - In Apps Script, go to Triggers
+   - Create new trigger
+   - Choose function: dailySync
+   - Choose event source: Time-driven
+   - Choose type: Day timer
+   - Choose time: Pick your preferred time
+   - Save trigger
+
+## Usage
+
+The system runs automatically based on the configured triggers. Each sheet includes instruction rows that explain the required format and valid values for each column.
+
+### Adding New Clients
+
+1. Add client information to the Clients sheet
+2. The system will automatically generate a client ID
+3. Client will be tracked for payments and time logs
+
+### Recording Payments
+
+1. Add payment information to the Payments sheet
+2. System will automatically:
+   - Update client balance
+   - Create new client if not exists
+   - Track payment status
+
+### Recording Time
+
+1. Add time entries to the Time Logs sheet
+2. System will automatically:
+   - Update client's used hours
+   - Adjust balance based on hourly rate
+   - Track remaining retainer balance
+
+## Maintenance
+
+The system includes data validation and instruction rows in each sheet. These rows are protected and provide guidance for data entry. The system automatically skips these rows during processing.
+
+## Error Handling
+
+- Invalid email addresses are logged and skipped
+- Invalid payment amounts are ignored
+- Instruction rows are automatically filtered out
+- Data validation ensures proper format for critical fields
+
+## Security
+
+- Email validation prevents invalid addresses
+- Sheet protection prevents accidental modification of instruction rows
+- OAuth scopes limited to required functionality
+- No sensitive data stored in script properties
+
+## Support
+
+For issues or questions, please contact your system administrator or raise an issue in the repository.
 
 ## 🚀 Quick Start Guide
 

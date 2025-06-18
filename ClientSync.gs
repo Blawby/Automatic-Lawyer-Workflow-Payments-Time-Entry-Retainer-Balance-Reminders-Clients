@@ -9,7 +9,7 @@ function syncPaymentsAndClients() {
   const clientsById = buildClientMap(data.clientData);
   
   // Process new payments and create clients if needed
-  processNewPayments(data.paymentData, clientsById, settings.today);
+  processNewPayments(sheets.paymentsSheet, clientsById);
   
   // Update matters sheet with client names
   updateMattersWithClientNames(sheets.mattersSheet, clientsById);
@@ -29,49 +29,68 @@ function syncPaymentsAndClients() {
   console.log(`📊 Processed ${updatedClientRows.length - 1} clients, sent ${emailsSent} emails`);
 }
 
-function processNewPayments(paymentData, clientsById, today) {
-  const props = PropertiesService.getScriptProperties();
-  const processedPaymentIds = new Set();
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const mattersSheet = ss.getSheetByName("Matters");
+function processNewPayments(paymentsSheet, clientsById) {
+  const payments = paymentsSheet.getDataRange().getValues();
+  const headerRow = payments[0];
   
-  for (let i = 1; i < paymentData.length; i++) {
-    const row = paymentData[i];
-    const clientEmail = row[1];
-    const receiptId = row[5];
+  // Known instruction field values to skip
+  const instructionFields = new Set([
+    "Format",
+    "YYYY-MM-DD",
+    "Number > 0",
+    "USD/EUR/GBP/CAD/AUD",
+    "Pending/Completed/Failed",
+    "Any text",
+    "Client's email address",
+    "⚠️ INSTRUCTIONS",
+    "Field",
+    "Must be a valid",
+    "Instructions:"
+  ]);
+  
+  // Skip header row
+  for (let i = 1; i < payments.length; i++) {
+    const row = payments[i];
+    const clientEmail = row[2]; // Client's email address column
     
-    // Skip if no email, already processed this receipt, or if this is an instruction row
+    // Skip empty rows or instruction rows
     if (!clientEmail || 
-        (receiptId && processedPaymentIds.has(receiptId)) ||
-        clientEmail.includes("Must be a valid") || // Skip instruction rows
-        clientEmail.includes("Instructions:")) continue;
-    
-    // Validate email format
-    if (!validateEmail(clientEmail)) {
-      console.log(`Invalid email format: ${clientEmail}`);
+        typeof clientEmail !== 'string' ||
+        instructionFields.has(clientEmail)) {
       continue;
     }
-    
-    if (receiptId) processedPaymentIds.add(receiptId);
-    
-    // Look for existing client by email
-    const existingClientID = findClientByEmail(clientsById, clientEmail);
-    
-    // Create new client if not found
-    if (!existingClientID) {
-      const clientID = Utilities.getUuid();
-      clientsById[clientID] = [clientEmail, "", 0, 0, 0, 0, 0, 0, "", clientID];
-      props.setProperty(`new_${clientID}_${today}`, "1");
-      console.log(`👤 Created new client: ${clientEmail}`);
-      
-      // Auto-create matter for new client
-      createMatterForNewClient(mattersSheet, clientEmail, clientID);
+
+    // Validate email format
+    if (!isValidEmail(clientEmail)) {
+      Logger.log(`Invalid email format: ${clientEmail}`);
+      continue;
     }
+
+    // Process the payment
+    const paymentAmount = parseFloat(row[3]);
+    if (isNaN(paymentAmount)) {
+      continue;
+    }
+
+    // Create new client if not exists
+    if (!clientsById[clientEmail]) {
+      clientsById[clientEmail] = createNewClient(clientEmail);
+    }
+
+    // Update client balance
+    const client = clientsById[clientEmail];
+    client.totalPaid += paymentAmount;
+    client.balance += paymentAmount;
   }
 }
 
-// Helper function to validate email format
-function validateEmail(email) {
+/**
+ * Validates an email address using a regular expression
+ * @param {string} email - The email address to validate
+ * @return {boolean} - True if the email is valid, false otherwise
+ */
+function isValidEmail(email) {
+  if (!email || typeof email !== 'string') return false;
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   return emailRegex.test(email);
 }

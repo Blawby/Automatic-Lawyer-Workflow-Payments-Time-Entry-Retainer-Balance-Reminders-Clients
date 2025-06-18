@@ -213,20 +213,55 @@ function getAllClients() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = getSheets(ss);
   const clientData = sheets.clientsSheet.getDataRange().getValues();
+  const headerRow = clientData[0];
   
-  // Skip header row and map to client objects
-  return clientData.slice(1).map(row => ({
-    email: row[0],
-    name: row[1] || "Client",
-    targetBalance: parseFloat(row[2]) || 0,
-    totalPaid: parseFloat(row[3]) || 0,
-    totalHours: parseFloat(row[4]) || 0,
-    totalUsed: parseFloat(row[5]) || 0,
-    balance: parseFloat(row[6]) || 0,
-    topUp: parseFloat(row[7]) || 0,
-    paymentLink: row[8],
-    id: row[9]
-  }));
+  // Known instruction field values to skip
+  const instructionFields = new Set([
+    "Email",
+    "Name",
+    "Target Balance",
+    "Total Paid",
+    "Total Hours",
+    "Total Used",
+    "Balance",
+    "Top Up",
+    "Payment Link",
+    "Client ID",
+    "⚠️ INSTRUCTIONS",
+    "Field",
+    "Must be a valid",
+    "Instructions:"
+  ]);
+  
+  // Skip header row and instruction rows, map to client objects
+  return clientData.slice(1)
+    .filter(row => {
+      const email = row[0];
+      // Skip empty rows, instruction rows, and column headers
+      if (!email || 
+          typeof email !== 'string' ||
+          instructionFields.has(email)) {
+        return false;
+      }
+      // Validate email format
+      if (!isValidEmail(email)) {
+        Logger.log(`Invalid email format: ${email}`);
+        return false;
+      }
+      return true;
+    })
+    .map(row => ({
+      email: row[0],
+      name: row[1] || "Client",
+      targetBalance: parseFloat(row[2]) || 0,
+      totalPaid: parseFloat(row[3]) || 0,
+      totalHours: parseFloat(row[4]) || 0,
+      totalUsed: parseFloat(row[5]) || 0,
+      balance: parseFloat(row[6]) || 0,
+      topUp: parseFloat(row[7]) || 0,
+      paymentLink: row[8],
+      id: row[9]
+    }));
 }
 
 /**
@@ -247,6 +282,16 @@ function generateInvoicesForAllClients() {
 
   clients.forEach(client => {
     try {
+      // Skip instruction rows
+      if (!client.email || 
+          client.email.includes("⚠️ INSTRUCTIONS") || 
+          client.email.includes("Field") || 
+          client.email.includes("Must be a valid") || 
+          client.email.includes("Instructions:")) {
+        summary.skipped++;
+        return;
+      }
+
       const result = generateInvoiceForClient(client.email);
       if (result === true) {
         summary.generated++;
@@ -260,4 +305,130 @@ function generateInvoicesForAllClients() {
   });
 
   return summary;
+}
+
+function generateInvoiceForClient(clientEmail) {
+  try {
+    if (!clientEmail || typeof clientEmail !== 'string') {
+      console.log('Invalid client email provided');
+      return false;
+    }
+
+    // Skip instruction rows
+    if (clientEmail.includes("⚠️ INSTRUCTIONS") || 
+        clientEmail.includes("Field") || 
+        clientEmail.includes("Must be a valid") || 
+        clientEmail.includes("Instructions:")) {
+      return false;
+    }
+
+    const settings = loadSettings();
+    if (!settings.auto_generate_invoices) {
+      console.log(`Invoice generation is disabled for ${clientEmail}`);
+      return false;
+    }
+
+    const today = new Date();
+    const invoiceDay = parseInt(settings.invoice_day);
+    
+    // Only generate invoices on the specified day
+    if (today.getDate() !== invoiceDay) {
+      console.log(`Not invoice day for ${clientEmail}`);
+      return false;
+    }
+
+    // Get client's time logs
+    const timeLogs = getTimeLogsForClient(clientEmail);
+    if (!timeLogs || timeLogs.length === 0) {
+      console.log(`No time logs found for ${clientEmail}`);
+      return false;
+    }
+
+    // Calculate total hours and amount
+    let totalHours = 0;
+    let totalAmount = 0;
+    timeLogs.forEach(log => {
+      if (log && log.hours) {
+        totalHours += parseFloat(log.hours);
+        const lawyerRate = getLawyerRate(log.lawyerId);
+        totalAmount += parseFloat(log.hours) * lawyerRate;
+      }
+    });
+
+    if (totalHours === 0) {
+      console.log(`No billable hours found for ${clientEmail}`);
+      return false;
+    }
+
+    // Create invoice record
+    const invoice = {
+      clientEmail: clientEmail,
+      date: today,
+      totalHours: totalHours,
+      totalAmount: totalAmount,
+      status: 'Pending'
+    };
+
+    // Save invoice
+    const saved = saveInvoice(invoice);
+    if (!saved) {
+      console.log(`Failed to save invoice for ${clientEmail}`);
+      return false;
+    }
+
+    // Send invoice email
+    if (settings.email_notifications) {
+      const emailSent = sendInvoiceEmail(invoice);
+      if (!emailSent) {
+        console.log(`Failed to send invoice email to ${clientEmail}`);
+      }
+    }
+
+    console.log(`✅ Invoice generated for ${clientEmail}`);
+    return true;
+  } catch (error) {
+    console.error(`Error generating invoice for ${clientEmail}: ${error.message}`);
+    return false;
+  }
+}
+
+function getTimeLogsForClient(clientEmail) {
+  try {
+    const timeLogsSheet = getSheet('TimeLogs');
+    if (!timeLogsSheet) {
+      console.log('TimeLogs sheet not found');
+      return [];
+    }
+    
+    const data = timeLogsSheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      console.log('No time logs found in sheet');
+      return [];
+    }
+    
+    const headers = data[0];
+    
+    return data.slice(1)
+      .filter(row => {
+        // Skip instruction rows
+        if (!row || !row[1] || 
+            row[1].includes("⚠️ INSTRUCTIONS") || 
+            row[1].includes("Field") || 
+            row[1].includes("Must be a valid") || 
+            row[1].includes("Instructions:")) {
+          return false;
+        }
+        return row[1] === clientEmail;
+      })
+      .map(row => ({
+        date: row[0],
+        clientEmail: row[1],
+        matterId: row[2],
+        lawyerId: row[3],
+        hours: row[4]
+      }));
+  } catch (error) {
+    console.error(`Error getting time logs for ${clientEmail}: ${error.message}`);
+    return [];
+  }
 } 

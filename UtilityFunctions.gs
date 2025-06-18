@@ -238,10 +238,16 @@ function setupPaymentsSheet(sheet) {
   // Add a note to clarify these are instructions
   sheet.getRange(instructionsStartRow, 1).setNote("These are instructions for data entry. Do not modify or delete this section.");
   
-  // Protect the instructions range
-  const protection = instructionsRange.protect().setDescription('Instructions - Do Not Modify');
-  protection.removeEditors(protection.getEditors());
-  protection.addEditor(Session.getEffectiveUser());
+  try {
+    // Try to protect the instructions range if we have permission
+    const protection = instructionsRange.protect().setDescription('Instructions - Do Not Modify');
+    protection.removeEditors(protection.getEditors());
+    if (Session.getEffectiveUser) {
+      protection.addEditor(Session.getEffectiveUser());
+    }
+  } catch (e) {
+    console.log('Could not set up protection for instructions range:', e.message);
+  }
   
   // Auto-resize columns
   sheet.autoResizeColumns(1, 6);

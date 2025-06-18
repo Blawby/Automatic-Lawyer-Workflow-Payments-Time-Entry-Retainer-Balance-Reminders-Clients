@@ -247,8 +247,8 @@ function generateInvoicesForAllClients() {
 
   clients.forEach(client => {
     try {
-      const result = generateInvoiceForClient(client, settings);
-      if (result.success) {
+      const result = generateInvoiceForClient(client.email);
+      if (result === true) {
         summary.generated++;
       } else {
         summary.skipped++;

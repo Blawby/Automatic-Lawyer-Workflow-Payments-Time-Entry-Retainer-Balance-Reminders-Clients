@@ -168,7 +168,66 @@ function setupPaymentsSheet(sheet) {
     "Receipt ID"
   ];
   
+  // Clear the sheet first
+  sheet.clear();
   setupSheet(sheet, headers);
+  
+  // Add data validation and instructions
+  const lastRow = sheet.getLastRow();
+  
+  // Date validation
+  const dateRule = SpreadsheetApp.newDataValidation()
+    .requireDate()
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(2, 1, Math.max(1, lastRow - 1), 1).setDataValidation(dateRule);
+  
+  // Email validation (using text pattern)
+  const emailRule = SpreadsheetApp.newDataValidation()
+    .requireTextIsEmail()
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(2, 2, Math.max(1, lastRow - 1), 1).setDataValidation(emailRule);
+  
+  // Amount validation (positive number)
+  const amountRule = SpreadsheetApp.newDataValidation()
+    .requireNumberGreaterThan(0)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(2, 3, Math.max(1, lastRow - 1), 1).setDataValidation(amountRule);
+  
+  // Currency validation (common currencies)
+  const currencyRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['USD', 'EUR', 'GBP', 'CAD', 'AUD'], true)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(2, 4, Math.max(1, lastRow - 1), 1).setDataValidation(currencyRule);
+  
+  // Status validation
+  const statusRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['Pending', 'Completed', 'Failed'], true)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(2, 5, Math.max(1, lastRow - 1), 1).setDataValidation(statusRule);
+  
+  // Add instructions in a separate section
+  const instructionsStartRow = lastRow + 3; // Add some space between data and instructions
+  const instructions = [
+    ["Instructions:", "", "", "", "", ""],
+    ["Date", "Date of payment (YYYY-MM-DD)", "", "", "", ""],
+    ["Client Email", "Must be a valid email address", "", "", "", ""],
+    ["Amount", "Payment amount (must be greater than 0)", "", "", "", ""],
+    ["Currency", "Payment currency (USD, EUR, GBP, CAD, AUD)", "", "", "", ""],
+    ["Status", "Payment status (Pending, Completed, Failed)", "", "", "", ""],
+    ["Receipt ID", "Optional - payment receipt identifier", "", "", "", ""]
+  ];
+  
+  sheet.getRange(instructionsStartRow, 1, instructions.length, 6).setValues(instructions);
+  sheet.getRange(instructionsStartRow, 1, 1, 6).merge();
+  sheet.getRange(instructionsStartRow, 1).setFontWeight("bold");
+  
+  // Add a visual separator
+  sheet.getRange(lastRow + 2, 1, 1, 6).setBackground('#f3f3f3');
 }
 
 function setupClientsSheet(sheet) {
@@ -197,7 +256,51 @@ function setupTimeLogsSheet(sheet) {
     "Hours"
   ];
   
+  // Clear the sheet first
+  sheet.clear();
   setupSheet(sheet, headers);
+  
+  // Add data validation and instructions
+  const lastRow = sheet.getLastRow();
+  
+  // Date validation
+  const dateRule = SpreadsheetApp.newDataValidation()
+    .requireDate()
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(2, 1, Math.max(1, lastRow - 1), 1).setDataValidation(dateRule);
+  
+  // Email validation (using text pattern)
+  const emailRule = SpreadsheetApp.newDataValidation()
+    .requireTextIsEmail()
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(2, 2, Math.max(1, lastRow - 1), 1).setDataValidation(emailRule);
+  
+  // Hours validation (positive number)
+  const hoursRule = SpreadsheetApp.newDataValidation()
+    .requireNumberGreaterThan(0)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(2, 5, Math.max(1, lastRow - 1), 1).setDataValidation(hoursRule);
+  
+  // Add instructions in a separate section
+  const instructionsStartRow = lastRow + 3; // Add some space between data and instructions
+  const instructions = [
+    ["Instructions:", "", "", "", ""],
+    ["Date", "Date of work (YYYY-MM-DD)", "", "", ""],
+    ["Client Email", "Must be a valid email address", "", "", ""],
+    ["Matter ID", "Optional - must match a matter in the Matters sheet", "", "", ""],
+    ["Lawyer ID", "Must match a lawyer in the Lawyers sheet", "", "", ""],
+    ["Hours", "Number of hours worked (must be greater than 0)", "", "", ""]
+  ];
+  
+  sheet.getRange(instructionsStartRow, 1, instructions.length, 5).setValues(instructions);
+  sheet.getRange(instructionsStartRow, 1, 1, 5).merge();
+  sheet.getRange(instructionsStartRow, 1).setFontWeight("bold");
+  
+  // Add a visual separator
+  sheet.getRange(lastRow + 2, 1, 1, 5).setBackground('#f3f3f3');
 }
 
 function setupLawyersSheet(sheet) {
@@ -208,7 +311,43 @@ function setupLawyersSheet(sheet) {
     "Lawyer ID"
   ];
   
+  // Clear the sheet first
+  sheet.clear();
   setupSheet(sheet, headers);
+  
+  // Add data validation and instructions
+  const lastRow = sheet.getLastRow();
+  
+  // Email validation (using text pattern)
+  const emailRule = SpreadsheetApp.newDataValidation()
+    .requireTextIsEmail()
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(2, 1, Math.max(1, lastRow - 1), 1).setDataValidation(emailRule);
+  
+  // Rate validation (positive number)
+  const rateRule = SpreadsheetApp.newDataValidation()
+    .requireNumberGreaterThan(0)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(2, 3, Math.max(1, lastRow - 1), 1).setDataValidation(rateRule);
+  
+  // Add instructions in a separate section
+  const instructionsStartRow = lastRow + 3; // Add some space between data and instructions
+  const instructions = [
+    ["Instructions:", "", "", ""],
+    ["Email", "Must be a valid email address", "", ""],
+    ["Name", "Full name of the lawyer", "", ""],
+    ["Rate", "Hourly rate (must be greater than 0)", "", ""],
+    ["Lawyer ID", "Unique identifier (e.g., initials)", "", ""]
+  ];
+  
+  sheet.getRange(instructionsStartRow, 1, instructions.length, 4).setValues(instructions);
+  sheet.getRange(instructionsStartRow, 1, 1, 4).merge();
+  sheet.getRange(instructionsStartRow, 1).setFontWeight("bold");
+  
+  // Add a visual separator
+  sheet.getRange(lastRow + 2, 1, 1, 4).setBackground('#f3f3f3');
 }
 
 function setupLowBalanceSheet(sheet) {
@@ -418,4 +557,211 @@ function setupWelcomeSheet(ss) {
   welcomeSheet.setColumnWidth(2, 200);
   welcomeSheet.setColumnWidth(3, 400);
   welcomeSheet.setColumnWidth(4, 200);
+}
+
+// Add the missing invoice generation function
+function generateInvoiceForClient(clientEmail) {
+  try {
+    if (!clientEmail || typeof clientEmail !== 'string') {
+      console.log('Invalid client email provided');
+      return false;
+    }
+
+    const settings = loadSettings();
+    if (!settings.auto_generate_invoices) {
+      console.log(`Invoice generation is disabled for ${clientEmail}`);
+      return false;
+    }
+
+    const today = new Date();
+    const invoiceDay = parseInt(settings.invoice_day);
+    
+    // Only generate invoices on the specified day
+    if (today.getDate() !== invoiceDay) {
+      console.log(`Not invoice day for ${clientEmail}`);
+      return false;
+    }
+
+    // Get client's time logs
+    const timeLogs = getTimeLogsForClient(clientEmail);
+    if (!timeLogs || timeLogs.length === 0) {
+      console.log(`No time logs found for ${clientEmail}`);
+      return false;
+    }
+
+    // Calculate total hours and amount
+    let totalHours = 0;
+    let totalAmount = 0;
+    timeLogs.forEach(log => {
+      if (log && log.hours) {
+        totalHours += parseFloat(log.hours);
+        const lawyerRate = getLawyerRate(log.lawyerId);
+        totalAmount += parseFloat(log.hours) * lawyerRate;
+      }
+    });
+
+    if (totalHours === 0) {
+      console.log(`No billable hours found for ${clientEmail}`);
+      return false;
+    }
+
+    // Create invoice record
+    const invoice = {
+      clientEmail: clientEmail,
+      date: today,
+      totalHours: totalHours,
+      totalAmount: totalAmount,
+      status: 'Pending'
+    };
+
+    // Save invoice
+    const saved = saveInvoice(invoice);
+    if (!saved) {
+      console.log(`Failed to save invoice for ${clientEmail}`);
+      return false;
+    }
+
+    // Send invoice email
+    if (settings.email_notifications) {
+      const emailSent = sendInvoiceEmail(invoice);
+      if (!emailSent) {
+        console.log(`Failed to send invoice email to ${clientEmail}`);
+      }
+    }
+
+    console.log(`✅ Invoice generated for ${clientEmail}`);
+    return true;
+  } catch (error) {
+    console.error(`Error generating invoice for ${clientEmail}: ${error.message}`);
+    return false;
+  }
+}
+
+// Helper functions for invoice generation
+function getTimeLogsForClient(clientEmail) {
+  try {
+    const timeLogsSheet = getSheet('TimeLogs');
+    if (!timeLogsSheet) {
+      console.log('TimeLogs sheet not found');
+      return [];
+    }
+    
+    const data = timeLogsSheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      console.log('No time logs found in sheet');
+      return [];
+    }
+    
+    const headers = data[0];
+    
+    return data.slice(1)
+      .filter(row => row && row[1] === clientEmail) // Client Email is in column 2
+      .map(row => ({
+        date: row[0],
+        clientEmail: row[1],
+        matterId: row[2],
+        lawyerId: row[3],
+        hours: row[4]
+      }));
+  } catch (error) {
+    console.error(`Error getting time logs for ${clientEmail}: ${error.message}`);
+    return [];
+  }
+}
+
+function getLawyerRate(lawyerId) {
+  try {
+    if (!lawyerId) return 0;
+    
+    const lawyersSheet = getSheet('Lawyers');
+    if (!lawyersSheet) {
+      console.log('Lawyers sheet not found');
+      return 0;
+    }
+    
+    const data = lawyersSheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      console.log('No lawyers found in sheet');
+      return 0;
+    }
+    
+    const headers = data[0];
+    
+    const lawyer = data.slice(1)
+      .find(row => row && row[3] === lawyerId); // Lawyer ID is in column 4
+    
+    return lawyer ? parseFloat(lawyer[2]) : 0; // Rate is in column 3
+  } catch (error) {
+    console.error(`Error getting rate for lawyer ${lawyerId}: ${error.message}`);
+    return 0;
+  }
+}
+
+function saveInvoice(invoice) {
+  try {
+    if (!invoice || !invoice.clientEmail) {
+      console.log('Invalid invoice data');
+      return false;
+    }
+
+    const invoicesSheet = getSheet('Invoices');
+    if (!invoicesSheet) {
+      console.log('Invoices sheet not found');
+      return false;
+    }
+    
+    invoicesSheet.appendRow([
+      invoice.date,
+      invoice.clientEmail,
+      invoice.totalHours,
+      invoice.totalAmount,
+      invoice.status
+    ]);
+    
+    return true;
+  } catch (error) {
+    console.error(`Error saving invoice: ${error.message}`);
+    return false;
+  }
+}
+
+function sendInvoiceEmail(invoice) {
+  try {
+    if (!invoice || !invoice.clientEmail) {
+      console.log('Invalid invoice data for email');
+      return false;
+    }
+
+    const client = getClientByEmail(invoice.clientEmail);
+    if (!client) {
+      console.log(`Client not found for email ${invoice.clientEmail}`);
+      return false;
+    }
+
+    const subject = `Invoice for ${client.name} - ${formatDate(invoice.date)}`;
+    const body = `
+      Dear ${client.name},
+
+      Please find attached your invoice for ${formatDate(invoice.date)}.
+
+      Total Hours: ${invoice.totalHours}
+      Total Amount: ${formatCurrency(invoice.totalAmount)}
+
+      Thank you for your business.
+
+      Best regards,
+      Your Law Firm
+    `;
+
+    MailApp.sendEmail({
+      to: client.email,
+      subject: subject,
+      body: body
+    });
+    
+    return true;
+  } catch (error) {
+    console.error(`Error sending invoice email: ${error.message}`);
+    return false;
+  }
 } 

@@ -71,12 +71,15 @@ When Test Mode is enabled:
 - **Monthly Summaries**: Sent automatically at the start of each month
 - **Low Balance Alerts**: Sent when client balance falls below threshold
 - **Payment Links**: Generated automatically for easy client top-ups
+- **Invoice Generation**: Automatic invoice generation on specified days with data validation
+- **Data Validation**: Built-in validation for all input fields to ensure data integrity
 
 ### Daily Operations
-- **Time Logging**: Record hours in the TimeLogs sheet
-- **Matter Management**: Track cases and their values
+- **Time Logging**: Record hours in the TimeLogs sheet with validated inputs
+- **Matter Management**: Track cases and their values with automatic client name updates
 - **Balance Monitoring**: Check client balances in the Clients sheet
 - **Payment Tracking**: View all payments in the Payments sheet
+- **Invoice Management**: View and manage invoices with automatic generation
 
 ## ⚙️ System Settings
 
@@ -88,6 +91,10 @@ All settings are managed in the Welcome sheet:
 | Default Currency | Currency for all payments | USD |
 | Low Balance Threshold | Amount that triggers alerts | $1000 |
 | Email Notifications | Enable/disable email alerts | true |
+| Auto Generate Invoices | Enable/disable automatic invoice generation | true |
+| Invoice Day | Day of month to generate invoices | 1 |
+| Target Balance Percentage | Percentage of case value for target balance | 10% |
+| Minimum Target Balance | Minimum target balance amount | $500 |
 
 ## ❓ Need Help?
 

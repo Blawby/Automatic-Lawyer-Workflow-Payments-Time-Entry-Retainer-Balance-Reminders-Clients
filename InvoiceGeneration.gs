@@ -1,209 +1,117 @@
 // ========== INVOICE GENERATION ==========
-function setupInvoiceSheet(invoicesSheet) {
+function setupInvoiceSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('Invoices');
+  
+  // Create the sheet if it doesn't exist
+  if (!sheet) {
+    sheet = ss.insertSheet('Invoices');
+  }
+  
   const headers = [
-    "Month",
-    "Client Email",
+    "Invoice Number",
     "Client Name",
-    "Total Hours",
-    "Total Used ($)",
-    "Lawyers Involved",
-    "Generated At",
+    "Date",
+    "Amount",
     "Currency",
-    "Trust Account",
-    "Client Ref",
-    "UUID",
-    "Invoice ID",
-    "Client ID",
-    "Invoice Date",
-    "Matter Totals",
-    "Total Amount",
-    "Status"
+    "Status",
+    "Payment Link",
+    "Notes"
   ];
   
-  // Clear existing headers and set new ones
-  invoicesSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  setupSheet(sheet, headers);
   
-  // Format headers
-  const headerRange = invoicesSheet.getRange(1, 1, 1, headers.length);
-  headerRange.setFontWeight("bold");
-  headerRange.setBackground("#f3f3f3");
-  
-  // Auto-resize columns
-  for (let i = 1; i <= headers.length; i++) {
-    invoicesSheet.autoResizeColumn(i);
+  // Add sample data if sheet is empty
+  if (sheet.getLastRow() === 1) {
+    const sampleData = [
+      ["INV-001", "Sample Client", new Date(), 1000, "USD", "Paid", "https://app.blawby.com/pay", "Sample invoice"],
+      ["INV-002", "Another Client", new Date(), 2000, "USD", "Pending", "https://app.blawby.com/pay", "Another sample"]
+    ];
+    
+    sheet.getRange(2, 1, sampleData.length, headers.length).setValues(sampleData);
+    
+    // Format the sheet
+    sheet.getRange(1, 1, 1, headers.length).setBackground('#4285f4')
+          .setFontColor('white')
+          .setFontWeight('bold');
+    
+    sheet.autoResizeColumns(1, headers.length);
   }
-  
-  // Freeze header row
-  invoicesSheet.setFrozenRows(1);
 }
 
-function generateInvoices() {
+function generateReceipt(paymentData, clientData) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = getSheets(ss);
-  const data = loadSheetData(sheets);
   const settings = loadSettings(sheets.settingsSheet);
-  
-  // Check if auto-generate is enabled
-  if (!settings[SETTINGS_KEYS.AUTO_GENERATE_INVOICES]) {
-    console.log('📄 Auto-generate invoices is disabled');
-    return;
-  }
-  
-  // Check if it's invoice day
-  const today = new Date();
-  const invoiceDay = parseInt(settings[SETTINGS_KEYS.INVOICE_DAY]) || 1;
-  if (today.getDate() !== invoiceDay) {
-    console.log(`📄 Not invoice day (${today.getDate()} != ${invoiceDay})`);
-    return;
-  }
   
   // Ensure invoice sheet is properly set up
   setupInvoiceSheet(sheets.invoicesSheet);
   
-  const lawyerData = buildLawyerMaps(data.lawyers);
-  const clientsById = buildClientMap(data.clientData);
+  const [date, email, amount, currency, status, receiptId] = paymentData;
+  const clientName = clientData[1] || "Client";
+  const clientId = clientData[9];
   
-  // Get last invoice date from the most recent invoice
-  const lastInvoiceDate = getLastInvoiceDate(sheets.invoicesSheet);
+  // Calculate balance after payment
+  const currentBalance = parseFloat(clientData[6]) || 0;
+  const newBalance = currentBalance + parseFloat(amount);
   
-  // Generate invoices for each client
-  for (const [clientID, row] of Object.entries(clientsById)) {
-    const email = row[0];
-    const clientName = row[1] || "Client";
-    
-    // Get time logs for this client since last invoice
-    const clientTimeLogs = data.timeLogs.filter(log => {
-      const logDate = new Date(log[0]);
-      return log[1] === email && logDate > lastInvoiceDate;
-    });
-    
-    if (clientTimeLogs.length === 0) continue;
-    
-    // Group time logs by matter and lawyer
-    const matterTimeLogs = {};
-    for (const log of clientTimeLogs) {
-      const matterID = log[2] || "General";
-      const lawyerID = log[3];
-      
-      if (!matterTimeLogs[matterID]) {
-        matterTimeLogs[matterID] = {};
-      }
-      if (!matterTimeLogs[matterID][lawyerID]) {
-        matterTimeLogs[matterID][lawyerID] = [];
-      }
-      matterTimeLogs[matterID][lawyerID].push(log);
-    }
-    
-    // Calculate totals for each matter and lawyer
-    const matterTotals = {};
-    const lawyersInvolved = new Set();
-    
-    for (const [matterID, lawyerLogs] of Object.entries(matterTimeLogs)) {
-      matterTotals[matterID] = {
-        hours: 0,
-        amount: 0,
-        lawyers: []
-      };
-      
-      for (const [lawyerID, logs] of Object.entries(lawyerLogs)) {
-        let lawyerHours = 0;
-        let lawyerAmount = 0;
-        
-        for (const log of logs) {
-          const hours = parseFloat(log[4]) || 0;
-          const rate = lawyerData.rates[lawyerID] || 0;
-          
-          lawyerHours += hours;
-          lawyerAmount += hours * rate;
-        }
-        
-        const lawyerName = lawyerData.emails[lawyerID] || "Unknown Lawyer";
-        lawyersInvolved.add(lawyerName);
-        
-        matterTotals[matterID].lawyers.push({
-          name: lawyerName,
-          hours: lawyerHours,
-          amount: lawyerAmount
-        });
-        
-        matterTotals[matterID].hours += lawyerHours;
-        matterTotals[matterID].amount += lawyerAmount;
-      }
-    }
-    
-    // Create invoice
-    const invoiceID = generateInvoiceID();
-    const invoiceDate = today.toISOString().split('T')[0];
-    const month = invoiceDate.substring(0, 7); // YYYY-MM format
-    
-    const totalAmount = Object.values(matterTotals).reduce((sum, m) => sum + m.amount, 0);
-    const totalHours = Object.values(matterTotals).reduce((sum, m) => sum + m.hours, 0);
-    
-    const invoiceRow = new Array(Object.keys(INVOICE_COLUMNS).length).fill('');
-    invoiceRow[INVOICE_COLUMNS.MONTH] = month;
-    invoiceRow[INVOICE_COLUMNS.CLIENT_EMAIL] = email;
-    invoiceRow[INVOICE_COLUMNS.CLIENT_NAME] = clientName;
-    invoiceRow[INVOICE_COLUMNS.TOTAL_HOURS] = totalHours;
-    invoiceRow[INVOICE_COLUMNS.TOTAL_USED] = totalAmount;
-    invoiceRow[INVOICE_COLUMNS.LAWYERS_INVOLVED] = Array.from(lawyersInvolved).join(", ");
-    invoiceRow[INVOICE_COLUMNS.GENERATED_AT] = today.toISOString();
-    invoiceRow[INVOICE_COLUMNS.CURRENCY] = settings[SETTINGS_KEYS.DEFAULT_CURRENCY];
-    invoiceRow[INVOICE_COLUMNS.TRUST_ACCOUNT] = "Yes";
-    invoiceRow[INVOICE_COLUMNS.CLIENT_REF] = "Trust-compliant via Stripe";
-    invoiceRow[INVOICE_COLUMNS.UUID] = Utilities.getUuid();
-    invoiceRow[INVOICE_COLUMNS.INVOICE_ID] = invoiceID;
-    invoiceRow[INVOICE_COLUMNS.CLIENT_ID] = clientID;
-    invoiceRow[INVOICE_COLUMNS.INVOICE_DATE] = invoiceDate;
-    invoiceRow[INVOICE_COLUMNS.MATTER_TOTALS] = JSON.stringify(matterTotals);
-    invoiceRow[INVOICE_COLUMNS.TOTAL_AMOUNT] = totalAmount;
-    invoiceRow[INVOICE_COLUMNS.STATUS] = "Pending";
-    
-    sheets.invoicesSheet.appendRow(invoiceRow);
-    
-    // Send invoice email
-    sendInvoiceEmail(
-      email,
-      clientName,
-      invoiceID,
-      invoiceDate,
-      matterTotals,
-      lawyerData
-    );
-  }
-}
-
-function generateInvoiceID() {
+  // Get time usage for the current month
   const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-  return `INV-${year}${month}-${random}`;
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const timeLogs = sheets.timeLogsSheet.getDataRange().getValues();
+  const monthlyTimeLogs = timeLogs.filter(log => {
+    const logDate = new Date(log[0]);
+    return log[1] === email && logDate >= firstOfMonth;
+  });
+  
+  // Calculate hours used this month
+  const hoursUsed = monthlyTimeLogs.reduce((sum, log) => sum + (parseFloat(log[4]) || 0), 0);
+  
+  // Get average rate used
+  const lawyerData = buildLawyerMaps(sheets.lawyersSheet.getDataRange().getValues());
+  const rates = monthlyTimeLogs.map(log => lawyerData.rates[log[3]] || 0).filter(rate => rate > 0);
+  const averageRate = rates.length > 0 ? rates.reduce((sum, rate) => sum + rate, 0) / rates.length : 0;
+  
+  const receiptRow = [
+    date,
+    email,
+    clientName,
+    "Top-up Payment",
+    amount,
+    currency || settings[SETTINGS_KEYS.DEFAULT_CURRENCY],
+    `Retainer top-up payment - Receipt #${receiptId}`,
+    receiptId,
+    clientId,
+    status,
+    newBalance,
+    `${firstOfMonth.toISOString().substring(0, 7)}`, // YYYY-MM format
+    hoursUsed,
+    averageRate
+  ];
+  
+  sheets.invoicesSheet.appendRow(receiptRow);
+  
+  // Send receipt email
+  sendReceiptEmail(email, clientName, receiptId, date, amount, currency, newBalance, hoursUsed, averageRate);
 }
 
-function sendInvoiceEmail(email, clientName, invoiceID, invoiceDate, matterTotals, lawyerData) {
-  const subject = `Invoice ${invoiceID} - Blawby`;
+function sendReceiptEmail(email, clientName, receiptId, date, amount, currency, newBalance, hoursUsed, averageRate) {
+  const subject = `Payment Receipt #${receiptId} - Blawby`;
   
   let body = `Dear ${clientName},\n\n`;
-  body += `Please find attached your invoice ${invoiceID} dated ${invoiceDate}.\n\n`;
-  body += "Summary of Services:\n\n";
+  body += `Thank you for your payment. Here is your receipt:\n\n`;
+  body += `Receipt #: ${receiptId}\n`;
+  body += `Date: ${date}\n`;
+  body += `Amount: ${currency} ${amount}\n`;
+  body += `New Balance: ${currency} ${newBalance.toFixed(2)}\n\n`;
   
-  let totalAmount = 0;
-  for (const [matterID, totals] of Object.entries(matterTotals)) {
-    const matter = getMatterDetails(matterID);
-    body += `Matter: ${matter.description}\n`;
-    body += `Total Hours: ${totals.hours.toFixed(2)}\n`;
-    
-    // Add breakdown by lawyer
-    for (const lawyer of totals.lawyers) {
-      const lawyerName = lawyer.name;
-      body += `  ${lawyerName}: ${lawyer.hours.toFixed(2)} hours at $${lawyerData.rates[lawyerName]}/hour\n`;
-    }
-    
-    body += `Amount: $${totals.amount.toFixed(2)}\n\n`;
-    totalAmount += totals.amount;
+  if (hoursUsed > 0) {
+    body += `Monthly Summary:\n`;
+    body += `Hours Used This Month: ${hoursUsed.toFixed(2)}\n`;
+    body += `Average Rate: ${currency} ${averageRate.toFixed(2)}/hour\n`;
+    body += `Estimated Monthly Usage: ${currency} ${(hoursUsed * averageRate).toFixed(2)}\n\n`;
   }
   
-  body += `Total Amount: $${totalAmount.toFixed(2)}\n\n`;
   body += "Thank you for your business.\n\n";
   body += "Best regards,\nThe Blawby Team";
   
@@ -214,30 +122,142 @@ function sendInvoiceEmail(email, clientName, invoiceID, invoiceDate, matterTotal
   });
 }
 
-function getMatterDetails(matterID) {
-  if (matterID === "General") {
-    return { description: "General Legal Services" };
-  }
-  
+function generateMonthlySummary() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const mattersSheet = ss.getSheetByName(SHEET_NAMES.MATTERS);
-  const matters = mattersSheet.getDataRange().getValues();
+  const sheets = getSheets(ss);
+  const settings = loadSettings(sheets.settingsSheet);
   
-  const matter = matters.find(m => m[0] === matterID);
-  return matter ? {
-    description: matter[3] || "Legal Services"
-  } : { description: "Legal Services" };
+  // Get all clients
+  const clients = sheets.clientsSheet.getDataRange().getValues();
+  const today = new Date();
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  
+  // For each client, generate a monthly summary
+  for (let i = 1; i < clients.length; i++) {
+    const client = clients[i];
+    const email = client[0];
+    const clientName = client[1] || "Client";
+    const balance = parseFloat(client[6]) || 0;
+    
+    // Get time logs for this month
+    const timeLogs = sheets.timeLogsSheet.getDataRange().getValues();
+    const monthlyTimeLogs = timeLogs.filter(log => {
+      const logDate = new Date(log[0]);
+      return log[1] === email && logDate >= firstOfMonth;
+    });
+    
+    if (monthlyTimeLogs.length === 0) continue;
+    
+    // Calculate monthly totals
+    const hoursUsed = monthlyTimeLogs.reduce((sum, log) => sum + (parseFloat(log[4]) || 0), 0);
+    const lawyerData = buildLawyerMaps(sheets.lawyersSheet.getDataRange().getValues());
+    const rates = monthlyTimeLogs.map(log => lawyerData.rates[log[3]] || 0).filter(rate => rate > 0);
+    const averageRate = rates.length > 0 ? rates.reduce((sum, rate) => sum + rate, 0) / rates.length : 0;
+    const estimatedUsage = hoursUsed * averageRate;
+    
+    // Generate summary row
+    const summaryRow = [
+      today.toISOString().split('T')[0],
+      email,
+      clientName,
+      "Monthly Summary",
+      estimatedUsage,
+      settings[SETTINGS_KEYS.DEFAULT_CURRENCY],
+      `Monthly summary for ${firstOfMonth.toISOString().substring(0, 7)}`,
+      "MONTHLY-" + firstOfMonth.toISOString().substring(0, 7),
+      client[9], // Client ID
+      "Completed",
+      balance,
+      firstOfMonth.toISOString().substring(0, 7),
+      hoursUsed,
+      averageRate
+    ];
+    
+    sheets.invoicesSheet.appendRow(summaryRow);
+    
+    // Send monthly summary email
+    sendMonthlySummaryEmail(email, clientName, firstOfMonth, hoursUsed, averageRate, estimatedUsage, balance);
+  }
 }
 
-function getLastInvoiceDate(invoicesSheet) {
-  const invoices = invoicesSheet.getDataRange().getValues();
-  if (invoices.length <= 1) return new Date(0); // No invoices yet
+function sendMonthlySummaryEmail(email, clientName, month, hoursUsed, averageRate, estimatedUsage, balance) {
+  const subject = `Monthly Summary - ${month.toISOString().substring(0, 7)} - Blawby`;
   
-  // Get the most recent invoice date
-  const lastInvoice = invoices.slice(1).reduce((latest, current) => {
-    const currentDate = new Date(current[4]); // Invoice date is in column E
-    return currentDate > latest ? currentDate : latest;
-  }, new Date(0));
+  let body = `Dear ${clientName},\n\n`;
+  body += `Here is your monthly summary for ${month.toISOString().substring(0, 7)}:\n\n`;
+  body += `Hours Used: ${hoursUsed.toFixed(2)}\n`;
+  body += `Average Rate: $${averageRate.toFixed(2)}/hour\n`;
+  body += `Estimated Usage: $${estimatedUsage.toFixed(2)}\n`;
+  body += `Current Balance: $${balance.toFixed(2)}\n\n`;
   
-  return lastInvoice;
+  if (balance < estimatedUsage) {
+    body += `Note: Your current balance is below the estimated monthly usage. `;
+    body += `Consider topping up your retainer to ensure uninterrupted service.\n\n`;
+  }
+  
+  body += "Thank you for your business.\n\n";
+  body += "Best regards,\nThe Blawby Team";
+  
+  MailApp.sendEmail({
+    to: email,
+    subject: subject,
+    body: body
+  });
+}
+
+/**
+ * Gets all clients from the clients sheet
+ * @returns {Array} Array of client objects
+ */
+function getAllClients() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = getSheets(ss);
+  const clientData = sheets.clientsSheet.getDataRange().getValues();
+  
+  // Skip header row and map to client objects
+  return clientData.slice(1).map(row => ({
+    email: row[0],
+    name: row[1] || "Client",
+    targetBalance: parseFloat(row[2]) || 0,
+    totalPaid: parseFloat(row[3]) || 0,
+    totalHours: parseFloat(row[4]) || 0,
+    totalUsed: parseFloat(row[5]) || 0,
+    balance: parseFloat(row[6]) || 0,
+    topUp: parseFloat(row[7]) || 0,
+    paymentLink: row[8],
+    id: row[9]
+  }));
+}
+
+/**
+ * Generates invoices for all clients
+ * @returns {Object} Summary of invoice generation
+ */
+function generateInvoicesForAllClients() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = getSheets(ss);
+  const settings = loadSettings(sheets.settingsSheet);
+  const clients = getAllClients();
+  const summary = {
+    total: clients.length,
+    generated: 0,
+    skipped: 0,
+    errors: 0
+  };
+
+  clients.forEach(client => {
+    try {
+      const result = generateInvoiceForClient(client, settings);
+      if (result.success) {
+        summary.generated++;
+      } else {
+        summary.skipped++;
+      }
+    } catch (error) {
+      console.error(`Error generating invoice for ${client.name}:`, error);
+      summary.errors++;
+    }
+  });
+
+  return summary;
 } 

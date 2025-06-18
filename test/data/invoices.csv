@@ -1,3 +1,0 @@
-Month,Client Email,Client Name,Total Hours,Total Used,Lawyers Involved,Matters,Invoice ID,Client ID,Invoice Date,Status
-2024-03,client1@example.com,John Doe,2.5,625,Alice Brown,Corporate Formation,INV001,CLI001,2024-03-20,DRAFT
-2024-03,client2@example.com,Jane Smith,1.5,450,Charlie Davis,Contract Review,INV002,CLI002,2024-03-20,DRAFT

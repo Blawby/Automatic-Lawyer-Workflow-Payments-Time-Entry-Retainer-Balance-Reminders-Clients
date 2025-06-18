@@ -19,7 +19,7 @@ function dailySync() {
   sendDailyBalanceDigest();
   
   // Generate invoices
-  generateInvoices();
+  generateInvoicesForAllClients();
   
   console.log("Daily sync completed successfully");
 }
@@ -30,7 +30,7 @@ function manualSyncClients() {
 }
 
 function manualGenerateInvoices() {
-  generateInvoices();
+  generateInvoicesForAllClients();
 }
 
 // Time-based triggers
@@ -43,23 +43,14 @@ function createDailyTrigger() {
     }
   }
   
-  // Get settings
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheets = getSheets(ss);
-  const settings = loadSettings(sheets.settingsSheet);
-  
-  // Parse sync time
-  const [syncHour, syncMinute] = settings[SETTINGS_KEYS.DAILY_SYNC_TIME].split(':').map(Number);
-  
-  // Create new trigger to run daily at specified time
+  // Create new trigger to run daily at 6 AM
   ScriptApp.newTrigger("dailySync")
     .timeBased()
-    .atHour(syncHour)
-    .nearMinute(syncMinute)
+    .atHour(6)
     .everyDays(1)
     .create();
     
-  console.log(`📅 Daily sync trigger created for ${settings[SETTINGS_KEYS.DAILY_SYNC_TIME]}`);
+  console.log("📅 Daily sync trigger created for 06:00");
 }
 
 function createServiceResumeTrigger() {

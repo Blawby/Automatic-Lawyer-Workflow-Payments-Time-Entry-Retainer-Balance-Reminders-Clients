@@ -10,7 +10,6 @@ function getSheets(ss) {
     clientsSheet: getOrCreateSheet(ss, "Clients"),
     timeLogsSheet: getOrCreateSheet(ss, "TimeLogs"),
     lawyersSheet: getOrCreateSheet(ss, "Lawyers"),
-    settingsSheet: getOrCreateSheet(ss, "Settings"),
     lowBalanceSheet: getOrCreateSheet(ss, "LowBalanceWarnings"),
     invoicesSheet: getOrCreateSheet(ss, "Invoices"),
     mattersSheet: getOrCreateSheet(ss, "Matters")
@@ -42,17 +41,22 @@ function loadSheetData(sheets) {
   };
 }
 
-function loadSettings(settingsSheet) {
-  const settingsData = settingsSheet.getDataRange().getValues();
+function loadSettings() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const welcomeSheet = ss.getSheetByName("Welcome");
+  if (!welcomeSheet) {
+    throw new Error("Welcome sheet not found. Please run setupWelcomeSheet first.");
+  }
+  
+  const settingsData = welcomeSheet.getRange(4, 1, 7, 4).getValues(); // Get settings from Welcome sheet
   const settings = { ...DEFAULT_SETTINGS }; // Start with defaults
   
   // Process each setting row
-  for (let i = 1; i < settingsData.length; i++) {
-    const [key, value] = settingsData[i];
+  for (const [key, value, description, defaultValue] of settingsData) {
     if (!key) continue;
     
     // Handle special case for Payment Link
-    if (key === "Payment Link") {
+    if (key === "Blawby Payment URL") {
       settings[SETTINGS_KEYS.BASE_PAYMENT_URL] = value;
       continue;
     }
@@ -64,14 +68,14 @@ function loadSettings(settingsSheet) {
     }
     
     // Handle boolean settings
-    if (key === "Email Notifications" || key === "Auto Generate Invoices") {
-      settings[key.toLowerCase().replace(/\s+/g, '_')] = value.toLowerCase() === 'true';
+    if (key === "Email Notifications") {
+      settings[SETTINGS_KEYS.EMAIL_NOTIFICATIONS] = value.toLowerCase() === 'true';
       continue;
     }
     
     // Handle numeric settings
-    if (key === "Low Balance Threshold" || key === "Invoice Day") {
-      settings[key.toLowerCase().replace(/\s+/g, '_')] = parseInt(value) || 0;
+    if (key === "Low Balance Threshold") {
+      settings[SETTINGS_KEYS.LOW_BALANCE_THRESHOLD] = parseInt(value) || 0;
       continue;
     }
     
@@ -141,12 +145,14 @@ function findClientByEmail(clientsById, email) {
 }
 
 function setupAllSheets(sheets) {
+  // Setup welcome sheet first
+  setupWelcomeSheet(SpreadsheetApp.getActiveSpreadsheet());
+  
   // Setup each sheet with its specific headers and formatting
   setupPaymentsSheet(sheets.paymentsSheet);
   setupClientsSheet(sheets.clientsSheet);
   setupTimeLogsSheet(sheets.timeLogsSheet);
   setupLawyersSheet(sheets.lawyersSheet);
-  setupSettingsSheet(sheets.settingsSheet);
   setupLowBalanceSheet(sheets.lowBalanceSheet);
   setupInvoicesSheet(sheets.invoicesSheet);
   setupMattersSheet(sheets.mattersSheet);
@@ -203,43 +209,6 @@ function setupLawyersSheet(sheet) {
   ];
   
   setupSheet(sheet, headers);
-}
-
-function setupSettingsSheet(sheet) {
-  const headers = [
-    "Setting",
-    "Value",
-    "Description"
-  ];
-  
-  setupSheet(sheet, headers);
-  
-  // Add default settings with descriptions from the welcome sheet
-  const defaultSettings = [
-    ["Blawby Payment Page", "", "Your Blawby payment page URL (e.g. https://app.blawby.com/...)"],
-    ["Default Currency", "USD", "Default currency for payments and invoices (USD, EUR, etc)"],
-    ["Owner Email", "", "Email address for owner notifications and daily summaries"],
-    ["Target Balance Percentage", "20", "Percentage of monthly retainer to maintain as minimum balance"],
-    ["Minimum Target Balance", "1000", "Minimum target balance in default currency"],
-    ["Service Pause Threshold", "0", "Balance threshold at which service is paused"],
-    ["Low Balance Warning Threshold", "500", "Balance threshold for low balance warnings"],
-    ["Daily Summary Time", "06:30", "Time to send daily summary emails (24-hour format)"],
-    ["Zapier Webhook URL", "", "URL for Zapier webhook to receive Stripe payments"],
-    ["Support Email", "support@blawby.com", "Email for support requests"],
-    ["Documentation URL", "blawby.com/docs", "URL for full documentation"]
-  ];
-  
-  if (sheet.getLastRow() === 1) {
-    sheet.getRange(2, 1, defaultSettings.length, 3).setValues(defaultSettings);
-    
-    // Format the Value column to be editable
-    const valueRange = sheet.getRange(2, 2, defaultSettings.length, 1);
-    valueRange.setBackground('#ffffff')
-              .setBorder(true, true, true, true, true, true);
-    
-    // Add a note about editing
-    sheet.getRange(1, 1, 1, 3).setNote("Edit the 'Value' column to configure your settings. The 'Setting' and 'Description' columns are for reference only.");
-  }
 }
 
 function setupLowBalanceSheet(sheet) {
@@ -343,4 +312,96 @@ function setupSheet(sheet, headers) {
       }
     });
   }
+}
+
+function setupWelcomeSheet(ss) {
+  const welcomeSheet = getOrCreateSheet(ss, "Welcome");
+  
+  // Clear existing content
+  welcomeSheet.clear();
+  
+  // Set up the content
+  const content = [
+    ["Welcome to Blawby Retainer Management", "", "", ""],
+    ["", "", "", ""],
+    ["⚙️ System Settings", "", "", ""],
+    ["Setting", "Value", "Description", "Default"],
+    ["Blawby Payment URL", "", "Your Blawby payment page URL (e.g. https://app.blawby.com/...)", "https://app.blawby.com/pay"],
+    ["Default Currency", "", "Default currency for all payments (USD, EUR, etc.)", "USD"],
+    ["Low Balance Threshold", "", "Amount in default currency that triggers low balance alerts", "1000"],
+    ["Email Notifications", "", "Send email notifications (true/false)", "true"],
+    ["", "", "", ""],
+    ["✅ Quick Start Guide", "", "", ""],
+    ["Step", "Action", "Details", ""],
+    ["1", "Connect Blawby", "Enter your Blawby payment page URL in the settings above", ""],
+    ["2", "Add Your Team", "Go to the Lawyers tab and add your legal team members", ""],
+    ["3", "Set Up Zapier", "Create a Zap that triggers on new Stripe payments → sends payment info to this sheet", ""],
+    ["4", "Start Logging Time", "Use the TimeLogs tab to record billable hours", ""],
+    ["5", "Monitor Activity", "Check the daily summary emails for updates", ""],
+    ["", "", "", ""],
+    ["📊 Sheet Overview", "", "", ""],
+    ["Sheet", "Purpose", "Editable?", ""],
+    ["Lawyers", "Manage your legal team and their rates", "Yes", ""],
+    ["Clients", "Track client balances and payment links", "Auto-updated", ""],
+    ["TimeLogs", "Record billable hours and activities", "Yes", ""],
+    ["Payments", "Track client payments and receipts", "Auto-updated", ""],
+    ["Invoices", "View payment receipts and monthly summaries", "Auto-updated", ""],
+    ["Matters", "Track client matters and case values", "Yes", ""],
+    ["", "", "", ""],
+    ["💡 How Retainers Work", "", "", ""],
+    ["•", "Clients are automatically created when they make their first payment", "", ""],
+    ["•", "Each payment generates an automatic receipt with current balance", "", ""],
+    ["•", "Time is logged against the retainer balance", "", ""],
+    ["•", "Monthly summaries show hours used vs. balance", "", ""],
+    ["•", "Low balance warnings are sent automatically", "", ""],
+    ["•", "Payment links are auto-generated for easy top-ups", "", ""],
+    ["", "", "", ""],
+    ["❓ Need Help?", "", "", ""],
+    ["•", "Email: support@blawby.com", "", ""],
+    ["•", "Docs: blawby.com/docs", "", ""]
+  ];
+  
+  // Write content to sheet
+  welcomeSheet.getRange(1, 1, content.length, 4).setValues(content);
+  
+  // Format the sheet
+  const headerRange = welcomeSheet.getRange(1, 1, 1, 4);
+  headerRange.setFontSize(16)
+             .setFontWeight("bold")
+             .setBackground("#4285f4")
+             .setFontColor("white")
+             .setHorizontalAlignment("center");
+  
+  // Format section headers
+  const sectionHeaders = [3, 10, 18, 26, 34];
+  sectionHeaders.forEach(row => {
+    welcomeSheet.getRange(row, 1, 1, 4)
+                .setFontWeight("bold")
+                .setBackground("#f3f3f3")
+                .setFontSize(14);
+  });
+  
+  // Format settings table
+  const settingsRange = welcomeSheet.getRange(4, 1, 5, 4);
+  settingsRange.setBorder(true, true, true, true, true, true)
+               .setHorizontalAlignment("left");
+  
+  // Format quick start guide
+  const guideRange = welcomeSheet.getRange(11, 1, 6, 4);
+  guideRange.setBorder(true, true, true, true, true, true)
+            .setHorizontalAlignment("left");
+  
+  // Format sheet overview
+  const overviewRange = welcomeSheet.getRange(19, 1, 7, 4);
+  overviewRange.setBorder(true, true, true, true, true, true)
+               .setHorizontalAlignment("left");
+  
+  // Auto-resize columns
+  welcomeSheet.autoResizeColumns(1, 4);
+  
+  // Freeze header row
+  welcomeSheet.setFrozenRows(1);
+  
+  // Add a note about editing settings
+  welcomeSheet.getRange(4, 1, 1, 4).setNote("Edit the 'Value' column to configure your settings. The 'Description' and 'Default' columns are for reference only.");
 } 

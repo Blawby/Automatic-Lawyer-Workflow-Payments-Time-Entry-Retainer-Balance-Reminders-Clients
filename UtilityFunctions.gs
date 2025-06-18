@@ -168,50 +168,55 @@ function setupPaymentsSheet(sheet) {
     "Receipt ID"
   ];
   
-  // Clear the sheet first
-  sheet.clear();
   setupSheet(sheet, headers);
   
-  // Add data validation and instructions
-  const lastRow = sheet.getLastRow();
+  // Get the last row after headers
+  const lastRow = Math.max(2, sheet.getLastRow());
+  
+  // Add data validation
+  const dateRange = sheet.getRange(2, 1, Math.max(1, lastRow - 1), 1);
+  const emailRange = sheet.getRange(2, 2, Math.max(1, lastRow - 1), 1);
+  const amountRange = sheet.getRange(2, 3, Math.max(1, lastRow - 1), 1);
+  const currencyRange = sheet.getRange(2, 4, Math.max(1, lastRow - 1), 1);
+  const statusRange = sheet.getRange(2, 5, Math.max(1, lastRow - 1), 1);
   
   // Date validation
-  const dateRule = SpreadsheetApp.newDataValidation()
-    .requireDate()
-    .setAllowInvalid(false)
-    .build();
-  sheet.getRange(2, 1, Math.max(1, lastRow - 1), 1).setDataValidation(dateRule);
+  dateRange.setDataValidation(
+    SpreadsheetApp.newDataValidation()
+      .requireDate()
+      .build()
+  );
   
-  // Email validation (using text pattern)
-  const emailRule = SpreadsheetApp.newDataValidation()
-    .requireTextIsEmail()
-    .setAllowInvalid(false)
-    .build();
-  sheet.getRange(2, 2, Math.max(1, lastRow - 1), 1).setDataValidation(emailRule);
+  // Email validation
+  emailRange.setDataValidation(
+    SpreadsheetApp.newDataValidation()
+      .requireTextIsEmail()
+      .build()
+  );
   
   // Amount validation (positive number)
-  const amountRule = SpreadsheetApp.newDataValidation()
-    .requireNumberGreaterThan(0)
-    .setAllowInvalid(false)
-    .build();
-  sheet.getRange(2, 3, Math.max(1, lastRow - 1), 1).setDataValidation(amountRule);
+  amountRange.setDataValidation(
+    SpreadsheetApp.newDataValidation()
+      .requireNumberGreaterThan(0)
+      .build()
+  );
   
-  // Currency validation (common currencies)
-  const currencyRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(['USD', 'EUR', 'GBP', 'CAD', 'AUD'], true)
-    .setAllowInvalid(false)
-    .build();
-  sheet.getRange(2, 4, Math.max(1, lastRow - 1), 1).setDataValidation(currencyRule);
+  // Currency validation
+  currencyRange.setDataValidation(
+    SpreadsheetApp.newDataValidation()
+      .requireValueInList(['USD', 'EUR', 'GBP', 'CAD', 'AUD'], true)
+      .build()
+  );
   
   // Status validation
-  const statusRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(['Pending', 'Completed', 'Failed'], true)
-    .setAllowInvalid(false)
-    .build();
-  sheet.getRange(2, 5, Math.max(1, lastRow - 1), 1).setDataValidation(statusRule);
+  statusRange.setDataValidation(
+    SpreadsheetApp.newDataValidation()
+      .requireValueInList(['Pending', 'Completed', 'Failed'], true)
+      .build()
+  );
   
-  // Add instructions in a separate section
-  const instructionsStartRow = lastRow + 3; // Add some space between data and instructions
+  // Add instructions in a separate section below the data area
+  const instructionsStartRow = lastRow + 3;
   const instructions = [
     ["Instructions:", "", "", "", "", ""],
     ["Date", "Date of payment (YYYY-MM-DD)", "", "", "", ""],
@@ -222,12 +227,24 @@ function setupPaymentsSheet(sheet) {
     ["Receipt ID", "Optional - payment receipt identifier", "", "", "", ""]
   ];
   
-  sheet.getRange(instructionsStartRow, 1, instructions.length, 6).setValues(instructions);
-  sheet.getRange(instructionsStartRow, 1, 1, 6).merge();
-  sheet.getRange(instructionsStartRow, 1).setFontWeight("bold");
-  
-  // Add a visual separator
+  // Add a visual separator before instructions
   sheet.getRange(lastRow + 2, 1, 1, 6).setBackground('#f3f3f3');
+  
+  // Add and format instructions
+  const instructionsRange = sheet.getRange(instructionsStartRow, 1, instructions.length, 6);
+  instructionsRange.setValues(instructions);
+  sheet.getRange(instructionsStartRow, 1, 1, 6).merge().setFontWeight("bold");
+  
+  // Add a note to clarify these are instructions
+  sheet.getRange(instructionsStartRow, 1).setNote("These are instructions for data entry. Do not modify or delete this section.");
+  
+  // Protect the instructions range
+  const protection = instructionsRange.protect().setDescription('Instructions - Do Not Modify');
+  protection.removeEditors(protection.getEditors());
+  protection.addEditor(Session.getEffectiveUser());
+  
+  // Auto-resize columns
+  sheet.autoResizeColumns(1, 6);
 }
 
 function setupClientsSheet(sheet) {

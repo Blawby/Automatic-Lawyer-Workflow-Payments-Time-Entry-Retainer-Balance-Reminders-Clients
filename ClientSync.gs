@@ -40,8 +40,17 @@ function processNewPayments(paymentData, clientsById, today) {
     const clientEmail = row[1];
     const receiptId = row[5];
     
-    // Skip if no email or already processed this receipt
-    if (!clientEmail || (receiptId && processedPaymentIds.has(receiptId))) continue;
+    // Skip if no email, already processed this receipt, or if this is an instruction row
+    if (!clientEmail || 
+        (receiptId && processedPaymentIds.has(receiptId)) ||
+        clientEmail.includes("Must be a valid") || // Skip instruction rows
+        clientEmail.includes("Instructions:")) continue;
+    
+    // Validate email format
+    if (!validateEmail(clientEmail)) {
+      console.log(`Invalid email format: ${clientEmail}`);
+      continue;
+    }
     
     if (receiptId) processedPaymentIds.add(receiptId);
     
@@ -59,6 +68,12 @@ function processNewPayments(paymentData, clientsById, today) {
       createMatterForNewClient(mattersSheet, clientEmail, clientID);
     }
   }
+}
+
+// Helper function to validate email format
+function validateEmail(email) {
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  return emailRegex.test(email);
 }
 
 function createMatterForNewClient(mattersSheet, clientEmail, clientID) {

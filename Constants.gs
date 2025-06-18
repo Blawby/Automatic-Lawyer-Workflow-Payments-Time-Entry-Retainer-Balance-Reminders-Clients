@@ -63,15 +63,35 @@ const SETTINGS_COLUMNS = {
 };
 
 const SETTINGS_KEYS = {
-  BASE_PAYMENT_URL: "base_payment_url",
-  DEFAULT_CURRENCY: "default_currency",
+  BASE_PAYMENT_URL: "Payment Link",
+  DEFAULT_CURRENCY: "Default Currency",
   TARGET_BALANCE_PERCENTAGE: "target_balance_percentage",
   MIN_TARGET_BALANCE: "min_target_balance"
 };
 
 const DEFAULT_SETTINGS = {
-  [SETTINGS_KEYS.BASE_PAYMENT_URL]: "https://pay.blawby.com",
+  [SETTINGS_KEYS.BASE_PAYMENT_URL]: "https://app.blawby.com/northcarolinalegalservices/pay",
   [SETTINGS_KEYS.DEFAULT_CURRENCY]: "USD",
   [SETTINGS_KEYS.TARGET_BALANCE_PERCENTAGE]: "10",
   [SETTINGS_KEYS.MIN_TARGET_BALANCE]: "500"
+};
+
+const INVOICE_COLUMNS = {
+  MONTH: 0,
+  CLIENT_EMAIL: 1,
+  CLIENT_NAME: 2,
+  TOTAL_HOURS: 3,
+  TOTAL_USED: 4,
+  LAWYERS_INVOLVED: 5,
+  GENERATED_AT: 6,
+  CURRENCY: 7,
+  TRUST_ACCOUNT: 8,
+  CLIENT_REF: 9,
+  UUID: 10,
+  INVOICE_ID: 11,
+  CLIENT_ID: 12,
+  INVOICE_DATE: 13,
+  MATTER_TOTALS: 14,
+  TOTAL_AMOUNT: 15,
+  STATUS: 16
 }; 

@@ -1,40 +1,56 @@
-# Blawby - Automatic Lawyer Workflow System
+# Blawby Retainer Management
 
-A Google Apps Script-based system for managing lawyer workflows, including payments, time entry, retainer balances, and client reminders.
+A Google Apps Script project for managing client retainers, payments, and invoices.
+
+## Project Structure
+
+The project is organized into multiple `.gs` files for better maintainability:
+
+- `Code.gs`: Main entry points and trigger functions
+- `Constants.gs`: Configuration constants and column definitions
+- `UtilityFunctions.gs`: Helper functions and sheet setup utilities
+- `ClientSync.gs`: Client and payment synchronization logic
+- `EmailFunctions.gs`: Email notification system
+- `EmailTemplates.gs`: HTML email templates
+- `InvoiceGeneration.gs`: Invoice generation and formatting
 
 ## Features
 
-- **Client Management**
-  - Automatic client tracking
-  - Matter-based organization
-  - Flexible retainer balance management
+### Sheet Management
+- Automatic setup of all sheets with proper headers and formatting
+- Consistent styling across all sheets (alternating colors, borders, etc.)
+- Auto-sized columns and frozen headers
+- Proper date and currency formatting
 
-- **Payment Processing**
-  - Automated payment tracking
-  - Retainer balance calculations
-  - Payment link generation
+### Client Management
+- Automatic client creation from payments
+- Balance tracking and calculations
+- Service pause/resume based on balance thresholds
+- Flexible target balance calculations based on case values
 
-- **Time Entry**
-  - Matter-based time logging
-  - Lawyer rate management
-  - Automated time tracking
+### Payment Processing
+- Automatic payment tracking
+- Balance calculations
+- Payment link generation
+- Multiple currency support
 
-- **Balance Management**
-  - Automatic balance calculations
-  - Low balance alerts
-  - Service pause/resume based on balance
+### Invoice Generation
+- Monthly invoice generation
+- Detailed time tracking
+- Matter-based billing
+- Multiple format support (PDF, CSV, JSON)
 
-- **Email Notifications**
-  - Low balance alerts
-  - Service status updates
-  - Daily balance digests
-  - Customizable email templates
+### Email Notifications
+- Low balance alerts
+- Service pause/resume notifications
+- Daily balance digest for owner
+- HTML formatted emails
 
 ## Setup
 
 1. Create a new Google Apps Script project
-2. Copy the files from this repository into your project
-3. Set up the required Google Sheets with the following sheets:
+2. Copy all `.gs` files into the project
+3. Set up the required sheets in your Google Spreadsheet:
    - Payments
    - Clients
    - TimeLogs
@@ -44,37 +60,100 @@ A Google Apps Script-based system for managing lawyer workflows, including payme
    - Invoices
    - Matters
 
-4. Configure the settings in the Settings sheet:
+4. Configure the settings sheet with:
    - Base payment URL
    - Default currency
-   - Target balance percentage
-   - Minimum target balance
+   - Other configuration options
+
+5. Run the `createDailyTrigger` function to set up automatic daily sync
 
 ## Usage
 
-The system provides several automated functions:
+### Automatic Triggers
+- Daily sync runs at 1 AM
+- Service resumption check runs every 6 hours
 
-- `dailySync()`: Runs daily to process client balances and send notifications
-- `manualSyncClients()`: Manually trigger client synchronization
-- `manualGenerateInvoices()`: Manually generate invoices
+### Manual Functions
+- `manualSyncClients()`: Force a client sync
+- `manualGenerateInvoices()`: Force invoice generation
 
-## File Structure
+## Sheet Structure
 
-- `Main.gs`: Main entry points and manual triggers
-- `Constants.gs`: System constants and configuration
-- `UtilityFunctions.gs`: Helper functions
-- `ClientSync.gs`: Client synchronization logic
-- `EmailFunctions.gs`: Email notification system
-- `EmailTemplates.gs`: HTML email templates
-- `InvoiceGeneration.gs`: Invoice generation logic
+### Payments Sheet
+- Payment ID
+- Client Email
+- Amount
+- Currency
+- Date
+- Status
+- Payment Link
+
+### Clients Sheet
+- Client ID
+- Email
+- Name
+- Target Balance
+- Status
+- Last Updated
+
+### TimeLogs Sheet
+- Date
+- Client ID
+- Matter ID
+- Lawyer ID
+- Hours
+- Description
+
+### Lawyers Sheet
+- Lawyer ID
+- Name
+- Email
+- Rate
+- Status
+
+### Settings Sheet
+- Base Payment URL
+- Default Currency
+- Other Settings
+
+### LowBalanceWarnings Sheet
+- Client ID
+- Email
+- Name
+- Balance
+- Target Balance
+- Last Warning Date
+
+### Invoices Sheet
+- Month
+- Client Email
+- Client Name
+- Total Hours
+- Total Used
+- Lawyers Involved
+- Matters
+- Invoice ID
+- Client ID
+- Invoice Date
+- Status
+
+### Matters Sheet
+- Matter ID
+- Client ID
+- Client Name
+- Description
+- Value
+- Status
+- Created Date
+- Last Updated
 
 ## Contributing
 
 1. Fork the repository
-2. Create your feature branch
+2. Create a feature branch
 3. Commit your changes
 4. Push to the branch
-5. Create a new Pull Request
+5. Create a Pull Request
 
 ## License
 

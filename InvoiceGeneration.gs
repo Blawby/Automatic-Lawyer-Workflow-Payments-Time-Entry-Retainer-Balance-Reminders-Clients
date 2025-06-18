@@ -1,15 +1,56 @@
 // ========== INVOICE GENERATION ==========
+function setupInvoiceSheet(invoicesSheet) {
+  const headers = [
+    "Month",
+    "Client Email",
+    "Client Name",
+    "Total Hours",
+    "Total Used ($)",
+    "Lawyers Involved",
+    "Generated At",
+    "Currency",
+    "Trust Account",
+    "Client Ref",
+    "UUID",
+    "Invoice ID",
+    "Client ID",
+    "Invoice Date",
+    "Matter Totals",
+    "Total Amount",
+    "Status"
+  ];
+  
+  // Clear existing headers and set new ones
+  invoicesSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  
+  // Format headers
+  const headerRange = invoicesSheet.getRange(1, 1, 1, headers.length);
+  headerRange.setFontWeight("bold");
+  headerRange.setBackground("#f3f3f3");
+  
+  // Auto-resize columns
+  for (let i = 1; i <= headers.length; i++) {
+    invoicesSheet.autoResizeColumn(i);
+  }
+  
+  // Freeze header row
+  invoicesSheet.setFrozenRows(1);
+}
+
 function generateInvoices() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = getSheets(ss);
   const data = loadSheetData(sheets);
   const settings = loadSettings(sheets.settingsSheet);
   
+  // Ensure invoice sheet is properly set up
+  setupInvoiceSheet(sheets.invoicesSheet);
+  
   const lawyerData = buildLawyerMaps(data.lawyers);
   const clientsById = buildClientMap(data.clientData);
   
-  // Get last invoice date from settings
-  const lastInvoiceDate = new Date(settings.lastInvoiceDate || "2000-01-01");
+  // Get last invoice date from the most recent invoice
+  const lastInvoiceDate = getLastInvoiceDate(sheets.invoicesSheet);
   const today = new Date();
   
   // Generate invoices for each client
@@ -25,51 +66,84 @@ function generateInvoices() {
     
     if (clientTimeLogs.length === 0) continue;
     
-    // Group time logs by matter
+    // Group time logs by matter and lawyer
     const matterTimeLogs = {};
     for (const log of clientTimeLogs) {
       const matterID = log[2] || "General";
+      const lawyerID = log[3];
+      
       if (!matterTimeLogs[matterID]) {
-        matterTimeLogs[matterID] = [];
+        matterTimeLogs[matterID] = {};
       }
-      matterTimeLogs[matterID].push(log);
+      if (!matterTimeLogs[matterID][lawyerID]) {
+        matterTimeLogs[matterID][lawyerID] = [];
+      }
+      matterTimeLogs[matterID][lawyerID].push(log);
     }
     
-    // Calculate totals for each matter
+    // Calculate totals for each matter and lawyer
     const matterTotals = {};
-    for (const [matterID, logs] of Object.entries(matterTimeLogs)) {
-      let totalHours = 0;
-      let totalAmount = 0;
-      
-      for (const log of logs) {
-        const hours = parseFloat(log[4]) || 0;
-        const lawyerID = log[3];
-        const rate = lawyerData.rates[lawyerID] || 0;
-        
-        totalHours += hours;
-        totalAmount += hours * rate;
-      }
-      
+    const lawyersInvolved = new Set();
+    
+    for (const [matterID, lawyerLogs] of Object.entries(matterTimeLogs)) {
       matterTotals[matterID] = {
-        hours: totalHours,
-        amount: totalAmount
+        hours: 0,
+        amount: 0,
+        lawyers: []
       };
+      
+      for (const [lawyerID, logs] of Object.entries(lawyerLogs)) {
+        let lawyerHours = 0;
+        let lawyerAmount = 0;
+        
+        for (const log of logs) {
+          const hours = parseFloat(log[4]) || 0;
+          const rate = lawyerData.rates[lawyerID] || 0;
+          
+          lawyerHours += hours;
+          lawyerAmount += hours * rate;
+        }
+        
+        const lawyerName = lawyerData.emails[lawyerID] || "Unknown Lawyer";
+        lawyersInvolved.add(lawyerName);
+        
+        matterTotals[matterID].lawyers.push({
+          name: lawyerName,
+          hours: lawyerHours,
+          amount: lawyerAmount
+        });
+        
+        matterTotals[matterID].hours += lawyerHours;
+        matterTotals[matterID].amount += lawyerAmount;
+      }
     }
     
     // Create invoice
     const invoiceID = generateInvoiceID();
     const invoiceDate = today.toISOString().split('T')[0];
+    const month = invoiceDate.substring(0, 7); // YYYY-MM format
     
-    const invoiceRow = [
-      invoiceID,
-      clientID,
-      email,
-      clientName,
-      invoiceDate,
-      JSON.stringify(matterTotals),
-      Object.values(matterTotals).reduce((sum, m) => sum + m.amount, 0),
-      "Pending"
-    ];
+    const totalAmount = Object.values(matterTotals).reduce((sum, m) => sum + m.amount, 0);
+    const totalHours = Object.values(matterTotals).reduce((sum, m) => sum + m.hours, 0);
+    
+    const invoiceRow = new Array(Object.keys(INVOICE_COLUMNS).length).fill('');
+    invoiceRow[INVOICE_COLUMNS.MONTH] = month;
+    invoiceRow[INVOICE_COLUMNS.CLIENT_EMAIL] = email;
+    invoiceRow[INVOICE_COLUMNS.CLIENT_NAME] = clientName;
+    invoiceRow[INVOICE_COLUMNS.TOTAL_HOURS] = totalHours;
+    invoiceRow[INVOICE_COLUMNS.TOTAL_USED] = totalAmount;
+    invoiceRow[INVOICE_COLUMNS.LAWYERS_INVOLVED] = Array.from(lawyersInvolved).join(", ");
+    invoiceRow[INVOICE_COLUMNS.GENERATED_AT] = today.toISOString();
+    invoiceRow[INVOICE_COLUMNS.CURRENCY] = settings[SETTINGS_KEYS.DEFAULT_CURRENCY];
+    invoiceRow[INVOICE_COLUMNS.TRUST_ACCOUNT] = "Yes";
+    invoiceRow[INVOICE_COLUMNS.CLIENT_REF] = "Trust-compliant via Stripe";
+    invoiceRow[INVOICE_COLUMNS.UUID] = Utilities.getUuid();
+    invoiceRow[INVOICE_COLUMNS.INVOICE_ID] = invoiceID;
+    invoiceRow[INVOICE_COLUMNS.CLIENT_ID] = clientID;
+    invoiceRow[INVOICE_COLUMNS.INVOICE_DATE] = invoiceDate;
+    invoiceRow[INVOICE_COLUMNS.MATTER_TOTALS] = JSON.stringify(matterTotals);
+    invoiceRow[INVOICE_COLUMNS.TOTAL_AMOUNT] = totalAmount;
+    invoiceRow[INVOICE_COLUMNS.STATUS] = "Pending";
     
     sheets.invoicesSheet.appendRow(invoiceRow);
     
@@ -83,9 +157,6 @@ function generateInvoices() {
       lawyerData
     );
   }
-  
-  // Update last invoice date
-  updateLastInvoiceDate(sheets.settingsSheet, today);
 }
 
 function generateInvoiceID() {
@@ -107,7 +178,14 @@ function sendInvoiceEmail(email, clientName, invoiceID, invoiceDate, matterTotal
   for (const [matterID, totals] of Object.entries(matterTotals)) {
     const matter = getMatterDetails(matterID);
     body += `Matter: ${matter.description}\n`;
-    body += `Hours: ${totals.hours.toFixed(2)}\n`;
+    body += `Total Hours: ${totals.hours.toFixed(2)}\n`;
+    
+    // Add breakdown by lawyer
+    for (const lawyer of totals.lawyers) {
+      const lawyerName = lawyer.name;
+      body += `  ${lawyerName}: ${lawyer.hours.toFixed(2)} hours at $${lawyerData.rates[lawyerName]}/hour\n`;
+    }
+    
     body += `Amount: $${totals.amount.toFixed(2)}\n\n`;
     totalAmount += totals.amount;
   }
@@ -138,13 +216,15 @@ function getMatterDetails(matterID) {
   } : { description: "Legal Services" };
 }
 
-function updateLastInvoiceDate(settingsSheet, date) {
-  const settings = settingsSheet.getDataRange().getValues();
-  const lastInvoiceRow = settings.findIndex(row => row[0] === "last_invoice_date");
+function getLastInvoiceDate(invoicesSheet) {
+  const invoices = invoicesSheet.getDataRange().getValues();
+  if (invoices.length <= 1) return new Date(0); // No invoices yet
   
-  if (lastInvoiceRow === -1) {
-    settingsSheet.appendRow(["last_invoice_date", date.toISOString().split('T')[0]]);
-  } else {
-    settingsSheet.getRange(lastInvoiceRow + 1, 2).setValue(date.toISOString().split('T')[0]);
-  }
+  // Get the most recent invoice date
+  const lastInvoice = invoices.slice(1).reduce((latest, current) => {
+    const currentDate = new Date(current[4]); // Invoice date is in column E
+    return currentDate > latest ? currentDate : latest;
+  }, new Date(0));
+  
+  return lastInvoice;
 } 

@@ -2,6 +2,16 @@
 function dailySync() {
   console.log("Starting daily sync...");
   
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    throw new Error("No active spreadsheet found");
+  }
+  
+  const sheets = getSheets(ss);
+  
+  // Set up all sheets with proper headers and formatting
+  setupAllSheets(sheets);
+  
   // Sync payments and clients
   syncPaymentsAndClients();
   

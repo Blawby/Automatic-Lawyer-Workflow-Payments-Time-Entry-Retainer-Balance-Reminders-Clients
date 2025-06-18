@@ -113,7 +113,7 @@ function onOpen(e) {
 function manualDailySync() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const settings = loadSettings(ss.getSheetByName("Welcome"));
-  const isTestMode = settings[SETTINGS_KEYS.TEST_MODE] === "true";
+  const isTestMode = settings[SETTINGS_KEYS.TEST_MODE].toString().toLowerCase() === "true";
   
   if (!isTestMode) {
     const ui = SpreadsheetApp.getUi();

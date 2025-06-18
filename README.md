@@ -4,9 +4,7 @@ A Google Apps Script integration for managing legal retainers, client payments, 
 
 ## Getting Started
 
-1. **Make a Copy**: To get started, [click here to copy the template](https://docs.google.com/spreadsheets/d/1cumtsBoAthgsWi2RJZK9JlDXa_dJJWHgDZl7aJ6o1Vc/copy)
-2. **Deploy the Web App**: After copying, deploy using [this script](https://script.google.com/macros/s/AKfycbyoXtrqgStstN_h0jwHLePeSs9N3YUFOa5pVMGoU1q828sHoGzx_iLY0nk-wTygHs2u/exec)
-3. **Library Access**: Available as a [library](https://script.google.com/macros/library/d/1cumtsBoAthgsWi2RJZK9JlDXa_dJJWHgDZl7aJ6o1Vc-tjTNrc1qygLO/1) for other projects
+1. **Make a Copy**: To get started, [click here to copy the template](https://docs.google.com/spreadsheets/d/1DO0IOXluqBD6QZ7cIteS1clIz6dymNy4ODbcS4cxKjY/copy)
 
 ## Project Structure
 

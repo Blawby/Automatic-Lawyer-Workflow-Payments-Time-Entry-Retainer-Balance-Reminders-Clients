@@ -68,8 +68,8 @@ function loadSettings() {
     }
     
     // Handle boolean settings
-    if (key === "Email Notifications") {
-      settings[SETTINGS_KEYS.EMAIL_NOTIFICATIONS] = value.toLowerCase() === 'true';
+    if (key === "Email Notifications" || key === "Test Mode") {
+      settings[key === "Email Notifications" ? SETTINGS_KEYS.EMAIL_NOTIFICATIONS : SETTINGS_KEYS.TEST_MODE] = value.toString().toLowerCase() === 'true';
       continue;
     }
     

@@ -282,6 +282,46 @@ function setupClientsSheet(sheet) {
   ];
   
   setupSheet(sheet, headers);
+  
+  // Get the last row after headers
+  const lastRow = Math.max(2, sheet.getLastRow());
+  
+  // Add data validation
+  const emailRange = sheet.getRange(2, 1, Math.max(1, lastRow - 1), 1);
+  const targetBalanceRange = sheet.getRange(2, 3, Math.max(1, lastRow - 1), 1);
+  
+  // Email validation
+  emailRange.setDataValidation(
+    SpreadsheetApp.newDataValidation()
+      .requireTextIsEmail()
+      .build()
+  );
+  
+  // Target Balance validation (positive number)
+  targetBalanceRange.setDataValidation(
+    SpreadsheetApp.newDataValidation()
+      .requireNumberGreaterThan(0)
+      .build()
+  );
+  
+  // Add instructions in a separate section below the data area
+  const instructionsStartRow = lastRow + 3;
+  const instructions = [
+    ["⚠️ INSTRUCTIONS (DO NOT MODIFY OR DELETE THIS SECTION) ⚠️", "", "", "", ""],
+    ["Field", "Description", "Format", "Required", "Notes"],
+    ["Email", "Client's email address", "email@domain.com", "Yes", "Must be a valid email"],
+    ["Name", "Client's full name", "Text", "Yes", "Individual or company name"],
+    ["Target Balance", "Desired retainer balance", "Number > 0", "Yes", "Minimum balance to maintain"],
+    ["Total Paid", "Sum of all payments", "Number", "Auto", "Automatically calculated"],
+    ["Total Hours", "Sum of all time logs", "Number", "Auto", "Automatically calculated"],
+    ["Total Used", "Total amount billed", "Number", "Auto", "Automatically calculated"],
+    ["Balance", "Current retainer balance", "Number", "Auto", "Total Paid - Total Used"],
+    ["Top Up", "Suggested payment", "Number", "Auto", "Amount needed to reach target"],
+    ["Payment Link", "Client's payment URL", "URL", "Auto", "Generated payment link"],
+    ["Client ID", "Unique identifier", "UUID", "Auto", "System-generated ID"]
+  ];
+  
+  addInstructionTable(sheet, instructionsStartRow, instructions, 5);
 }
 
 function setupTimeLogsSheet(sheet) {
@@ -293,51 +333,50 @@ function setupTimeLogsSheet(sheet) {
     "Hours"
   ];
   
-  // Clear the sheet first
-  sheet.clear();
   setupSheet(sheet, headers);
   
-  // Add data validation and instructions
-  const lastRow = sheet.getLastRow();
+  // Get the last row after headers
+  const lastRow = Math.max(2, sheet.getLastRow());
+  
+  // Add data validation
+  const dateRange = sheet.getRange(2, 1, Math.max(1, lastRow - 1), 1);
+  const emailRange = sheet.getRange(2, 2, Math.max(1, lastRow - 1), 1);
+  const hoursRange = sheet.getRange(2, 5, Math.max(1, lastRow - 1), 1);
   
   // Date validation
-  const dateRule = SpreadsheetApp.newDataValidation()
-    .requireDate()
-    .setAllowInvalid(false)
-    .build();
-  sheet.getRange(2, 1, Math.max(1, lastRow - 1), 1).setDataValidation(dateRule);
+  dateRange.setDataValidation(
+    SpreadsheetApp.newDataValidation()
+      .requireDate()
+      .build()
+  );
   
-  // Email validation (using text pattern)
-  const emailRule = SpreadsheetApp.newDataValidation()
-    .requireTextIsEmail()
-    .setAllowInvalid(false)
-    .build();
-  sheet.getRange(2, 2, Math.max(1, lastRow - 1), 1).setDataValidation(emailRule);
+  // Email validation
+  emailRange.setDataValidation(
+    SpreadsheetApp.newDataValidation()
+      .requireTextIsEmail()
+      .build()
+  );
   
   // Hours validation (positive number)
-  const hoursRule = SpreadsheetApp.newDataValidation()
-    .requireNumberGreaterThan(0)
-    .setAllowInvalid(false)
-    .build();
-  sheet.getRange(2, 5, Math.max(1, lastRow - 1), 1).setDataValidation(hoursRule);
+  hoursRange.setDataValidation(
+    SpreadsheetApp.newDataValidation()
+      .requireNumberGreaterThan(0)
+      .build()
+  );
   
-  // Add instructions in a separate section
-  const instructionsStartRow = lastRow + 3; // Add some space between data and instructions
+  // Add instructions in a separate section below the data area
+  const instructionsStartRow = lastRow + 3;
   const instructions = [
-    ["Instructions:", "", "", "", ""],
-    ["Date", "Date of work (YYYY-MM-DD)", "", "", ""],
-    ["Client Email", "Must be a valid email address", "", "", ""],
-    ["Matter ID", "Optional - must match a matter in the Matters sheet", "", "", ""],
-    ["Lawyer ID", "Must match a lawyer in the Lawyers sheet", "", "", ""],
-    ["Hours", "Number of hours worked (must be greater than 0)", "", "", ""]
+    ["⚠️ INSTRUCTIONS (DO NOT MODIFY OR DELETE THIS SECTION) ⚠️", "", "", "", ""],
+    ["Field", "Description", "Format", "Required", "Notes"],
+    ["Date", "Date work was performed", "YYYY-MM-DD", "Yes", "Must be a valid date"],
+    ["Client Email", "Client's email address", "email@domain.com", "Yes", "Must match an existing client"],
+    ["Matter ID", "Matter identifier", "M-YYYY-XXX", "Yes", "Must match an existing matter"],
+    ["Lawyer ID", "Lawyer's identifier", "INITIALS", "Yes", "Must match a lawyer in Lawyers sheet"],
+    ["Hours", "Time spent (in hours)", "Number > 0", "Yes", "Can use decimals (e.g., 1.5)"]
   ];
   
-  sheet.getRange(instructionsStartRow, 1, instructions.length, 5).setValues(instructions);
-  sheet.getRange(instructionsStartRow, 1, 1, 5).merge();
-  sheet.getRange(instructionsStartRow, 1).setFontWeight("bold");
-  
-  // Add a visual separator
-  sheet.getRange(lastRow + 2, 1, 1, 5).setBackground('#f3f3f3');
+  addInstructionTable(sheet, instructionsStartRow, instructions, 5);
 }
 
 function setupLawyersSheet(sheet) {
@@ -348,43 +387,41 @@ function setupLawyersSheet(sheet) {
     "Lawyer ID"
   ];
   
-  // Clear the sheet first
-  sheet.clear();
   setupSheet(sheet, headers);
   
-  // Add data validation and instructions
-  const lastRow = sheet.getLastRow();
+  // Get the last row after headers
+  const lastRow = Math.max(2, sheet.getLastRow());
   
-  // Email validation (using text pattern)
-  const emailRule = SpreadsheetApp.newDataValidation()
-    .requireTextIsEmail()
-    .setAllowInvalid(false)
-    .build();
-  sheet.getRange(2, 1, Math.max(1, lastRow - 1), 1).setDataValidation(emailRule);
+  // Add data validation
+  const emailRange = sheet.getRange(2, 1, Math.max(1, lastRow - 1), 1);
+  const rateRange = sheet.getRange(2, 3, Math.max(1, lastRow - 1), 1);
+  
+  // Email validation
+  emailRange.setDataValidation(
+    SpreadsheetApp.newDataValidation()
+      .requireTextIsEmail()
+      .build()
+  );
   
   // Rate validation (positive number)
-  const rateRule = SpreadsheetApp.newDataValidation()
-    .requireNumberGreaterThan(0)
-    .setAllowInvalid(false)
-    .build();
-  sheet.getRange(2, 3, Math.max(1, lastRow - 1), 1).setDataValidation(rateRule);
+  rateRange.setDataValidation(
+    SpreadsheetApp.newDataValidation()
+      .requireNumberGreaterThan(0)
+      .build()
+  );
   
-  // Add instructions in a separate section
-  const instructionsStartRow = lastRow + 3; // Add some space between data and instructions
+  // Add instructions in a separate section below the data area
+  const instructionsStartRow = lastRow + 3;
   const instructions = [
-    ["Instructions:", "", "", ""],
-    ["Email", "Must be a valid email address", "", ""],
-    ["Name", "Full name of the lawyer", "", ""],
-    ["Rate", "Hourly rate (must be greater than 0)", "", ""],
-    ["Lawyer ID", "Unique identifier (e.g., initials)", "", ""]
+    ["⚠️ INSTRUCTIONS (DO NOT MODIFY OR DELETE THIS SECTION) ⚠️", "", "", "", ""],
+    ["Field", "Description", "Format", "Required", "Notes"],
+    ["Email", "Lawyer's email address", "email@firm.com", "Yes", "Must be a valid email"],
+    ["Name", "Lawyer's full name", "Text", "Yes", "First and last name"],
+    ["Rate", "Hourly billing rate", "Number > 0", "Yes", "In default currency"],
+    ["Lawyer ID", "Unique identifier", "INITIALS", "Yes", "Usually lawyer's initials"]
   ];
   
-  sheet.getRange(instructionsStartRow, 1, instructions.length, 4).setValues(instructions);
-  sheet.getRange(instructionsStartRow, 1, 1, 4).merge();
-  sheet.getRange(instructionsStartRow, 1).setFontWeight("bold");
-  
-  // Add a visual separator
-  sheet.getRange(lastRow + 2, 1, 1, 4).setBackground('#f3f3f3');
+  addInstructionTable(sheet, instructionsStartRow, instructions, 5);
 }
 
 function setupLowBalanceSheet(sheet) {
@@ -801,4 +838,45 @@ function sendInvoiceEmail(invoice) {
     console.error(`Error sending invoice email: ${error.message}`);
     return false;
   }
+}
+
+// Helper function to add formatted instruction table
+function addInstructionTable(sheet, startRow, instructions, columnCount) {
+  // Add a visual separator before instructions
+  const separatorRange = sheet.getRange(startRow - 1, 1, 1, columnCount);
+  separatorRange.setBackground('#f3f3f3');
+  separatorRange.setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID);
+  
+  // Add and format instructions
+  const instructionsRange = sheet.getRange(startRow, 1, instructions.length, columnCount);
+  instructionsRange.setValues(instructions);
+  
+  // Format header row
+  const headerRange = sheet.getRange(startRow, 1, 1, columnCount);
+  headerRange.merge();
+  headerRange.setBackground('#f4cccc');  // Light red background
+  headerRange.setFontWeight("bold");
+  headerRange.setHorizontalAlignment("center");
+  
+  // Format the instruction table
+  const tableRange = sheet.getRange(startRow + 1, 1, instructions.length - 1, columnCount);
+  tableRange.setBackground('#f3f3f3');  // Light gray background
+  tableRange.setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID);
+  
+  // Make the "Field" column bold
+  sheet.getRange(startRow + 1, 1, instructions.length - 1, 1).setFontWeight("bold");
+  
+  // Add a note to clarify these are instructions
+  headerRange.setNote("These instructions are protected. They provide guidance for entering data correctly. Please enter your data in the rows above this section.");
+  
+  // Auto-resize columns
+  sheet.autoResizeColumns(1, columnCount);
+  
+  // Set reasonable column widths
+  for (let i = 1; i <= columnCount; i++) {
+    sheet.setColumnWidth(i, 150);
+  }
+  
+  // Make description column wider
+  sheet.setColumnWidth(2, 200);
 } 

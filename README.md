@@ -2,6 +2,25 @@
 
 A Google Apps Script integration for managing legal retainers, client payments, and invoicing through Google Sheets.
 
+## Template Access
+
+- **Template Spreadsheet**: [Blawby Retainer Management Template](https://docs.google.com/spreadsheets/d/e/2PACX-1vTkw4BXHelve9SssCVKzkSRI2ElldT6BmkfKhCv9v8VEC8t6IYOIV8EaB0--EmTkB7GJXaoSMjboxp7/pubhtml)
+- **Web App URL**: https://script.google.com/macros/s/AKfycbyoXtrqgStstN_h0jwHLePeSs9N3YUFOa5pVMGoU1q828sHoGzx_iLY0nk-wTygHs2u/exec
+- **Library URL**: https://script.google.com/macros/library/d/1cumtsBoAthgsWi2RJZK9JlDXa_dJJWHgDZl7aJ6o1Vc-tjTNrc1qygLO/1
+
+## Project Structure
+
+```
+.
+├── Code.gs              # Main entry points and core functionality
+├── ClientSync.gs        # Client data synchronization
+├── Constants.gs         # System constants and configuration
+├── EmailFunctions.gs    # Email handling and notifications
+├── EmailTemplates.gs    # Email template definitions
+├── InvoiceGeneration.gs # Invoice creation and processing
+└── UtilityFunctions.gs # Helper functions and utilities
+```
+
 ## Features
 
 - **Client Management**: Track client information, balances, and payment history
@@ -56,29 +75,16 @@ The system uses multiple sheets:
 
 ## Setup Instructions
 
-1. Open your Google Sheet
-2. Go to Extensions > Apps Script
-3. Copy the code files into your Apps Script project:
-   - Code.gs
-   - ClientSync.gs
-   - InvoiceGeneration.gs
-   - UtilityFunctions.gs
-
-4. Deploy as a web app:
+1. Open the [template spreadsheet](https://docs.google.com/spreadsheets/d/e/2PACX-1vTkw4BXHelve9SssCVKzkSRI2ElldT6BmkfKhCv9v8VEC8t6IYOIV8EaB0--EmTkB7GJXaoSMjboxp7/pubhtml)
+2. Make a copy for your own use
+3. Go to Extensions > Apps Script
+4. The script files will be automatically included
+5. Deploy as a web app:
    - Click "Deploy" > "New deployment"
    - Choose "Web app"
    - Set "Execute as" to your account
    - Set "Who has access" to appropriate level
    - Click "Deploy"
-
-5. Set up trigger for daily sync:
-   - In Apps Script, go to Triggers
-   - Create new trigger
-   - Choose function: dailySync
-   - Choose event source: Time-driven
-   - Choose type: Day timer
-   - Choose time: Pick your preferred time
-   - Save trigger
 
 ## Usage
 
@@ -126,7 +132,9 @@ The system includes data validation and instruction rows in each sheet. These ro
 
 ## Support
 
-For issues or questions, please contact your system administrator or raise an issue in the repository.
+For issues or questions:
+- Email: support@blawby.com
+- Documentation: blawby.com/docs
 
 ## 🚀 Quick Start Guide
 

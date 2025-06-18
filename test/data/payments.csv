@@ -1,0 +1,4 @@
+Payment ID,Client Email,Amount,Currency,Date,Status,Payment Link
+PAY001,client1@example.com,5000,USD,2024-03-01,COMPLETED,https://example.com/pay/PAY001
+PAY002,client2@example.com,3000,USD,2024-03-05,COMPLETED,https://example.com/pay/PAY002
+PAY003,client3@example.com,2000,USD,2024-03-10,COMPLETED,https://example.com/pay/PAY003

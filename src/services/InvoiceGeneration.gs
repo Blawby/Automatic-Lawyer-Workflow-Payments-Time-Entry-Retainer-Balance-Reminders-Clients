@@ -43,6 +43,20 @@ function generateInvoices() {
   const data = loadSheetData(sheets);
   const settings = loadSettings(sheets.settingsSheet);
   
+  // Check if auto-generate is enabled
+  if (!settings[SETTINGS_KEYS.AUTO_GENERATE_INVOICES]) {
+    console.log('📄 Auto-generate invoices is disabled');
+    return;
+  }
+  
+  // Check if it's invoice day
+  const today = new Date();
+  const invoiceDay = parseInt(settings[SETTINGS_KEYS.INVOICE_DAY]) || 1;
+  if (today.getDate() !== invoiceDay) {
+    console.log(`📄 Not invoice day (${today.getDate()} != ${invoiceDay})`);
+    return;
+  }
+  
   // Ensure invoice sheet is properly set up
   setupInvoiceSheet(sheets.invoicesSheet);
   
@@ -51,7 +65,6 @@ function generateInvoices() {
   
   // Get last invoice date from the most recent invoice
   const lastInvoiceDate = getLastInvoiceDate(sheets.invoicesSheet);
-  const today = new Date();
   
   // Generate invoices for each client
   for (const [clientID, row] of Object.entries(clientsById)) {

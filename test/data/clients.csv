@@ -1,0 +1,4 @@
+Client ID,Email,Name,Target Balance,Status,Last Updated
+CLI001,client1@example.com,John Doe,5000,ACTIVE,2024-03-20
+CLI002,client2@example.com,Jane Smith,3000,ACTIVE,2024-03-20
+CLI003,client3@example.com,Bob Johnson,2000,PAUSED,2024-03-20

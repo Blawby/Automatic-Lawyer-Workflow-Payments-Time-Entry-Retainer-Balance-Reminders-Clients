@@ -63,6 +63,24 @@ function loadSettings(settingsSheet) {
       continue;
     }
     
+    // Handle boolean settings
+    if (key === "Email Notifications" || key === "Auto Generate Invoices") {
+      settings[key.toLowerCase().replace(/\s+/g, '_')] = value.toLowerCase() === 'true';
+      continue;
+    }
+    
+    // Handle numeric settings
+    if (key === "Low Balance Threshold" || key === "Invoice Day") {
+      settings[key.toLowerCase().replace(/\s+/g, '_')] = parseInt(value) || 0;
+      continue;
+    }
+    
+    // Handle time settings
+    if (key === "Daily Sync Time" || key === "Summary Email Time") {
+      settings[key.toLowerCase().replace(/\s+/g, '_')] = value;
+      continue;
+    }
+    
     // Handle other settings based on SETTINGS_KEYS
     const settingKey = Object.entries(SETTINGS_KEYS).find(([_, v]) => v === key)?.[1];
     if (settingKey) {
@@ -70,19 +88,12 @@ function loadSettings(settingsSheet) {
     }
   }
   
-  // Ensure required settings are present
-  if (!settings[SETTINGS_KEYS.BASE_PAYMENT_URL]) {
-    settings[SETTINGS_KEYS.BASE_PAYMENT_URL] = DEFAULT_SETTINGS[SETTINGS_KEYS.BASE_PAYMENT_URL];
-  }
-  if (!settings[SETTINGS_KEYS.DEFAULT_CURRENCY]) {
-    settings[SETTINGS_KEYS.DEFAULT_CURRENCY] = DEFAULT_SETTINGS[SETTINGS_KEYS.DEFAULT_CURRENCY];
-  }
-  if (!settings[SETTINGS_KEYS.TARGET_BALANCE_PERCENTAGE]) {
-    settings[SETTINGS_KEYS.TARGET_BALANCE_PERCENTAGE] = DEFAULT_SETTINGS[SETTINGS_KEYS.TARGET_BALANCE_PERCENTAGE];
-  }
-  if (!settings[SETTINGS_KEYS.MIN_TARGET_BALANCE]) {
-    settings[SETTINGS_KEYS.MIN_TARGET_BALANCE] = DEFAULT_SETTINGS[SETTINGS_KEYS.MIN_TARGET_BALANCE];
-  }
+  // Ensure required settings are present with defaults
+  Object.entries(DEFAULT_SETTINGS).forEach(([key, defaultValue]) => {
+    if (!settings[key]) {
+      settings[key] = defaultValue;
+    }
+  });
   
   console.log('⚙️ Settings loaded:', settings);
   

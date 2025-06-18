@@ -43,12 +43,23 @@ function createDailyTrigger() {
     }
   }
   
-  // Create new trigger to run daily at 1 AM
+  // Get settings
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = getSheets(ss);
+  const settings = loadSettings(sheets.settingsSheet);
+  
+  // Parse sync time
+  const [syncHour, syncMinute] = settings[SETTINGS_KEYS.DAILY_SYNC_TIME].split(':').map(Number);
+  
+  // Create new trigger to run daily at specified time
   ScriptApp.newTrigger("dailySync")
     .timeBased()
-    .atHour(1)
+    .atHour(syncHour)
+    .nearMinute(syncMinute)
     .everyDays(1)
     .create();
+    
+  console.log(`📅 Daily sync trigger created for ${settings[SETTINGS_KEYS.DAILY_SYNC_TIME]}`);
 }
 
 function createServiceResumeTrigger() {

@@ -1,0 +1,4 @@
+Matter ID,Client ID,Client Name,Description,Value,Status,Created Date,Last Updated
+MAT001,CLI001,John Doe,Corporate Formation,10000,ACTIVE,2024-03-01,2024-03-20
+MAT002,CLI002,Jane Smith,Contract Review,5000,ACTIVE,2024-03-05,2024-03-20
+MAT003,CLI003,Bob Johnson,Legal Consultation,3000,ACTIVE,2024-03-10,2024-03-20

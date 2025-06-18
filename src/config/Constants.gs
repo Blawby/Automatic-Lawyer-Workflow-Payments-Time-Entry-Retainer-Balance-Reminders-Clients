@@ -66,14 +66,26 @@ const SETTINGS_KEYS = {
   BASE_PAYMENT_URL: "Payment Link",
   DEFAULT_CURRENCY: "Default Currency",
   TARGET_BALANCE_PERCENTAGE: "target_balance_percentage",
-  MIN_TARGET_BALANCE: "min_target_balance"
+  MIN_TARGET_BALANCE: "min_target_balance",
+  LOW_BALANCE_THRESHOLD: "low_balance_threshold",
+  DAILY_SYNC_TIME: "daily_sync_time",
+  EMAIL_NOTIFICATIONS: "email_notifications",
+  AUTO_GENERATE_INVOICES: "auto_generate_invoices",
+  INVOICE_DAY: "invoice_day",
+  SUMMARY_EMAIL_TIME: "summary_email_time"
 };
 
 const DEFAULT_SETTINGS = {
   [SETTINGS_KEYS.BASE_PAYMENT_URL]: "https://app.blawby.com/northcarolinalegalservices/pay",
   [SETTINGS_KEYS.DEFAULT_CURRENCY]: "USD",
   [SETTINGS_KEYS.TARGET_BALANCE_PERCENTAGE]: "10",
-  [SETTINGS_KEYS.MIN_TARGET_BALANCE]: "500"
+  [SETTINGS_KEYS.MIN_TARGET_BALANCE]: "500",
+  [SETTINGS_KEYS.LOW_BALANCE_THRESHOLD]: "1000",
+  [SETTINGS_KEYS.DAILY_SYNC_TIME]: "01:00",
+  [SETTINGS_KEYS.EMAIL_NOTIFICATIONS]: "true",
+  [SETTINGS_KEYS.AUTO_GENERATE_INVOICES]: "true",
+  [SETTINGS_KEYS.INVOICE_DAY]: "1",
+  [SETTINGS_KEYS.SUMMARY_EMAIL_TIME]: "06:30"
 };
 
 const INVOICE_COLUMNS = {

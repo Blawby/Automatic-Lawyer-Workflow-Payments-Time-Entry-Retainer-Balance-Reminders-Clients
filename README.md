@@ -1,160 +1,82 @@
 # Blawby Retainer Management
 
-A Google Apps Script project for managing client retainers, payments, and invoices.
+## Project Structure (2024)
 
-## Project Structure
+The project is organized for clarity, maintainability, and ease of testing. Here's how the files are structured:
 
-The project is organized into multiple `.gs` files for better maintainability:
+```
+.
+├── src/
+│   ├── core/         # Main entry points and triggers (e.g., Code.gs)
+│   ├── services/     # Business logic: sync, email, invoice, templates
+│   ├── utils/        # Utility/helper functions
+│   ├── config/       # Constants and configuration
+│   └── models/       # (Reserved for future data models)
+│
+├── test/
+│   ├── data/         # Test data (CSVs), test scripts, mocks
+│   ├── integration/  # (Legacy: test_data/)
+│   └── unit/         # (Reserved for future unit tests)
+│
+├── appsscript.json   # Apps Script manifest
+├── .clasp.json       # clasp project config
+├── .claspignore      # clasp ignore rules
+├── package.json      # Node.js test/dev dependencies
+├── README.md         # This file
+└── ...
+```
 
-- `Code.gs`: Main entry points and trigger functions
-- `Constants.gs`: Configuration constants and column definitions
-- `UtilityFunctions.gs`: Helper functions and sheet setup utilities
-- `ClientSync.gs`: Client and payment synchronization logic
-- `EmailFunctions.gs`: Email notification system
-- `EmailTemplates.gs`: HTML email templates
-- `InvoiceGeneration.gs`: Invoice generation and formatting
+### Key Folders
+- **src/core/**: Main entry points and triggers (e.g., `dailySync`)
+- **src/services/**: Core business logic (sync, email, invoice, templates)
+- **src/utils/**: Utility/helper functions for sheets and data
+- **src/config/**: Constants and configuration keys
+- **src/models/**: (For future: data models, types)
+- **test/data/**: All test data (CSV), test scripts, and mocks for local testing
+- **test/integration/**: (Legacy, can be cleaned up)
+- **test/unit/**: (For future unit tests)
 
-## Features
+### Development Workflow
+- All Apps Script code is in `src/` and can be pushed to Google Apps Script using `clasp push`.
+- All test and mock data is in `test/data/` and can be run locally with Node.js.
 
-### Sheet Management
-- Automatic setup of all sheets with proper headers and formatting
-- Consistent styling across all sheets (alternating colors, borders, etc.)
-- Auto-sized columns and frozen headers
-- Proper date and currency formatting
+---
 
-### Client Management
-- Automatic client creation from payments
-- Balance tracking and calculations
-- Service pause/resume based on balance thresholds
-- Flexible target balance calculations based on case values
+## Open Source Philosophy
+Blawby Retainer Management is open source under the MIT license. Community contributions are welcome! See the CONTRIBUTING section below.
 
-### Payment Processing
-- Automatic payment tracking
-- Balance calculations
-- Payment link generation
-- Multiple currency support
+---
 
-### Invoice Generation
-- Monthly invoice generation
-- Detailed time tracking
-- Matter-based billing
-- Multiple format support (PDF, CSV, JSON)
+## Development Workflow (with clasp)
 
-### Email Notifications
-- Low balance alerts
-- Service pause/resume notifications
-- Daily balance digest for owner
-- HTML formatted emails
+1. **Install clasp** (if you haven't):
+   ```sh
+   npm install -g @google/clasp
+   ```
+2. **Login to clasp**:
+   ```sh
+   clasp login
+   ```
+3. **Push changes to Apps Script**:
+   ```sh
+   clasp push
+   ```
+4. **Pull latest from Apps Script**:
+   ```sh
+   clasp pull
+   ```
+5. **Check logs**:
+   ```sh
+   clasp logs --watch
+   ```
 
-## Setup
-
-1. Create a new Google Apps Script project
-2. Copy all `.gs` files into the project
-3. Set up the required sheets in your Google Spreadsheet:
-   - Payments
-   - Clients
-   - TimeLogs
-   - Lawyers
-   - Settings
-   - LowBalanceWarnings
-   - Invoices
-   - Matters
-
-4. Configure the settings sheet with:
-   - Base payment URL
-   - Default currency
-   - Other configuration options
-
-5. Run the `createDailyTrigger` function to set up automatic daily sync
-
-## Usage
-
-### Automatic Triggers
-- Daily sync runs at 1 AM
-- Service resumption check runs every 6 hours
-
-### Manual Functions
-- `manualSyncClients()`: Force a client sync
-- `manualGenerateInvoices()`: Force invoice generation
-
-## Sheet Structure
-
-### Payments Sheet
-- Payment ID
-- Client Email
-- Amount
-- Currency
-- Date
-- Status
-- Payment Link
-
-### Clients Sheet
-- Client ID
-- Email
-- Name
-- Target Balance
-- Status
-- Last Updated
-
-### TimeLogs Sheet
-- Date
-- Client ID
-- Matter ID
-- Lawyer ID
-- Hours
-- Description
-
-### Lawyers Sheet
-- Lawyer ID
-- Name
-- Email
-- Rate
-- Status
-
-### Settings Sheet
-- Base Payment URL
-- Default Currency
-- Other Settings
-
-### LowBalanceWarnings Sheet
-- Client ID
-- Email
-- Name
-- Balance
-- Target Balance
-- Last Warning Date
-
-### Invoices Sheet
-- Month
-- Client Email
-- Client Name
-- Total Hours
-- Total Used
-- Lawyers Involved
-- Matters
-- Invoice ID
-- Client ID
-- Invoice Date
-- Status
-
-### Matters Sheet
-- Matter ID
-- Client ID
-- Client Name
-- Description
-- Value
-- Status
-- Created Date
-- Last Updated
+---
 
 ## Contributing
+- Open issues or pull requests for bugs, features, or documentation.
+- See the code structure above for where to add new features or tests.
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+---
 
 ## License
-
-This project is licensed under the MIT License - see the LICENSE file for details. 
+MIT 

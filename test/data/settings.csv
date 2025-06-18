@@ -1,0 +1,9 @@
+Key,Value,Description
+BASE_PAYMENT_URL,https://app.blawby.com/pay,Base URL for payment links
+DEFAULT_CURRENCY,USD,Default currency for payments
+LOW_BALANCE_THRESHOLD,1000,Balance threshold for low balance warnings
+DAILY_SYNC_TIME,01:00,Time for daily sync (24-hour format)
+EMAIL_NOTIFICATIONS,true,Send email notifications
+AUTO_GENERATE_INVOICES,true,Automatically generate monthly invoices
+INVOICE_DAY,1,Day of month to generate invoices
+SUMMARY_EMAIL_TIME,06:30,Time to send daily summary

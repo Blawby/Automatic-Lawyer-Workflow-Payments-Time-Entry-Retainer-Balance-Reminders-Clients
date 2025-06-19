@@ -89,5 +89,215 @@ const TEMPLATES = {
         <p style="${EMAIL_STYLES.PARAGRAPH}">Please follow up with these clients to ensure their balances are topped up.</p>
       </div>
     `
+  },
+  RECEIPT: {
+    SUBJECT: (receiptId) => `Payment Receipt #${receiptId} - Blawby`,
+    BODY: (clientName, receiptId, date, amount, currency, newBalance, hoursUsed, averageRate) => `
+      <div style="${EMAIL_STYLES.CONTAINER}">
+        <h1 style="${EMAIL_STYLES.HEADER}">Payment Receipt</h1>
+        <p style="${EMAIL_STYLES.PARAGRAPH}">Dear ${clientName},</p>
+        <p style="${EMAIL_STYLES.PARAGRAPH}">Thank you for your payment. Here is your receipt:</p>
+        
+        <div style="${EMAIL_STYLES.SUCCESS}">
+          <p><strong>Receipt #:</strong> ${receiptId}</p>
+          <p><strong>Date:</strong> ${date}</p>
+          <p><strong>Amount:</strong> ${currency} ${amount}</p>
+          <p><strong>New Balance:</strong> ${currency} ${newBalance.toFixed(2)}</p>
+        </div>
+        
+        ${hoursUsed > 0 ? `
+          <h2 style="${EMAIL_STYLES.SUBHEADER}">Monthly Summary</h2>
+          <p><strong>Hours Used This Month:</strong> ${hoursUsed.toFixed(2)}</p>
+          <p><strong>Average Rate:</strong> ${currency} ${averageRate.toFixed(2)}/hour</p>
+          <p><strong>Estimated Monthly Usage:</strong> ${currency} ${(hoursUsed * averageRate).toFixed(2)}</p>
+        ` : ''}
+        
+        <p style="${EMAIL_STYLES.FOOTER}">Thank you for your business.</p>
+      </div>
+    `
+  },
+  INVOICE: {
+    SUBJECT: (clientName, date) => `Invoice for ${clientName} - ${date}`,
+    BODY: (clientName, date, totalHours, totalAmount, currency) => `
+      <div style="${EMAIL_STYLES.CONTAINER}">
+        <h1 style="${EMAIL_STYLES.HEADER}">Invoice</h1>
+        <p style="${EMAIL_STYLES.PARAGRAPH}">Dear ${clientName},</p>
+        <p style="${EMAIL_STYLES.PARAGRAPH}">Please find your invoice for ${date}.</p>
+        
+        <div style="${EMAIL_STYLES.SUCCESS}">
+          <p><strong>Total Hours:</strong> ${totalHours.toFixed(2)}</p>
+          <p><strong>Total Amount:</strong> ${currency} ${totalAmount.toFixed(2)}</p>
+        </div>
+        
+        <p style="${EMAIL_STYLES.PARAGRAPH}">Thank you for your business.</p>
+        <p style="${EMAIL_STYLES.FOOTER}">Best regards,<br>The Blawby Team</p>
+      </div>
+    `
+  },
+  MONTHLY_SUMMARY: {
+    SUBJECT: (month) => `Monthly Summary - ${month} - Blawby`,
+    BODY: (clientName, month, hoursUsed, averageRate, estimatedUsage, balance) => `
+      <div style="${EMAIL_STYLES.CONTAINER}">
+        <h1 style="${EMAIL_STYLES.HEADER}">Monthly Summary</h1>
+        <p style="${EMAIL_STYLES.PARAGRAPH}">Dear ${clientName},</p>
+        <p style="${EMAIL_STYLES.PARAGRAPH}">Here is your monthly summary for ${month}:</p>
+        
+        <div style="${EMAIL_STYLES.SUCCESS}">
+          <p><strong>Hours Used:</strong> ${hoursUsed.toFixed(2)}</p>
+          <p><strong>Average Rate:</strong> $${averageRate.toFixed(2)}/hour</p>
+          <p><strong>Estimated Usage:</strong> $${estimatedUsage.toFixed(2)}</p>
+          <p><strong>Current Balance:</strong> $${balance.toFixed(2)}</p>
+        </div>
+        
+        ${balance < estimatedUsage ? `
+          <div style="${EMAIL_STYLES.ALERT}">
+            <p><strong>Note:</strong> Your current balance is below the estimated monthly usage. Consider topping up your retainer to ensure uninterrupted service.</p>
+          </div>
+        ` : ''}
+        
+        <p style="${EMAIL_STYLES.FOOTER}">Thank you for your business.</p>
+      </div>
+    `
   }
-}; 
+};
+
+// ========== TEMPLATE LOADER SYSTEM ==========
+
+/**
+ * Template loader class for managing email templates
+ */
+class TemplateLoader {
+  constructor() {
+    this.templates = TEMPLATES;
+    this.cache = new Map();
+  }
+
+  /**
+   * Get a template by type and subtype
+   * @param {string} type - Template type (e.g., 'LOW_BALANCE', 'SERVICE_RESUMED')
+   * @param {string} subtype - Template subtype (e.g., 'CLIENT_SUBJECT', 'OWNER_BODY')
+   * @return {Function|string} - The template function or string
+   */
+  getTemplate(type, subtype) {
+    const cacheKey = `${type}.${subtype}`;
+    
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey);
+    }
+    
+    if (!this.templates[type]) {
+      throw new Error(`Template type '${type}' not found`);
+    }
+    
+    if (!this.templates[type][subtype]) {
+      throw new Error(`Template subtype '${subtype}' not found for type '${type}'`);
+    }
+    
+    const template = this.templates[type][subtype];
+    this.cache.set(cacheKey, template);
+    return template;
+  }
+
+  /**
+   * Render a template with parameters
+   * @param {string} type - Template type
+   * @param {string} subtype - Template subtype
+   * @param {...any} params - Parameters to pass to the template function
+   * @return {string} - Rendered template
+   */
+  render(type, subtype, ...params) {
+    const template = this.getTemplate(type, subtype);
+    
+    if (typeof template === 'function') {
+      return template(...params);
+    }
+    
+    return template;
+  }
+
+  /**
+   * Validate that all required templates exist
+   * @return {boolean} - True if all templates are valid
+   */
+  validateTemplates() {
+    const requiredTemplates = [
+      ['LOW_BALANCE', 'CLIENT_SUBJECT'],
+      ['LOW_BALANCE', 'CLIENT_BODY'],
+      ['LOW_BALANCE', 'OWNER_SUBJECT'],
+      ['LOW_BALANCE', 'OWNER_BODY'],
+      ['SERVICE_RESUMED', 'CLIENT_SUBJECT'],
+      ['SERVICE_RESUMED', 'CLIENT_BODY'],
+      ['SERVICE_RESUMED', 'OWNER_SUBJECT'],
+      ['SERVICE_RESUMED', 'OWNER_BODY'],
+      ['DAILY_DIGEST', 'SUBJECT'],
+      ['DAILY_DIGEST', 'BODY'],
+      ['RECEIPT', 'SUBJECT'],
+      ['RECEIPT', 'BODY'],
+      ['INVOICE', 'SUBJECT'],
+      ['INVOICE', 'BODY'],
+      ['MONTHLY_SUMMARY', 'SUBJECT'],
+      ['MONTHLY_SUMMARY', 'BODY']
+    ];
+
+    for (const [type, subtype] of requiredTemplates) {
+      try {
+        this.getTemplate(type, subtype);
+      } catch (error) {
+        logError('TemplateLoader.validateTemplates', error);
+        return false;
+      }
+    }
+    
+    return true;
+  }
+
+  /**
+   * Get all available template types
+   * @return {Array} - Array of template type names
+   */
+  getTemplateTypes() {
+    return Object.keys(this.templates);
+  }
+
+  /**
+   * Get all subtypes for a template type
+   * @param {string} type - Template type
+   * @return {Array} - Array of subtype names
+   */
+  getTemplateSubtypes(type) {
+    if (!this.templates[type]) {
+      throw new Error(`Template type '${type}' not found`);
+    }
+    return Object.keys(this.templates[type]);
+  }
+}
+
+// Global template loader instance
+const templateLoader = new TemplateLoader();
+
+/**
+ * Get the global template loader instance
+ * @return {TemplateLoader} - The template loader instance
+ */
+function getTemplateLoader() {
+  return templateLoader;
+}
+
+/**
+ * Render a template with parameters (convenience function)
+ * @param {string} type - Template type
+ * @param {string} subtype - Template subtype
+ * @param {...any} params - Parameters to pass to the template function
+ * @return {string} - Rendered template
+ */
+function renderTemplate(type, subtype, ...params) {
+  return templateLoader.render(type, subtype, ...params);
+}
+
+/**
+ * Validate all email templates
+ * @return {boolean} - True if all templates are valid
+ */
+function validateEmailTemplates() {
+  return templateLoader.validateTemplates();
+} 

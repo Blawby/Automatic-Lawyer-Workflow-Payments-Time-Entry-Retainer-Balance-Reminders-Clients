@@ -179,6 +179,7 @@ function onOpen(e) {
     .addItem('Send Balance Digest', 'manualSendDigest')
     .addItem('Generate Invoices', 'manualGenerateInvoices')
     .addSeparator()
+    .addItem('Validate Email Templates', 'validateTemplates')
     .addItem('Setup System', 'setupSystem')
     .addToUi();
 }
@@ -319,4 +320,42 @@ function deleteTriggersByFunction(functionName) {
   if (deletedCount > 0) {
     console.log(`🗑️ Deleted ${deletedCount} existing trigger(s) for ${functionName}`);
   }
+}
+
+/**
+ * Validates all email templates and shows results
+ */
+function validateTemplates() {
+  logStart('validateTemplates');
+  
+  try {
+    const isValid = validateEmailTemplates();
+    
+    if (isValid) {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert(
+        'Template Validation',
+        '✅ All email templates are valid and ready to use!',
+        ui.ButtonSet.OK
+      );
+    } else {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert(
+        'Template Validation',
+        '❌ Some email templates are missing or invalid. Please check the logs.',
+        ui.ButtonSet.OK
+      );
+    }
+  } catch (error) {
+    logError('validateTemplates', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Template Validation Error',
+      `Template validation failed: ${error.message}`,
+      ui.ButtonSet.OK
+    );
+  }
+  
+  logEnd('validateTemplates');
 } 

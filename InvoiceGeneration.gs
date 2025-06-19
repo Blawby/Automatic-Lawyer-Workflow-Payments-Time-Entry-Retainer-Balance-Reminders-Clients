@@ -92,30 +92,10 @@ function generateReceipt(paymentData, clientData) {
 }
 
 function sendReceiptEmail(email, clientName, receiptId, date, amount, currency, newBalance, hoursUsed, averageRate) {
-  const subject = `Payment Receipt #${receiptId} - Blawby`;
+  const subject = renderTemplate('RECEIPT', 'SUBJECT', receiptId);
+  const body = renderTemplate('RECEIPT', 'BODY', clientName, receiptId, date, amount, currency, newBalance, hoursUsed, averageRate);
   
-  let body = `Dear ${clientName},\n\n`;
-  body += `Thank you for your payment. Here is your receipt:\n\n`;
-  body += `Receipt #: ${receiptId}\n`;
-  body += `Date: ${date}\n`;
-  body += `Amount: ${currency} ${amount}\n`;
-  body += `New Balance: ${currency} ${newBalance.toFixed(2)}\n\n`;
-  
-  if (hoursUsed > 0) {
-    body += `Monthly Summary:\n`;
-    body += `Hours Used This Month: ${hoursUsed.toFixed(2)}\n`;
-    body += `Average Rate: ${currency} ${averageRate.toFixed(2)}/hour\n`;
-    body += `Estimated Monthly Usage: ${currency} ${(hoursUsed * averageRate).toFixed(2)}\n\n`;
-  }
-  
-  body += "Thank you for your business.\n\n";
-  body += "Best regards,\nThe Blawby Team";
-  
-  MailApp.sendEmail({
-    to: email,
-    subject: subject,
-    body: body
-  });
+  sendEmail(email, subject, body, { isHtml: true });
 }
 
 function generateMonthlySummary() {
@@ -175,28 +155,11 @@ function generateMonthlySummary() {
 }
 
 function sendMonthlySummaryEmail(email, clientName, month, hoursUsed, averageRate, estimatedUsage, balance) {
-  const subject = `Monthly Summary - ${month.toISOString().substring(0, 7)} - Blawby`;
+  const monthStr = month.toISOString().substring(0, 7);
+  const subject = renderTemplate('MONTHLY_SUMMARY', 'SUBJECT', monthStr);
+  const body = renderTemplate('MONTHLY_SUMMARY', 'BODY', clientName, monthStr, hoursUsed, averageRate, estimatedUsage, balance);
   
-  let body = `Dear ${clientName},\n\n`;
-  body += `Here is your monthly summary for ${month.toISOString().substring(0, 7)}:\n\n`;
-  body += `Hours Used: ${hoursUsed.toFixed(2)}\n`;
-  body += `Average Rate: $${averageRate.toFixed(2)}/hour\n`;
-  body += `Estimated Usage: $${estimatedUsage.toFixed(2)}\n`;
-  body += `Current Balance: $${balance.toFixed(2)}\n\n`;
-  
-  if (balance < estimatedUsage) {
-    body += `Note: Your current balance is below the estimated monthly usage. `;
-    body += `Consider topping up your retainer to ensure uninterrupted service.\n\n`;
-  }
-  
-  body += "Thank you for your business.\n\n";
-  body += "Best regards,\nThe Blawby Team";
-  
-  MailApp.sendEmail({
-    to: email,
-    subject: subject,
-    body: body
-  });
+  sendEmail(email, subject, body, { isHtml: true });
 }
 
 /**

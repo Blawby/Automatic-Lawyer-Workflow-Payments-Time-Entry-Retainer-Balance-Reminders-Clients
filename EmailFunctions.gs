@@ -17,12 +17,21 @@ function sendEmail(recipient, subject, body, options = {}) {
   log(`📧 Sending email to ${finalRecipient}: ${finalSubject}`);
   
   try {
-    MailApp.sendEmail({
+    const emailOptions = {
       to: finalRecipient,
       subject: finalSubject,
-      body: body,
       ...options
-    });
+    };
+    
+    // Handle HTML content properly
+    if (options.isHtml) {
+      emailOptions.htmlBody = body;
+      delete emailOptions.isHtml; // Remove our custom option
+    } else {
+      emailOptions.body = body;
+    }
+    
+    MailApp.sendEmail(emailOptions);
     
     log(`✅ Email sent successfully to ${finalRecipient}`);
   } catch (error) {
@@ -75,39 +84,19 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
     return false;
   }
   
-  // Send to client
-  const clientSubject = "Low Balance Alert - Blawby";
-  const clientBody = `
-    Dear ${clientName},
-    
-    Your Blawby account balance is currently low at $${balance.toFixed(2)}.
-    Your target balance is $${targetBalance.toFixed(2)}.
-    
-    To continue receiving our services without interruption, please top up your balance using this link:
-    ${paymentLink}
-    
-    If you have any questions, please don't hesitate to contact us.
-    
-    Best regards,
-    The Blawby Team
-  `;
+  // Send to client using template
+  const clientSubject = renderTemplate('LOW_BALANCE', 'CLIENT_SUBJECT');
+  const clientBody = renderTemplate('LOW_BALANCE', 'CLIENT_BODY', clientName, balance, targetBalance, paymentLink);
   
-  sendEmail(email, clientSubject, clientBody);
+  sendEmail(email, clientSubject, clientBody, { isHtml: true });
   
-  // Send to firm (only if not in test mode)
+  // Send to firm (only if not in test mode) using template
   if (!isTestMode()) {
-    const ownerSubject = `Low Balance Alert - ${clientName}`;
-    const ownerBody = `
-      Client: ${clientName}
-      Email: ${email}
-      Current Balance: $${balance.toFixed(2)}
-      Target Balance: $${targetBalance.toFixed(2)}
-      Last Active Lawyer: ${lawyerEmails[lastLawyerID] || 'Unknown'}
-      
-      Payment Link: ${paymentLink}
-    `;
+    const lastActivity = lawyerEmails[lastLawyerID] || 'Unknown';
+    const ownerSubject = renderTemplate('LOW_BALANCE', 'OWNER_SUBJECT', clientName);
+    const ownerBody = renderTemplate('LOW_BALANCE', 'OWNER_BODY', clientName, balance, targetBalance, lastActivity);
     
-    sendEmailToFirm(ownerSubject, ownerBody);
+    sendEmailToFirm(ownerSubject, ownerBody, { isHtml: true });
   }
   
   // Mark as sent
@@ -143,7 +132,7 @@ function sendDailyBalanceDigest() {
         balance: balance,
         targetBalance: targetBalance,
         topUp: topUp,
-        lastLawyer: lawyerData.emails[balanceInfo.lastLawyerID] || 'Unknown'
+        lastActivity: lawyerData.emails[balanceInfo.lastLawyerID] || 'Unknown'
       });
     }
   }
@@ -157,22 +146,11 @@ function sendDailyBalanceDigest() {
   // Sort by top-up amount (highest first)
   lowBalanceClients.sort((a, b) => b.topUp - a.topUp);
   
-  // Build email body
-  let body = "Daily Low Balance Digest\n\n";
-  body += `Date: ${new Date().toLocaleDateString()}\n\n`;
+  // Send digest using template
+  const subject = renderTemplate('DAILY_DIGEST', 'SUBJECT');
+  const body = renderTemplate('DAILY_DIGEST', 'BODY', lowBalanceClients);
   
-  for (const client of lowBalanceClients) {
-    body += `Client: ${client.name}\n`;
-    body += `Email: ${client.email}\n`;
-    body += `Current Balance: $${client.balance.toFixed(2)}\n`;
-    body += `Target Balance: $${client.targetBalance.toFixed(2)}\n`;
-    body += `Top-up Needed: $${client.topUp.toFixed(2)}\n`;
-    body += `Last Active Lawyer: ${client.lastLawyer}\n\n`;
-  }
-  
-  // Send digest
-  const subject = "Daily Low Balance Digest - Blawby";
-  sendEmailToFirm(subject, body);
+  sendEmailToFirm(subject, body, { isHtml: true });
   
   logEnd('sendDailyBalanceDigest');
 }
@@ -190,33 +168,17 @@ function notifyServiceResumed(clientID, email, clientName, balance, today) {
     return;
   }
   
-  // Send to client
-  const clientSubject = "Service Resumed - Blawby";
-  const clientBody = `
-    Dear ${clientName},
-    
-    Your Blawby account balance has been restored to $${balance.toFixed(2)}.
-    Your service has been automatically resumed.
-    
-    Thank you for your continued trust in our services.
-    
-    Best regards,
-    The Blawby Team
-  `;
+  // Send to client using template
+  const clientSubject = renderTemplate('SERVICE_RESUMED', 'CLIENT_SUBJECT');
+  const clientBody = renderTemplate('SERVICE_RESUMED', 'CLIENT_BODY', clientName);
   
-  sendEmail(email, clientSubject, clientBody);
+  sendEmail(email, clientSubject, clientBody, { isHtml: true });
   
-  // Send to firm
-  const ownerSubject = `Service Resumed - ${clientName}`;
-  const ownerBody = `
-    Client: ${clientName}
-    Email: ${email}
-    Current Balance: $${balance.toFixed(2)}
-    
-    Service has been automatically resumed.
-  `;
+  // Send to firm using template
+  const ownerSubject = renderTemplate('SERVICE_RESUMED', 'OWNER_SUBJECT', clientName);
+  const ownerBody = renderTemplate('SERVICE_RESUMED', 'OWNER_BODY', clientName);
   
-  sendEmailToFirm(ownerSubject, ownerBody);
+  sendEmailToFirm(ownerSubject, ownerBody, { isHtml: true });
   
   // Mark as sent
   props.setProperty(emailKey, "1");

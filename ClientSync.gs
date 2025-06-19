@@ -3,7 +3,6 @@ function syncPaymentsAndClients() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = getSheets(ss);
   const data = loadSheetData(sheets);
-  const settings = loadSettings(sheets.settingsSheet);
   
   const lawyerData = buildLawyerMaps(data.lawyers);
   const clientsById = buildClientMap(data.clientData);
@@ -15,11 +14,12 @@ function syncPaymentsAndClients() {
   updateMattersWithClientNames(sheets.mattersSheet, clientsById);
   
   // Calculate balances and send low balance warnings
+  const today = new Date().toISOString().split('T')[0];
   const { updatedClientRows, lowBalanceRows, emailsSent } = processClientBalances(
     clientsById, 
     data, 
     lawyerData, 
-    settings
+    today
   );
   
   // Update sheets
@@ -110,7 +110,7 @@ function createMatterForNewClient(mattersSheet, clientEmail, clientID) {
   console.log(`📋 Created matter ${matterID} for client ${clientEmail}`);
 }
 
-function processClientBalances(clientsById, data, lawyerData, settings) {
+function processClientBalances(clientsById, data, lawyerData, today) {
   const updatedClientRows = [data.clientData[0]]; // Header row
   const lowBalanceRows = [];
   const props = PropertiesService.getScriptProperties();
@@ -144,7 +144,7 @@ function processClientBalances(clientsById, data, lawyerData, settings) {
     const balanceInfo = calculateClientBalance(clientID, email, data, lawyerData.rates);
     const balance = balanceInfo.totalPaid - balanceInfo.totalUsed;
     const topUp = Math.max(0, targetBalance - balance);
-    const paymentLink = topUp > 0 ? `${settings.basePaymentURL}?amount=${Math.round(topUp * 100)}` : "";
+    const paymentLink = topUp > 0 ? `${getSetting(SETTINGS_KEYS.BASE_PAYMENT_URL)}?amount=${Math.round(topUp * 100)}` : "";
     
     const updatedRow = [
       email,
@@ -179,7 +179,7 @@ function processClientBalances(clientsById, data, lawyerData, settings) {
         paymentLink, 
         balanceInfo.lastLawyerID, 
         lawyerData.emails, 
-        settings.today
+        today
       );
       
       if (emailSent) emailsSent++;
@@ -187,7 +187,7 @@ function processClientBalances(clientsById, data, lawyerData, settings) {
     
     // Check for service resumption
     if (balance > 0 && topUp === 0) {
-      notifyServiceResumed(clientID, email, clientName, balance, settings.today);
+      notifyServiceResumed(clientID, email, clientName, balance, today);
     }
   }
   

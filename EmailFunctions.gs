@@ -28,12 +28,11 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
     return false;
   }
   
-  const settings = loadSettings(SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Welcome"));
-  const isTestMode = settings[SETTINGS_KEYS.TEST_MODE] === "true";
+  const isTest = isTestMode();
   const firmEmail = getFirmEmail();
   
   // Send to client (or firm in test mode)
-  const clientSubject = isTestMode ? `[TEST] Low Balance Alert - ${clientName}` : "Low Balance Alert - Blawby";
+  const clientSubject = isTest ? `[TEST] Low Balance Alert - ${clientName}` : "Low Balance Alert - Blawby";
   const clientBody = `
     Dear ${clientName},
     
@@ -50,13 +49,13 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
   `;
   
   MailApp.sendEmail({
-    to: isTestMode ? firmEmail : email,
+    to: isTest ? firmEmail : email,
     subject: clientSubject,
     body: clientBody
   });
   
   // Send to owner (only if not in test mode)
-  if (!isTestMode) {
+  if (!isTest) {
     const ownerSubject = `Low Balance Alert - ${clientName}`;
     const ownerBody = `
       Client: ${clientName}
@@ -84,8 +83,7 @@ function sendDailyBalanceDigest() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = getSheets(ss);
   const data = loadSheetData(sheets);
-  const settings = loadSettings(sheets.settingsSheet);
-  const isTestMode = settings[SETTINGS_KEYS.TEST_MODE] === "true";
+  const isTest = isTestMode();
   
   const lawyerData = buildLawyerMaps(data.lawyers);
   const clientsById = buildClientMap(data.clientData);
@@ -119,7 +117,7 @@ function sendDailyBalanceDigest() {
   lowBalanceClients.sort((a, b) => b.topUp - a.topUp);
   
   // Build email body
-  let body = isTestMode ? "[TEST MODE] " : "";
+  let body = isTest ? "[TEST MODE] " : "";
   body += "Daily Low Balance Digest\n\n";
   body += `Date: ${new Date().toLocaleDateString()}\n\n`;
   
@@ -135,7 +133,7 @@ function sendDailyBalanceDigest() {
   // Send digest
   MailApp.sendEmail({
     to: getFirmEmail(),
-    subject: isTestMode ? "[TEST] Daily Low Balance Digest - Blawby" : "Daily Low Balance Digest - Blawby",
+    subject: isTest ? "[TEST] Daily Low Balance Digest - Blawby" : "Daily Low Balance Digest - Blawby",
     body: body
   });
 }

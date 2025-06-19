@@ -1,4 +1,24 @@
 // ========== UTILITY FUNCTIONS ==========
+
+/**
+ * Get a setting value by key
+ * @param {string} key - The setting key to retrieve
+ * @param {*} defaultValue - Default value if setting not found
+ * @return {*} - The setting value or default
+ */
+function getSetting(key, defaultValue = null) {
+  const settings = loadSettings();
+  return settings[key] !== undefined ? settings[key] : defaultValue;
+}
+
+/**
+ * Check if the system is in test mode
+ * @return {boolean} - True if test mode is enabled
+ */
+function isTestMode() {
+  return getSetting(SETTINGS_KEYS.TEST_MODE, false);
+}
+
 function getSheets(ss) {
   if (!ss) {
     ss = SpreadsheetApp.getActiveSpreadsheet();

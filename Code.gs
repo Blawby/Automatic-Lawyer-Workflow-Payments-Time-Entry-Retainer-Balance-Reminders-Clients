@@ -73,7 +73,6 @@ function checkServiceResumption() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = getSheets(ss);
   const data = loadSheetData(sheets);
-  const settings = loadSettings(sheets.settingsSheet);
   
   const lawyerData = buildLawyerMaps(data.lawyers);
   const clientsById = buildClientMap(data.clientData);
@@ -88,7 +87,7 @@ function checkServiceResumption() {
     
     // Check if service should be resumed
     if (balance > 0 && balance >= targetBalance) {
-      notifyServiceResumed(clientID, email, clientName, balance, settings.today);
+      notifyServiceResumed(clientID, email, clientName, balance, new Date().toISOString().split('T')[0]);
     }
   }
 }
@@ -114,30 +113,12 @@ function manualDailySync() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   console.log('🔍 Starting manualDailySync...');
   
-  const settings = loadSettings();
-  console.log('📋 All settings loaded:', settings);
-  
-  const testModeKey = SETTINGS_KEYS.TEST_MODE;
-  console.log('🔑 Test Mode Key:', testModeKey);
-  
-  const testModeValue = settings[testModeKey];
-  console.log('💾 Test Mode Value:', testModeValue, 'Type:', typeof testModeValue);
-  
-  const testModeString = testModeValue.toString();
-  console.log('📝 Test Mode as String:', testModeString);
-  
-  const testModeLower = testModeString.toLowerCase();
-  console.log('🔤 Test Mode Lowercase:', testModeLower);
-  
-  const isTestMode = testModeLower === "true";
-  console.log('✅ Is Test Mode?', isTestMode);
-  
-  if (!isTestMode) {
+  if (!isTestMode()) {
     console.log('❌ Test Mode is disabled, showing alert...');
     const ui = SpreadsheetApp.getUi();
     const response = ui.alert(
       'Test Mode Required',
-      `Please enable Test Mode in the Welcome sheet before running manual sync.\n\nDebug Info:\n- Test Mode Key: ${testModeKey}\n- Test Mode Value: ${testModeValue}\n- Test Mode Type: ${typeof testModeValue}\n- Test Mode String: "${testModeString}"\n- Test Mode Lowercase: "${testModeLower}"`,
+      'Please enable Test Mode in the Welcome sheet before running manual sync.',
       ui.ButtonSet.OK
     );
     return;

@@ -42,7 +42,6 @@ function setupInvoiceSheet() {
 function generateReceipt(paymentData, clientData) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = getSheets(ss);
-  const settings = loadSettings(sheets.settingsSheet);
   
   // Ensure invoice sheet is properly set up
   setupInvoiceSheet(sheets.invoicesSheet);
@@ -82,7 +81,7 @@ function generateReceipt(paymentData, clientData) {
     clientName,
     "Top-up Payment",
     amount,
-    settings[SETTINGS_KEYS.DEFAULT_CURRENCY], // Use default currency from settings
+    getSetting(SETTINGS_KEYS.DEFAULT_CURRENCY, "USD"), // Use default currency from settings
     `Retainer top-up payment - Receipt #${receiptIdValue}`,
     receiptIdValue,
     clientId,
@@ -96,7 +95,7 @@ function generateReceipt(paymentData, clientData) {
   sheets.invoicesSheet.appendRow(receiptRow);
   
   // Send receipt email
-  sendReceiptEmail(email, clientName, receiptIdValue, date, amount, settings[SETTINGS_KEYS.DEFAULT_CURRENCY], newBalance, hoursUsed, averageRate);
+  sendReceiptEmail(email, clientName, receiptIdValue, date, amount, getSetting(SETTINGS_KEYS.DEFAULT_CURRENCY, "USD"), newBalance, hoursUsed, averageRate);
 }
 
 function sendReceiptEmail(email, clientName, receiptId, date, amount, currency, newBalance, hoursUsed, averageRate) {
@@ -129,7 +128,6 @@ function sendReceiptEmail(email, clientName, receiptId, date, amount, currency, 
 function generateMonthlySummary() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = getSheets(ss);
-  const settings = loadSettings(sheets.settingsSheet);
   
   // Get all clients
   const clients = sheets.clientsSheet.getDataRange().getValues();
@@ -166,7 +164,7 @@ function generateMonthlySummary() {
       clientName,
       "Monthly Summary",
       estimatedUsage,
-      settings[SETTINGS_KEYS.DEFAULT_CURRENCY],
+      getSetting(SETTINGS_KEYS.DEFAULT_CURRENCY, "USD"),
       `Monthly summary for ${firstOfMonth.toISOString().substring(0, 7)}`,
       "MONTHLY-" + firstOfMonth.toISOString().substring(0, 7),
       client[9], // Client ID

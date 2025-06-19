@@ -1,72 +1,151 @@
 // ========== MAIN ENTRY POINTS ==========
 function dailySync() {
-  console.log("Starting daily sync...");
+  console.log("🔄 Starting daily sync...");
   
+  try {
+    // Validate spreadsheet access
+    validateSpreadsheetAccess();
+    
+    // Get sheets and ensure they're properly set up
+    const sheets = getSheetsAndSetup();
+    
+    // Execute all sync operations
+    executeSyncOperations(sheets);
+    
+    console.log("✅ Daily sync completed successfully");
+  } catch (error) {
+    console.error("❌ Daily sync failed:", error.message);
+    throw error;
+  }
+}
+
+/**
+ * Validates that we have access to the active spreadsheet
+ */
+function validateSpreadsheetAccess() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   if (!ss) {
     throw new Error("No active spreadsheet found");
   }
-  
+}
+
+/**
+ * Gets sheets and ensures they're properly set up
+ * @return {Object} Sheets object with all required sheets
+ */
+function getSheetsAndSetup() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = getSheets(ss);
   
   // Set up all sheets with proper headers and formatting
   setupAllSheets(sheets);
   
-  // Sync payments and clients
+  return sheets;
+}
+
+/**
+ * Executes all sync operations in the correct order
+ * @param {Object} sheets - Sheets object with all required sheets
+ */
+function executeSyncOperations(sheets) {
+  // 1. Sync payments and clients (creates/updates client records)
+  console.log("📊 Syncing payments and clients...");
   syncPaymentsAndClients();
   
-  // Send daily balance digest
+  // 2. Send daily balance digest (notifies about low balances)
+  console.log("📧 Sending daily balance digest...");
   sendDailyBalanceDigest();
   
-  // Generate invoices
+  // 3. Generate invoices (creates monthly summaries)
+  console.log("🧾 Generating invoices...");
   generateInvoicesForAllClients();
-  
-  console.log("Daily sync completed successfully");
+}
+
+/**
+ * Syncs only payments and clients (for manual testing)
+ */
+function syncPaymentsAndClientsOnly() {
+  console.log("📊 Syncing payments and clients only...");
+  validateSpreadsheetAccess();
+  const sheets = getSheetsAndSetup();
+  syncPaymentsAndClients();
+  console.log("✅ Payments and clients sync completed");
+}
+
+/**
+ * Sends only the daily balance digest (for manual testing)
+ */
+function sendDailyBalanceDigestOnly() {
+  console.log("📧 Sending daily balance digest only...");
+  validateSpreadsheetAccess();
+  sendDailyBalanceDigest();
+  console.log("✅ Daily balance digest sent");
+}
+
+/**
+ * Generates only invoices (for manual testing)
+ */
+function generateInvoicesOnly() {
+  console.log("🧾 Generating invoices only...");
+  validateSpreadsheetAccess();
+  const sheets = getSheetsAndSetup();
+  generateInvoicesForAllClients();
+  console.log("✅ Invoice generation completed");
 }
 
 // Manual trigger functions
 function manualSyncClients() {
-  syncPaymentsAndClients();
+  syncPaymentsAndClientsOnly();
 }
 
 function manualGenerateInvoices() {
-  generateInvoicesForAllClients();
+  generateInvoicesOnly();
+}
+
+function manualSendDigest() {
+  sendDailyBalanceDigestOnly();
 }
 
 // Time-based triggers
 function createDailyTrigger() {
-  // Delete any existing triggers
-  const triggers = ScriptApp.getProjectTriggers();
-  for (const trigger of triggers) {
-    if (trigger.getHandlerFunction() === "dailySync") {
-      ScriptApp.deleteTrigger(trigger);
-    }
-  }
+  console.log('📅 Creating daily sync trigger...');
   
-  // Create new trigger to run daily at 6 AM
-  ScriptApp.newTrigger("dailySync")
-    .timeBased()
-    .atHour(6)
-    .everyDays(1)
-    .create();
+  try {
+    // Delete any existing daily sync triggers
+    deleteTriggersByFunction('dailySync');
     
-  console.log("📅 Daily sync trigger created for 06:00");
+    // Create new trigger to run daily at 6 AM
+    ScriptApp.newTrigger("dailySync")
+      .timeBased()
+      .atHour(6)
+      .everyDays(1)
+      .create();
+      
+    console.log("✅ Daily sync trigger created for 06:00");
+  } catch (error) {
+    console.error('❌ Failed to create daily trigger:', error.message);
+    throw error;
+  }
 }
 
 function createServiceResumeTrigger() {
-  // Delete any existing triggers
-  const triggers = ScriptApp.getProjectTriggers();
-  for (const trigger of triggers) {
-    if (trigger.getHandlerFunction() === "checkServiceResumption") {
-      ScriptApp.deleteTrigger(trigger);
-    }
-  }
+  console.log('🔄 Creating service resumption trigger...');
   
-  // Create new trigger to run every 6 hours
-  ScriptApp.newTrigger("checkServiceResumption")
-    .timeBased()
-    .everyHours(6)
-    .create();
+  try {
+    // Delete any existing service resumption triggers
+    deleteTriggersByFunction('checkServiceResumption');
+    
+    // Create new trigger to run every 6 hours
+    ScriptApp.newTrigger("checkServiceResumption")
+      .timeBased()
+      .everyHours(6)
+      .create();
+      
+    console.log("✅ Service resumption trigger created (every 6 hours)");
+  } catch (error) {
+    console.error('❌ Failed to create service resumption trigger:', error.message);
+    throw error;
+  }
 }
 
 function checkServiceResumption() {
@@ -99,9 +178,13 @@ function checkServiceResumption() {
 function onOpen(e) {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('Blawby')
-    .addItem('Run Daily Sync', 'manualDailySync')
+    .addItem('Run Full Daily Sync', 'manualDailySync')
     .addSeparator()
-    .addItem('Generate Invoices', 'generateInvoicesForAllClients')
+    .addItem('Sync Payments & Clients', 'manualSyncClients')
+    .addItem('Send Balance Digest', 'manualSendDigest')
+    .addItem('Generate Invoices', 'manualGenerateInvoices')
+    .addSeparator()
+    .addItem('Setup System', 'setupSystem')
     .addToUi();
 }
 
@@ -183,4 +266,63 @@ function doGet(e) {
   );
   
   return output;
+}
+
+/**
+ * Sets up the entire system (sheets, triggers, etc.)
+ * This function can be run manually for initial setup.
+ */
+function setupSystem() {
+  console.log('🚀 Setting up Blawby system...');
+  
+  try {
+    validateSpreadsheetAccess();
+    const sheets = getSheetsAndSetup();
+    
+    // Create triggers
+    createDailyTrigger();
+    createServiceResumeTrigger();
+    
+    console.log('✅ System setup completed successfully');
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Setup Complete',
+      'The Blawby system has been set up successfully!\n\n' +
+      '• All sheets have been created and formatted\n' +
+      '• Daily sync trigger has been created (6 AM)\n' +
+      '• Service resumption trigger has been created (every 6 hours)\n\n' +
+      'You can now start using the system.',
+      ui.ButtonSet.OK
+    );
+  } catch (error) {
+    console.error('❌ System setup failed:', error.message);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Setup Failed',
+      `System setup failed: ${error.message}\n\nPlease check the logs and try again.`,
+      ui.ButtonSet.OK
+    );
+  }
+}
+
+/**
+ * Deletes all triggers for a specific function
+ * @param {string} functionName - Name of the function to delete triggers for
+ */
+function deleteTriggersByFunction(functionName) {
+  const triggers = ScriptApp.getProjectTriggers();
+  let deletedCount = 0;
+  
+  for (const trigger of triggers) {
+    if (trigger.getHandlerFunction() === functionName) {
+      ScriptApp.deleteTrigger(trigger);
+      deletedCount++;
+    }
+  }
+  
+  if (deletedCount > 0) {
+    console.log(`🗑️ Deleted ${deletedCount} existing trigger(s) for ${functionName}`);
+  }
 } 

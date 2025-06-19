@@ -12,6 +12,7 @@ A free, IOLTA-compliant Google Sheets solution for law firms to manage retainers
 | Default Currency       | USD                                  | Default currency for all payments (USD, EUR, etc.) |
 | Low Balance Threshold  | 1000                                 | Amount in default currency that triggers low balance alerts |
 | Email Notifications    | TRUE                                 | Send email notifications (true/false)          |
+| Firm Email             | admin@blawby.com                     | Email address for system notifications (fallback when user session unavailable) |
 | Test Mode              | TRUE                                 | Enable test mode to try the system safely (true/false) |
 
 > **Note:** Edit the Value column to configure your system. All settings are pre-filled with recommended defaults.
@@ -33,11 +34,22 @@ A free, IOLTA-compliant Google Sheets solution for law firms to manage retainers
 
 | Step | Action           | Details                                                                 |
 |------|------------------|-------------------------------------------------------------------------|
-| 1    | Connect Blawby   | Enter your Blawby payment page URL in the settings above                 |
-| 2    | Add Your Team    | Add your lawyers in the section above                                    |
-| 3    | Set Up Zapier    | Create a Zap that triggers on new Stripe payments → sends payment info to this sheet |
-| 4    | Start Logging Time | Use the TimeLogs tab to record billable hours                          |
-| 5    | Monitor Activity | Check the daily summary emails for updates                               |
+| 1    | Test the System  | Run dailySync() to process sample data and see emails working          |
+| 2    | Connect Blawby   | Enter your Blawby payment page URL in the settings above                 |
+| 3    | Add Your Team    | Add your lawyers in the section above                                    |
+| 4    | Set Up Zapier    | Create a Zap that triggers on new Stripe payments → sends payment info to this sheet |
+| 5    | Replace Sample Data | Delete sample rows and add your real data                              |
+
+---
+
+## 🧪 Testing Features
+
+| Feature | How to Test | Expected Result |
+|---------|-------------|-----------------|
+| Client Creation | Run dailySync() with sample payments | Clients sheet populated with client1@example.com and client2@example.com |
+| Low Balance Warnings | Add time logs to reduce balance below threshold | Email notifications sent to clients |
+| Matter Tracking | Time logs are linked to matters by Matter ID | Matter breakdown shown in invoices |
+| Email Notifications | Set Email Notifications to TRUE and run dailySync() | Receipt emails sent to sample clients |
 
 ---
 
@@ -48,9 +60,11 @@ A free, IOLTA-compliant Google Sheets solution for law firms to manage retainers
 | Lawyers (in Welcome) | Manage your legal team and their rates | Yes            |
 | Clients   | Track client balances and payment links   | Auto-updated   |
 | TimeLogs  | Record billable hours and activities      | Yes            |
-| Payments  | Track client payments and receipts        | Auto-updated   |
+| Payments  | Track client payments (Date, Email, Amount, Payment Method) | Auto-updated   |
 | Invoices  | View payment receipts and monthly summaries | Auto-updated |
 | Matters   | Track client matters and case values      | Yes            |
+
+> **Note:** Sample data is included in Payments, TimeLogs, and Matters sheets for testing. Delete these rows and add your real data.
 
 ---
 

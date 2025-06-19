@@ -47,7 +47,7 @@ function generateReceipt(paymentData, clientData) {
   // Ensure invoice sheet is properly set up
   setupInvoiceSheet(sheets.invoicesSheet);
   
-  const [date, email, amount, currency] = paymentData;
+  const [date, email, amount, paymentMethod] = paymentData;
   
   // Generate a receipt ID automatically
   const receiptIdValue = `REC-${Date.now()}`;
@@ -82,7 +82,7 @@ function generateReceipt(paymentData, clientData) {
     clientName,
     "Top-up Payment",
     amount,
-    currency || settings[SETTINGS_KEYS.DEFAULT_CURRENCY],
+    settings[SETTINGS_KEYS.DEFAULT_CURRENCY], // Use default currency from settings
     `Retainer top-up payment - Receipt #${receiptIdValue}`,
     receiptIdValue,
     clientId,
@@ -96,7 +96,7 @@ function generateReceipt(paymentData, clientData) {
   sheets.invoicesSheet.appendRow(receiptRow);
   
   // Send receipt email
-  sendReceiptEmail(email, clientName, receiptIdValue, date, amount, currency, newBalance, hoursUsed, averageRate);
+  sendReceiptEmail(email, clientName, receiptIdValue, date, amount, settings[SETTINGS_KEYS.DEFAULT_CURRENCY], newBalance, hoursUsed, averageRate);
 }
 
 function sendReceiptEmail(email, clientName, receiptId, date, amount, currency, newBalance, hoursUsed, averageRate) {

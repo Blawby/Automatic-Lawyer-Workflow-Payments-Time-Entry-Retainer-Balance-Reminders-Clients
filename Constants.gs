@@ -45,7 +45,7 @@ const PAYMENT_COLUMNS = {
   DATE: 0,
   CLIENT_EMAIL: 1,
   AMOUNT: 2,
-  CURRENCY: 3
+  PAYMENT_METHOD: 3
 };
 
 const LAWYER_COLUMNS = {
@@ -69,7 +69,8 @@ const SETTINGS_KEYS = {
   EMAIL_NOTIFICATIONS: "Email Notifications",
   AUTO_GENERATE_INVOICES: "auto_generate_invoices",
   INVOICE_DAY: "invoice_day",
-  TEST_MODE: "Test Mode"
+  TEST_MODE: "Test Mode",
+  FIRM_EMAIL: "Firm Email"
 };
 
 const DEFAULT_SETTINGS = {
@@ -81,7 +82,8 @@ const DEFAULT_SETTINGS = {
   [SETTINGS_KEYS.EMAIL_NOTIFICATIONS]: "true",
   [SETTINGS_KEYS.AUTO_GENERATE_INVOICES]: "true",
   [SETTINGS_KEYS.INVOICE_DAY]: "1",
-  [SETTINGS_KEYS.TEST_MODE]: "false"
+  [SETTINGS_KEYS.TEST_MODE]: "false",
+  [SETTINGS_KEYS.FIRM_EMAIL]: "admin@blawby.com"
 };
 
 const INVOICE_COLUMNS = {

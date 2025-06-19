@@ -68,15 +68,15 @@ function processPayments(paymentsSheet, clientsById) {
       continue;
     }
 
+    // Parse the timestamp properly
+    const paymentDate = parseZapierTimestamp(row[0]);
+    
     // Create new client if not exists
     if (!clientsById[clientEmail]) {
-      clientsById[clientEmail] = createNewClient(clientEmail);
+      const newClient = createNewClient(clientEmail);
+      clientsById[clientEmail] = newClient;
+      console.log(`👤 Created new client: ${clientEmail}`);
     }
-
-    // Update client balance
-    const client = clientsById[clientEmail];
-    client.totalPaid += paymentAmount;
-    client.balance += paymentAmount;
   }
 }
 
@@ -116,6 +116,7 @@ function processClientBalances(clientsById, data, lawyerData, settings) {
   const props = PropertiesService.getScriptProperties();
   let emailsSent = 0;
   
+  // Process all clients (both existing and newly created)
   for (const [clientID, row] of Object.entries(clientsById)) {
     const email = row[0];
     const clientName = row[1] || "Client";
@@ -327,4 +328,36 @@ function updateMattersWithClientNames(mattersSheet, clientsById) {
       }
     }
   }
+}
+
+/**
+ * Creates a new client object with default values
+ * @param {string} clientEmail - The client's email address
+ * @return {Array} - Client data row
+ */
+function createNewClient(clientEmail) {
+  const clientID = generateClientID(clientEmail);
+  return [
+    clientEmail,           // Email
+    "",                    // Client Name (empty, to be filled later)
+    0,                     // Target Balance (will be calculated)
+    0,                     // Total Paid (will be calculated from payments)
+    0,                     // Total Hours (will be calculated from time logs)
+    0,                     // Total Used (will be calculated from time logs)
+    0,                     // Balance (will be calculated)
+    0,                     // Top Up Needed (will be calculated)
+    "",                    // Payment Link (will be generated)
+    clientID               // Client ID
+  ];
+}
+
+/**
+ * Generates a unique client ID based on email
+ * @param {string} clientEmail - The client's email address
+ * @return {string} - Unique client ID
+ */
+function generateClientID(clientEmail) {
+  const timestamp = new Date().getTime();
+  const emailHash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, clientEmail)).substring(0, 8);
+  return `C-${timestamp}-${emailHash}`;
 } 

@@ -48,12 +48,12 @@ function loadSettings() {
     throw new Error("Welcome sheet not found. Please run setupWelcomeSheet first.");
   }
   
-  const settingsData = welcomeSheet.getRange(4, 1, 6, 4).getValues(); // Get settings from Welcome sheet
+  const settingsData = welcomeSheet.getRange(5, 1, 6, 2).getValues(); // Get settings from Welcome sheet (rows 5-10, columns 1-2)
   console.log('🟦 Raw settingsData from Welcome sheet:', JSON.stringify(settingsData));
   const settings = { ...DEFAULT_SETTINGS }; // Start with defaults
   
   // Process each setting row
-  for (const [key, value, description, defaultValue] of settingsData) {
+  for (const [key, value] of settingsData) {
     if (!key) continue;
     
     // Handle special case for Payment Link
@@ -80,6 +80,12 @@ function loadSettings() {
       continue;
     }
     
+    // Handle Firm Email setting - treat as text, not boolean
+    if (key === "Firm Email") {
+      settings[SETTINGS_KEYS.FIRM_EMAIL] = value;
+      continue;
+    }
+    
     // Handle time settings
     if (key === "Daily Sync Time" || key === "Summary Email Time") {
       settings[key.toLowerCase().replace(/\s+/g, '_')] = value;
@@ -99,6 +105,11 @@ function loadSettings() {
       settings[key] = defaultValue;
     }
   });
+  
+  // If Firm Email is not set or is invalid, set a placeholder
+  if (!settings[SETTINGS_KEYS.FIRM_EMAIL] || settings[SETTINGS_KEYS.FIRM_EMAIL] === true || settings[SETTINGS_KEYS.FIRM_EMAIL] === "TRUE") {
+    settings[SETTINGS_KEYS.FIRM_EMAIL] = "your-email@example.com";
+  }
   
   console.log('⚙️ Settings loaded:', settings);
   
@@ -169,9 +180,21 @@ function setupPaymentsSheet(sheet) {
     "Date",
     "Client Email",
     "Amount",
-    "Currency"
+    "Payment Method"
   ];
   setupSheet(sheet, headers);
+  
+  // Add sample payment data for testing
+  const samplePayments = [
+    ["2025-01-15", "client1@example.com", "2500", "card - 4242"],
+    ["2025-01-16", "client2@example.com", "1500", "card - 5555"],
+    ["2025-01-17", "client1@example.com", "1000", "card - 4242"]
+  ];
+  
+  sheet.getRange(2, 1, samplePayments.length, 4).setValues(samplePayments);
+  
+  // Add note to explain sample data
+  sheet.getRange(1, 1).setNote("Sample data for testing. Delete these rows and add your real payment data from Zapier.");
   // No instructions or protection
 }
 
@@ -201,6 +224,20 @@ function setupTimeLogsSheet(sheet) {
     "Hours"
   ];
   setupSheet(sheet, headers);
+  
+  // Add sample time log data for testing
+  const sampleTimeLogs = [
+    ["2025-01-15", "client1@example.com", "M-2025-001", "JS", "2.5"],
+    ["2025-01-16", "client1@example.com", "M-2025-001", "JS", "1.5"],
+    ["2025-01-17", "client2@example.com", "M-2025-002", "JD", "3.0"],
+    ["2025-01-18", "client1@example.com", "M-2025-001", "JS", "4.0"],
+    ["2025-01-19", "client2@example.com", "M-2025-002", "JD", "2.0"]
+  ];
+  
+  sheet.getRange(2, 1, sampleTimeLogs.length, 5).setValues(sampleTimeLogs);
+  
+  // Add note to explain sample data
+  sheet.getRange(1, 1).setNote("Sample data for testing. Replace with your real time logs. Lawyer IDs must match those in Welcome sheet.");
   // No instructions or protection
 }
 
@@ -253,6 +290,17 @@ function setupMattersSheet(sheet) {
     "Case Value"
   ];
   setupSheet(sheet, headers);
+  
+  // Add sample matter data for testing
+  const sampleMatters = [
+    ["M-2025-001", "client1@example.com", "John Smith", "Contract Review", "2025-01-15", "Active", "50000"],
+    ["M-2025-002", "client2@example.com", "Jane Doe", "Litigation Case", "2025-01-16", "Active", "100000"]
+  ];
+  
+  sheet.getRange(2, 1, sampleMatters.length, 7).setValues(sampleMatters);
+  
+  // Add note to explain sample data
+  sheet.getRange(1, 1).setNote("Sample matters for testing. Replace with your real matters. Matter IDs should match those in TimeLogs.");
   // No instructions or protection
 }
 
@@ -313,10 +361,24 @@ function setupWelcomeSheet(ss) {
   // --- Preserve existing values in the Value column (column 2) for settings rows ---
   let preservedValues = [];
   try {
-    const maybeExisting = welcomeSheet.getRange(5, 1, 5, 2).getValues();
+    const maybeExisting = welcomeSheet.getRange(5, 1, 6, 2).getValues();
     preservedValues = maybeExisting.map(row => row[1]);
   } catch (e) {
     preservedValues = [];
+  }
+
+  // --- Get the current user's email for Firm Email setting ---
+  let userEmail = "your-email@example.com"; // placeholder
+  try {
+    userEmail = Session.getActiveUser().getEmail();
+  } catch (e) {
+    // If Session.getActiveUser() fails, try to get from the spreadsheet owner
+    try {
+      userEmail = SpreadsheetApp.getActiveSpreadsheet().getOwner().getEmail();
+    } catch (e2) {
+      // Keep the placeholder if both fail
+      console.log("Could not get user email, using placeholder");
+    }
   }
 
   // --- Preserve existing lawyers section if present ---
@@ -344,7 +406,8 @@ function setupWelcomeSheet(ss) {
     ["Default Currency", preservedValues[1] || "USD", "Default currency for all payments (USD, EUR, etc.)", ""],
     ["Low Balance Threshold", preservedValues[2] || "1000", "Amount in default currency that triggers low balance alerts", ""],
     ["Email Notifications", preservedValues[3] || "TRUE", "Send email notifications (true/false)", ""],
-    ["Test Mode", preservedValues[4] || "TRUE", "Enable test mode to try the system safely (true/false)", ""],
+    ["Firm Email", preservedValues[4] || userEmail, "Email address for system notifications (fallback when user session unavailable)", ""],
+    ["Test Mode", preservedValues[5] || "TRUE", "Enable test mode to try the system safely (true/false)", ""],
     ["", "", "", ""],
     ["👩‍⚖️ Lawyers", "", "", ""],
     ["Email", "Name", "Rate", "Lawyer ID"],
@@ -359,11 +422,11 @@ function setupWelcomeSheet(ss) {
     ["", "", "", ""],
     ["✅ Quick Start Guide", "", "", ""],
     ["Step", "Action", "Details", ""],
-    ["1", "Connect Blawby", "Enter your Blawby payment page URL in the settings above", ""],
-    ["2", "Add Your Team", "Add your lawyers in the section above", ""],
-    ["3", "Set Up Zapier", "Create a Zap that triggers on new Stripe payments → sends payment info to this sheet", ""],
-    ["4", "Start Logging Time", "Use the TimeLogs tab to record billable hours", ""],
-    ["5", "Monitor Activity", "Check the daily summary emails for updates", ""],
+    ["1", "Test the System", "Run dailySync() to process sample data and see emails working", ""],
+    ["2", "Connect Blawby", "Enter your Blawby payment page URL in the settings above", ""],
+    ["3", "Add Your Team", "Add your lawyers in the section above", ""],
+    ["4", "Set Up Zapier", "Create a Zap that triggers on new Stripe payments → sends payment info to this sheet", ""],
+    ["5", "Replace Sample Data", "Delete sample rows and add your real data", ""],
     ["", "", "", ""],
     ["📊 Sheet Overview", "", "", ""],
     ["Sheet", "Purpose", "Editable?", ""],
@@ -373,6 +436,13 @@ function setupWelcomeSheet(ss) {
     ["Payments", "Track client payments and receipts", "Auto-updated", ""],
     ["Invoices", "View payment receipts and monthly summaries", "Auto-updated", ""],
     ["Matters", "Track client matters and case values", "Yes", ""],
+    ["", "", "", ""],
+    ["🧪 Testing Features", "", "", ""],
+    ["Feature", "How to Test", "Expected Result", ""],
+    ["Client Creation", "Run dailySync() with sample payments", "Clients sheet populated with client1@example.com and client2@example.com", ""],
+    ["Low Balance Warnings", "Add time logs to reduce balance below threshold", "Email notifications sent to clients", ""],
+    ["Matter Tracking", "Time logs are linked to matters by Matter ID", "Matter breakdown shown in invoices", ""],
+    ["Email Notifications", "Set Email Notifications to TRUE and run dailySync()", "Receipt emails sent to sample clients", ""],
     ["", "", "", ""],
     ["💡 How Retainers Work", "", "", ""],
     ["•", "Clients are automatically created when they make their first payment", "", ""],
@@ -419,7 +489,7 @@ function setupWelcomeSheet(ss) {
              .merge();
 
   // Format section headers
-  const sectionHeaders = [3, 11, 22, 30, 38];
+  const sectionHeaders = [3, 11, 22, 30, 38, 46];
   sectionHeaders.forEach(row => {
     welcomeSheet.getRange(row, 1, 1, 4)
                 .setFontWeight("bold")
@@ -429,7 +499,7 @@ function setupWelcomeSheet(ss) {
   });
 
   // Format settings table
-  const settingsRange = welcomeSheet.getRange(4, 1, 6, 4);
+  const settingsRange = welcomeSheet.getRange(4, 1, 7, 4);
   settingsRange.setBorder(true, true, true, true, true, true)
                .setHorizontalAlignment("left");
 
@@ -448,12 +518,17 @@ function setupWelcomeSheet(ss) {
   overviewRange.setBorder(true, true, true, true, true, true)
                .setHorizontalAlignment("left");
 
+  // Format testing features
+  const testingRange = welcomeSheet.getRange(39, 1, 5, 4);
+  testingRange.setBorder(true, true, true, true, true, true)
+              .setHorizontalAlignment("left");
+
   // Format how retainers work
-  const retainersRange = welcomeSheet.getRange(39, 1, 6, 4);
+  const retainersRange = welcomeSheet.getRange(47, 1, 6, 4);
   retainersRange.setHorizontalAlignment("left");
 
   // Format need help
-  const helpRange = welcomeSheet.getRange(47, 1, 2, 4);
+  const helpRange = welcomeSheet.getRange(55, 1, 2, 4);
   helpRange.setHorizontalAlignment("left");
 
   // Auto-resize columns
@@ -683,4 +758,44 @@ function getLawyersFromWelcomeSheet(welcomeSheet) {
   const lawyers = values.slice(lawyerHeaderRow + 2).filter(row => row[0] && row[0].toString().includes('@'));
   // Add header row for compatibility with buildLawyerMaps
   return [["Email", "Name", "Rate", "Lawyer ID"], ...lawyers];
+}
+
+// Helper function to convert Zapier timestamp to proper date
+function parseZapierTimestamp(timestamp) {
+  try {
+    // If it's already a Date object, return it
+    if (timestamp instanceof Date) {
+      return timestamp;
+    }
+    
+    // Handle Excel serial number format (like 45824.6001)
+    if (typeof timestamp === 'number' || !isNaN(parseFloat(timestamp))) {
+      const serialNumber = parseFloat(timestamp);
+      // Excel dates start from January 1, 1900, but Google Sheets uses January 1, 1899
+      const date = new Date((serialNumber - 25569) * 86400 * 1000);
+      return date;
+    }
+    
+    // Handle string date formats
+    if (typeof timestamp === 'string') {
+      // Try parsing as ISO string first
+      const date = new Date(timestamp);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+      
+      // Try parsing as other common formats
+      const parsed = Date.parse(timestamp);
+      if (!isNaN(parsed)) {
+        return new Date(parsed);
+      }
+    }
+    
+    // If all else fails, return current date
+    console.log(`Could not parse timestamp: ${timestamp}, using current date`);
+    return new Date();
+  } catch (error) {
+    console.log(`Error parsing timestamp ${timestamp}: ${error.message}`);
+    return new Date();
+  }
 } 

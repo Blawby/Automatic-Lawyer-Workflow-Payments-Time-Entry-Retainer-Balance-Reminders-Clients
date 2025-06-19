@@ -1,4 +1,24 @@
 // ========== EMAIL FUNCTIONS ==========
+function getFirmEmail() {
+  try {
+    return Session.getActiveUser().getEmail();
+  } catch (error) {
+    console.log("Warning: Could not get active user email, using fallback");
+    // Try to get from settings first
+    try {
+      const settings = loadSettings(SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Welcome"));
+      const firmEmail = settings[SETTINGS_KEYS.FIRM_EMAIL];
+      if (firmEmail && typeof firmEmail === 'string' && firmEmail.includes('@')) {
+        return firmEmail;
+      }
+    } catch (e) {
+      console.log("Could not load settings for fallback email");
+    }
+    // Final fallback - use a placeholder that will cause a clear error
+    throw new Error("Firm Email not configured. Please set your email address in the Welcome sheet under 'Firm Email' setting.");
+  }
+}
+
 function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance, paymentLink, lastLawyerID, lawyerEmails, today) {
   const props = PropertiesService.getScriptProperties();
   const emailKey = `low_balance_${clientID}_${today}`;
@@ -10,7 +30,7 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
   
   const settings = loadSettings(SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Welcome"));
   const isTestMode = settings[SETTINGS_KEYS.TEST_MODE] === "true";
-  const firmEmail = Session.getActiveUser().getEmail();
+  const firmEmail = getFirmEmail();
   
   // Send to client (or firm in test mode)
   const clientSubject = isTestMode ? `[TEST] Low Balance Alert - ${clientName}` : "Low Balance Alert - Blawby";
@@ -114,7 +134,7 @@ function sendDailyBalanceDigest() {
   
   // Send digest
   MailApp.sendEmail({
-    to: Session.getActiveUser().getEmail(),
+    to: getFirmEmail(),
     subject: isTestMode ? "[TEST] Daily Low Balance Digest - Blawby" : "Daily Low Balance Digest - Blawby",
     body: body
   });
@@ -160,7 +180,7 @@ function notifyServiceResumed(clientID, email, clientName, balance, today) {
   `;
   
   MailApp.sendEmail({
-    to: Session.getActiveUser().getEmail(),
+    to: getFirmEmail(),
     subject: ownerSubject,
     body: ownerBody
   });

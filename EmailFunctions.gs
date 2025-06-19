@@ -60,26 +60,6 @@ function sendEmailToFirm(subject, body, options = {}) {
   sendEmail(firmEmail, subject, body, options);
 }
 
-function getFirmEmail() {
-  try {
-    return Session.getActiveUser().getEmail();
-  } catch (error) {
-    console.log("Warning: Could not get active user email, using fallback");
-    // Try to get from settings first
-    try {
-      const settings = loadSettings();
-      const firmEmail = settings[SETTINGS_KEYS.FIRM_EMAIL];
-      if (firmEmail && typeof firmEmail === 'string' && firmEmail.includes('@')) {
-        return firmEmail;
-      }
-    } catch (e) {
-      console.log("Could not load settings for fallback email");
-    }
-    // Final fallback - use a placeholder that will cause a clear error
-    throw new Error("Firm Email not configured. Please set your email address in the Welcome sheet under 'Firm Email' setting.");
-  }
-}
-
 function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance, paymentLink, lastLawyerID, lawyerEmails, today) {
   logStart('sendLowBalanceEmail');
   

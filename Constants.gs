@@ -63,15 +63,15 @@ const SETTINGS_COLUMNS = {
 };
 
 const SETTINGS_KEYS = {
-  BASE_PAYMENT_URL: "Payment Link",
+  BASE_PAYMENT_URL: "Blawby Payment URL",
   DEFAULT_CURRENCY: "Default Currency",
   TARGET_BALANCE_PERCENTAGE: "target_balance_percentage",
   MIN_TARGET_BALANCE: "min_target_balance",
-  LOW_BALANCE_THRESHOLD: "low_balance_threshold",
-  EMAIL_NOTIFICATIONS: "email_notifications",
+  LOW_BALANCE_THRESHOLD: "Low Balance Threshold",
+  EMAIL_NOTIFICATIONS: "Email Notifications",
   AUTO_GENERATE_INVOICES: "auto_generate_invoices",
   INVOICE_DAY: "invoice_day",
-  TEST_MODE: "test_mode"
+  TEST_MODE: "Test Mode"
 };
 
 const DEFAULT_SETTINGS = {

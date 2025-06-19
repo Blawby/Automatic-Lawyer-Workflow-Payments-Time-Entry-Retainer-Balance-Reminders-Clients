@@ -48,7 +48,8 @@ function loadSettings() {
     throw new Error("Welcome sheet not found. Please run setupWelcomeSheet first.");
   }
   
-  const settingsData = welcomeSheet.getRange(4, 1, 7, 4).getValues(); // Get settings from Welcome sheet
+  const settingsData = welcomeSheet.getRange(4, 1, 6, 4).getValues(); // Get settings from Welcome sheet
+  console.log('🟦 Raw settingsData from Welcome sheet:', JSON.stringify(settingsData));
   const settings = { ...DEFAULT_SETTINGS }; // Start with defaults
   
   // Process each setting row
@@ -535,108 +536,126 @@ function setupSheet(sheet, headers) {
 
 function setupWelcomeSheet(ss) {
   const welcomeSheet = getOrCreateSheet(ss, "Welcome");
-  
+
+  // --- Preserve existing values in the Value column (column 2) for settings rows ---
+  // We'll assume settings start at row 5 (after header) and go for 5 rows (update if you add more settings)
+  let preservedValues = [];
+  try {
+    const maybeExisting = welcomeSheet.getRange(5, 1, 5, 2).getValues();
+    preservedValues = maybeExisting.map(row => row[1]); // just the Value column
+  } catch (e) {
+    preservedValues = [];
+  }
+
   // Clear existing content
   welcomeSheet.clear();
-  
-  // Set up the content
+
+  // Set up the content (no Default column, Value column prepopulated)
   const content = [
-    ["Welcome to Blawby Retainer Management", "", "", ""],
-    ["", "", "", ""],
-    ["⚙️ System Settings", "", "", ""],
-    ["Setting", "Value", "Description", "Default"],
-    ["Blawby Payment URL", "", "Your Blawby payment page URL (e.g. https://app.blawby.com/...)", "https://app.blawby.com/pay"],
-    ["Default Currency", "", "Default currency for all payments (USD, EUR, etc.)", "USD"],
-    ["Low Balance Threshold", "", "Amount in default currency that triggers low balance alerts", "1000"],
-    ["Email Notifications", "", "Send email notifications (true/false)", "true"],
-    ["Test Mode", "", "Enable test mode to try the system safely (true/false)", "false"],
-    ["", "", "", ""],
-    ["✅ Quick Start Guide", "", "", ""],
-    ["Step", "Action", "Details", ""],
-    ["1", "Connect Blawby", "Enter your Blawby payment page URL in the settings above", ""],
-    ["2", "Add Your Team", "Go to the Lawyers tab and add your legal team members", ""],
-    ["3", "Set Up Zapier", "Create a Zap that triggers on new Stripe payments → sends payment info to this sheet", ""],
-    ["4", "Start Logging Time", "Use the TimeLogs tab to record billable hours", ""],
-    ["5", "Monitor Activity", "Check the daily summary emails for updates", ""],
-    ["", "", "", ""],
-    ["📊 Sheet Overview", "", "", ""],
-    ["Sheet", "Purpose", "Editable?", ""],
-    ["Lawyers", "Manage your legal team and their rates", "Yes", ""],
-    ["Clients", "Track client balances and payment links", "Auto-updated", ""],
-    ["TimeLogs", "Record billable hours and activities", "Yes", ""],
-    ["Payments", "Track client payments and receipts", "Auto-updated", ""],
-    ["Invoices", "View payment receipts and monthly summaries", "Auto-updated", ""],
-    ["Matters", "Track client matters and case values", "Yes", ""],
-    ["", "", "", ""],
-    ["💡 How Retainers Work", "", "", ""],
-    ["•", "Clients are automatically created when they make their first payment", "", ""],
-    ["•", "Each payment generates an automatic receipt with current balance", "", ""],
-    ["•", "Time is logged against the retainer balance", "", ""],
-    ["•", "Monthly summaries show hours used vs. balance", "", ""],
-    ["•", "Low balance warnings are sent automatically", "", ""],
-    ["•", "Payment links are auto-generated for easy top-ups", "", ""],
-    ["", "", "", ""],
-    ["❓ Need Help?", "", "", ""],
-    ["•", "Email: support@blawby.com", "", ""],
-    ["•", "Docs: blawby.com/docs", "", ""]
+    ["Welcome to Blawby Retainer Management", "", ""],
+    ["", "", ""],
+    ["⚙️ System Settings", "", ""],
+    ["Setting", "Value", "Description"],
+    ["Blawby Payment URL", preservedValues[0] || "https://app.blawby.com/pay", "Your Blawby payment page URL (e.g. https://app.blawby.com/...)",],
+    ["Default Currency", preservedValues[1] || "USD", "Default currency for all payments (USD, EUR, etc.)"],
+    ["Low Balance Threshold", preservedValues[2] || "1000", "Amount in default currency that triggers low balance alerts"],
+    ["Email Notifications", preservedValues[3] || "TRUE", "Send email notifications (true/false)"],
+    ["Test Mode", preservedValues[4] || "TRUE", "Enable test mode to try the system safely (true/false)"],
+    ["", "", ""],
+    ["✅ Quick Start Guide", "", ""],
+    ["Step", "Action", "Details"],
+    ["1", "Connect Blawby", "Enter your Blawby payment page URL in the settings above"],
+    ["2", "Add Your Team", "Go to the Lawyers tab and add your legal team members"],
+    ["3", "Set Up Zapier", "Create a Zap that triggers on new Stripe payments → sends payment info to this sheet"],
+    ["4", "Start Logging Time", "Use the TimeLogs tab to record billable hours"],
+    ["5", "Monitor Activity", "Check the daily summary emails for updates"],
+    ["", "", ""],
+    ["📊 Sheet Overview", "", ""],
+    ["Sheet", "Purpose", "Editable?"],
+    ["Lawyers", "Manage your legal team and their rates", "Yes"],
+    ["Clients", "Track client balances and payment links", "Auto-updated"],
+    ["TimeLogs", "Record billable hours and activities", "Yes"],
+    ["Payments", "Track client payments and receipts", "Auto-updated"],
+    ["Invoices", "View payment receipts and monthly summaries", "Auto-updated"],
+    ["Matters", "Track client matters and case values", "Yes"],
+    ["", "", ""],
+    ["💡 How Retainers Work", "", ""],
+    ["•", "Clients are automatically created when they make their first payment", ""],
+    ["•", "Each payment generates an automatic receipt with current balance", ""],
+    ["•", "Time is logged against the retainer balance", ""],
+    ["•", "Monthly summaries show hours used vs. balance", ""],
+    ["•", "Low balance warnings are sent automatically", ""],
+    ["•", "Payment links are auto-generated for easy top-ups", ""],
+    ["", "", ""],
+    ["❓ Need Help?", "", ""],
+    ["•", "Email: support@blawby.com", ""],
+    ["•", "Docs: blawby.com/docs", ""]
   ];
-  
+
   // Write content to sheet
-  welcomeSheet.getRange(1, 1, content.length, 4).setValues(content);
-  
+  welcomeSheet.getRange(1, 1, content.length, 3).setValues(content);
+
+  // --- Restore preserved values into the Value column ---
+  if (preservedValues.length > 0) {
+    for (let i = 0; i < preservedValues.length; i++) {
+      if (preservedValues[i] !== "" && preservedValues[i] !== undefined && preservedValues[i] !== null) {
+        welcomeSheet.getRange(5 + i, 2).setValue(preservedValues[i]);
+      }
+    }
+  }
+
   // Format the sheet
-  const headerRange = welcomeSheet.getRange(1, 1, 1, 4);
+  const headerRange = welcomeSheet.getRange(1, 1, 1, 3);
   headerRange.setFontSize(16)
              .setFontWeight("bold")
              .setBackground("#4285f4")
              .setFontColor("white")
              .setHorizontalAlignment("center")
              .merge();
-  
+
   // Format section headers
   const sectionHeaders = [3, 11, 19, 27, 35];
   sectionHeaders.forEach(row => {
-    welcomeSheet.getRange(row, 1, 1, 4)
+    welcomeSheet.getRange(row, 1, 1, 3)
                 .setFontWeight("bold")
                 .setBackground("#f3f3f3")
                 .setFontSize(14)
                 .merge();
   });
-  
+
   // Format settings table
-  const settingsRange = welcomeSheet.getRange(4, 1, 6, 4);
+  const settingsRange = welcomeSheet.getRange(4, 1, 6, 3);
   settingsRange.setBorder(true, true, true, true, true, true)
                .setHorizontalAlignment("left");
-  
+
   // Format quick start guide
-  const guideRange = welcomeSheet.getRange(12, 1, 6, 4);
+  const guideRange = welcomeSheet.getRange(12, 1, 6, 3);
   guideRange.setBorder(true, true, true, true, true, true)
             .setHorizontalAlignment("left");
-  
+
   // Format sheet overview
-  const overviewRange = welcomeSheet.getRange(20, 1, 7, 4);
+  const overviewRange = welcomeSheet.getRange(20, 1, 7, 3);
   overviewRange.setBorder(true, true, true, true, true, true)
                .setHorizontalAlignment("left");
-  
+
   // Format how retainers work
-  const retainersRange = welcomeSheet.getRange(28, 1, 6, 4);
+  const retainersRange = welcomeSheet.getRange(28, 1, 6, 3);
   retainersRange.setHorizontalAlignment("left");
-  
+
   // Format need help
-  const helpRange = welcomeSheet.getRange(36, 1, 2, 4);
+  const helpRange = welcomeSheet.getRange(36, 1, 2, 3);
   helpRange.setHorizontalAlignment("left");
-  
+
   // Auto-resize columns
-  welcomeSheet.autoResizeColumns(1, 4);
-  
+  welcomeSheet.autoResizeColumns(1, 3);
+
   // Freeze header row
   welcomeSheet.setFrozenRows(1);
-  
+
   // Set column widths
   welcomeSheet.setColumnWidth(1, 200);
   welcomeSheet.setColumnWidth(2, 200);
   welcomeSheet.setColumnWidth(3, 400);
-  welcomeSheet.setColumnWidth(4, 200);
 }
 
 // Add the missing invoice generation function

@@ -22,16 +22,15 @@ A free, IOLTA-compliant Google Sheets solution for law firms to manage retainers
 1. Open the "Welcome" sheet
 2. Fill in your settings:
 
-| Setting | Value | Description | Default | Required? |
-|---------|-------|-------------|---------|-----------|
-| Blawby Payment URL | Your URL | Your payment page URL | https://app.blawby.com/pay | Yes |
-| Default Currency | USD | Currency for all payments | USD | Yes |
-| Low Balance Threshold | 1000 | Amount that triggers alerts | 1000 | Yes |
-| Email Notifications | true | Send email notifications | true | Yes |
-| Test Mode | true | Enable test mode to try the system | false | Yes |
-| Target Balance % | 10 | % of case value for target balance | 10 | Optional |
-| Min Target Balance | 500 | Minimum target balance | 500 | Optional |
-| Invoice Day | 1 | Day of month to generate invoices | 1 | Optional |
+| Setting                | Value                                | Description                                    |
+|------------------------|--------------------------------------|------------------------------------------------|
+| Blawby Payment URL     | https://app.blawby.com/pay           | Your Blawby payment page URL (e.g. https://app.blawby.com/...) |
+| Default Currency       | USD                                  | Default currency for all payments (USD, EUR, etc.) |
+| Low Balance Threshold  | 1000                                 | Amount in default currency that triggers low balance alerts |
+| Email Notifications    | TRUE                                 | Send email notifications (true/false)          |
+| Test Mode              | TRUE                                 | Enable test mode to try the system safely (true/false) |
+
+> **Note:** Edit the Value column to configure your system. All settings are pre-filled with recommended defaults.
 
 3. Enable "Test Mode" to safely try the system
 

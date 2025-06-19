@@ -112,14 +112,32 @@ function onOpen(e) {
  */
 function manualDailySync() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const settings = loadSettings(ss.getSheetByName("Welcome"));
-  const isTestMode = settings[SETTINGS_KEYS.TEST_MODE].toString().toLowerCase() === "true";
+  console.log('🔍 Starting manualDailySync...');
+  
+  const settings = loadSettings();
+  console.log('📋 All settings loaded:', settings);
+  
+  const testModeKey = SETTINGS_KEYS.TEST_MODE;
+  console.log('🔑 Test Mode Key:', testModeKey);
+  
+  const testModeValue = settings[testModeKey];
+  console.log('💾 Test Mode Value:', testModeValue, 'Type:', typeof testModeValue);
+  
+  const testModeString = testModeValue.toString();
+  console.log('📝 Test Mode as String:', testModeString);
+  
+  const testModeLower = testModeString.toLowerCase();
+  console.log('🔤 Test Mode Lowercase:', testModeLower);
+  
+  const isTestMode = testModeLower === "true";
+  console.log('✅ Is Test Mode?', isTestMode);
   
   if (!isTestMode) {
+    console.log('❌ Test Mode is disabled, showing alert...');
     const ui = SpreadsheetApp.getUi();
     const response = ui.alert(
       'Test Mode Required',
-      'Please enable Test Mode in the Welcome sheet before running manual sync.',
+      `Please enable Test Mode in the Welcome sheet before running manual sync.\n\nDebug Info:\n- Test Mode Key: ${testModeKey}\n- Test Mode Value: ${testModeValue}\n- Test Mode Type: ${typeof testModeValue}\n- Test Mode String: "${testModeString}"\n- Test Mode Lowercase: "${testModeLower}"`,
       ui.ButtonSet.OK
     );
     return;

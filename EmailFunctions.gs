@@ -54,6 +54,33 @@ function renderTemplate(type, subtype, ...params) {
 }
 
 /**
+ * Log email to EmailLog sheet for tracking
+ * @param {string} recipient - Email recipient
+ * @param {string} subject - Email subject
+ * @param {string} type - Email type (e.g., 'receipt', 'invoice', 'digest')
+ */
+function logEmail(recipient, subject, type = 'general') {
+  try {
+    const sheet = getOrCreateSheet("EmailLog");
+    
+    // Add headers if sheet is empty
+    const data = sheet.getDataRange().getValues();
+    if (data.length === 0) {
+      sheet.getRange(1, 1, 1, 4).setValues([["Timestamp", "Recipient", "Subject", "Type"]]);
+      sheet.getRange(1, 1, 1, 4).setFontWeight("bold").setBackground("#f3f3f3");
+    }
+    
+    // Append email log entry
+    sheet.appendRow([new Date(), recipient, subject, type]);
+    
+    // Auto-resize columns
+    sheet.autoResizeColumns(1, 4);
+  } catch (error) {
+    logError('logEmail', error);
+  }
+}
+
+/**
  * Universal email sending function that handles test mode automatically
  * @param {string} recipient - Email recipient
  * @param {string} subject - Email subject
@@ -95,6 +122,10 @@ function sendEmail(recipient, subject, body, options = {}) {
     
     MailApp.sendEmail(emailOptions);
     
+    // Log the email
+    const emailType = options.emailType || 'general';
+    logEmail(finalRecipient, finalSubject, emailType);
+    
     log(`✅ Email sent successfully to ${finalRecipient}`);
   } catch (error) {
     logError('sendEmail', error);
@@ -130,7 +161,7 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
   const clientSubject = renderTemplate('LOW_BALANCE', 'CLIENT_SUBJECT');
   const clientBody = renderTemplate('LOW_BALANCE', 'CLIENT_BODY', clientName, balance, targetBalance, paymentLink);
   
-  sendEmail(email, clientSubject, clientBody, { isHtml: true });
+  sendEmail(email, clientSubject, clientBody, { isHtml: true, emailType: 'low_balance_client' });
   
   // Send to firm (only if not in test mode) using template
   if (!isTestMode()) {
@@ -138,7 +169,7 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
     const ownerSubject = renderTemplate('LOW_BALANCE', 'OWNER_SUBJECT', clientName);
     const ownerBody = renderTemplate('LOW_BALANCE', 'OWNER_BODY', clientName, balance, targetBalance, lastActivity);
     
-    sendEmailToFirm(ownerSubject, ownerBody, { isHtml: true });
+    sendEmailToFirm(ownerSubject, ownerBody, { isHtml: true, emailType: 'low_balance_firm' });
   }
   
   // Mark as sent
@@ -199,7 +230,7 @@ function sendDailyBalanceDigest() {
     const subject = renderTemplate('DAILY_DIGEST', 'SUBJECT');
     const body = renderTemplate('DAILY_DIGEST', 'BODY', lowBalanceClients);
     
-    sendEmailToFirm(subject, body, { isHtml: true });
+    sendEmailToFirm(subject, body, { isHtml: true, emailType: 'daily_digest' });
     
     log(`✅ Daily balance digest sent with ${lowBalanceClients.length} clients`);
   } catch (error) {
@@ -227,13 +258,13 @@ function notifyServiceResumed(clientID, email, clientName, balance, today) {
   const clientSubject = renderTemplate('SERVICE_RESUMED', 'CLIENT_SUBJECT');
   const clientBody = renderTemplate('SERVICE_RESUMED', 'CLIENT_BODY', clientName);
   
-  sendEmail(email, clientSubject, clientBody, { isHtml: true });
+  sendEmail(email, clientSubject, clientBody, { isHtml: true, emailType: 'service_resumed_client' });
   
   // Send to firm using template
   const ownerSubject = renderTemplate('SERVICE_RESUMED', 'OWNER_SUBJECT', clientName);
   const ownerBody = renderTemplate('SERVICE_RESUMED', 'OWNER_BODY', clientName);
   
-  sendEmailToFirm(ownerSubject, ownerBody, { isHtml: true });
+  sendEmailToFirm(ownerSubject, ownerBody, { isHtml: true, emailType: 'service_resumed_firm' });
   
   // Mark as sent
   props.setProperty(emailKey, "1");
@@ -298,7 +329,7 @@ function sendWelcomeEmail() {
       </div>
     `;
     
-    sendEmail(firmEmail, subject, body, { isHtml: true });
+    sendEmail(firmEmail, subject, body, { isHtml: true, emailType: 'welcome' });
     
     log(`✅ Welcome email sent to ${firmEmail}`);
   } catch (error) {

@@ -95,7 +95,7 @@ function sendReceiptEmail(email, clientName, receiptId, date, amount, currency, 
   const subject = renderTemplate('RECEIPT', 'SUBJECT', receiptId);
   const body = renderTemplate('RECEIPT', 'BODY', clientName, receiptId, date, amount, currency, newBalance, hoursUsed, averageRate);
   
-  sendEmail(email, subject, body, { isHtml: true });
+  sendEmail(email, subject, body, { isHtml: true, emailType: 'receipt' });
 }
 
 function generateMonthlySummary() {
@@ -159,7 +159,7 @@ function sendMonthlySummaryEmail(email, clientName, month, hoursUsed, averageRat
   const subject = renderTemplate('MONTHLY_SUMMARY', 'SUBJECT', monthStr);
   const body = renderTemplate('MONTHLY_SUMMARY', 'BODY', clientName, monthStr, hoursUsed, averageRate, estimatedUsage, balance);
   
-  sendEmail(email, subject, body, { isHtml: true });
+  sendEmail(email, subject, body, { isHtml: true, emailType: 'monthly_summary' });
 }
 
 /**
@@ -443,7 +443,7 @@ function sendInvoiceEmail(invoice) {
       Your Law Firm
     `;
 
-    sendEmail(client.email, subject, body);
+    sendEmail(client.email, subject, body, { emailType: 'invoice' });
     log(`✅ Invoice email sent to ${client.email}`);
     
     return true;

@@ -285,6 +285,7 @@ function onOpen(e) {
     .addSeparator()
     .addItem('Send Test Email', 'sendTestEmail')
     .addItem('Fix Firm Email', 'fixFirmEmailField')
+    .addItem('View Email Log', 'viewEmailLog')
     .addItem('Validate Email Templates', 'validateTemplates')
     .addItem('Clear Template Cache', 'clearTemplateCache')
     .addItem('Setup System', 'setupSystem')
@@ -371,6 +372,39 @@ function createManualTrigger() {
     .create();
     
   console.log('✅ Manual trigger created successfully');
+}
+
+/**
+ * Opens the EmailLog sheet to view email history
+ */
+function viewEmailLog() {
+  try {
+    const sheet = getOrCreateSheet("EmailLog");
+    sheet.activate();
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Email Log Opened',
+      'The EmailLog sheet has been opened showing all emails sent by the system.\n\n' +
+      'This includes:\n' +
+      '• Receipt emails\n' +
+      '• Invoice emails\n' +
+      '• Low balance alerts\n' +
+      '• Daily digests\n' +
+      '• Welcome emails\n\n' +
+      'All emails are logged with timestamps and types for easy tracking.',
+      ui.ButtonSet.OK
+    );
+  } catch (error) {
+    logError('viewEmailLog', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Email Log Error',
+      `Failed to open email log: ${error.message}`,
+      ui.ButtonSet.OK
+    );
+  }
 }
 
 /**

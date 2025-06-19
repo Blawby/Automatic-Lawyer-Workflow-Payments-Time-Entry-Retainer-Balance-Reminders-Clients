@@ -1075,11 +1075,8 @@ function sendInvoiceEmail(invoice) {
       Your Law Firm
     `;
 
-    MailApp.sendEmail({
-      to: client.email,
-      subject: subject,
-      body: body
-    });
+    sendEmail(client.email, subject, body, { emailType: 'invoice' });
+    log(`✅ Invoice email sent to ${client.email}`);
     
     return true;
   } catch (error) {

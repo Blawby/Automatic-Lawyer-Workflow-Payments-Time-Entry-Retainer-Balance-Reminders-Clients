@@ -577,7 +577,7 @@ function setupWelcomeSheet(ss) {
 
   // Set up the content (ensure every row has exactly 4 columns)
   const content = [
-    ["Welcome to Blawby Retainer Management", "", "", ""],
+    ["Welcome to Blawby Retainer Management v2.0", "", "", ""],
     ["", "", "", ""],
     ["⚙️ System Settings", "", "", ""],
     ["Setting", "Value", "Description", ""],
@@ -601,11 +601,33 @@ function setupWelcomeSheet(ss) {
     ["", "", "", ""],
     ["✅ Quick Start Guide", "", "", ""],
     ["Step", "Action", "Details", ""],
-    ["1", "Test the System", "Run dailySync() to process sample data and see emails working", ""],
-    ["2", "Connect Blawby", "Enter your Blawby payment page URL in the settings above", ""],
-    ["3", "Add Your Team", "Add your lawyers in the section above", ""],
-    ["4", "Set Up Zapier", "Create a Zap that triggers on new Stripe payments → sends payment info to this sheet", ""],
-    ["5", "Replace Sample Data", "Delete sample rows and add your real data", ""],
+    ["1", "Test the System", "Click 'Run Full Daily Sync' in the Blawby menu to process sample data", ""],
+    ["2", "Send Test Email", "Use 'Send Test Email' to validate your email configuration", ""],
+    ["3", "Connect Blawby", "Enter your Blawby payment page URL in the settings above", ""],
+    ["4", "Add Your Team", "Add your lawyers in the section above", ""],
+    ["5", "Set Up Zapier", "Create a Zap that triggers on new Stripe payments → sends payment info to this sheet", ""],
+    ["6", "Replace Sample Data", "Delete sample rows and add your real data", ""],
+    ["", "", "", ""],
+    ["🎯 Menu Features", "", "", ""],
+    ["Feature", "Purpose", "When to Use", ""],
+    ["Run Full Daily Sync", "Complete system synchronization", "Daily automation or manual testing", ""],
+    ["Sync Payments & Clients", "Process payments and update clients", "After new payments arrive", ""],
+    ["Send Balance Digest", "Send low balance summary to firm", "Daily monitoring of client balances", ""],
+    ["Generate Invoices", "Create invoices for all clients", "Monthly billing cycle", ""],
+    ["Send Test Email", "Validate email configuration", "After setup or troubleshooting", ""],
+    ["Validate Email Templates", "Check all templates are working", "After template updates", ""],
+    ["Clear Template Cache", "Refresh email templates", "After template modifications", ""],
+    ["Setup System", "Initial setup and triggers", "First-time setup only", ""],
+    ["", "", "", ""],
+    ["🧪 Testing Features", "", "", ""],
+    ["Feature", "How to Test", "Expected Result", ""],
+    ["System Validation", "Click 'Send Test Email' in menu", "Test email sent to verify configuration", ""],
+    ["Template Validation", "Click 'Validate Email Templates'", "Confirms all email templates are working", ""],
+    ["Client Creation", "Run 'Run Full Daily Sync' with sample payments", "Clients sheet populated with client1@example.com and client2@example.com", ""],
+    ["Low Balance Warnings", "Add time logs to reduce balance below threshold", "Professional HTML email notifications sent to clients", ""],
+    ["Matter Tracking", "Time logs are linked to matters by Matter ID", "Matter breakdown shown in invoices", ""],
+    ["Email Notifications", "Set Email Notifications to TRUE and run sync", "Receipt emails sent to sample clients", ""],
+    ["Template Cache", "Click 'Clear Template Cache' to refresh templates", "Useful when updating email templates", ""],
     ["", "", "", ""],
     ["📊 Sheet Overview", "", "", ""],
     ["Sheet", "Purpose", "Editable?", ""],
@@ -616,24 +638,27 @@ function setupWelcomeSheet(ss) {
     ["Invoices", "View payment receipts and monthly summaries", "Auto-updated", ""],
     ["Matters", "Track client matters and case values", "Yes", ""],
     ["", "", "", ""],
-    ["🧪 Testing Features", "", "", ""],
-    ["Feature", "How to Test", "Expected Result", ""],
-    ["Client Creation", "Run dailySync() with sample payments", "Clients sheet populated with client1@example.com and client2@example.com", ""],
-    ["Low Balance Warnings", "Add time logs to reduce balance below threshold", "Email notifications sent to clients", ""],
-    ["Matter Tracking", "Time logs are linked to matters by Matter ID", "Matter breakdown shown in invoices", ""],
-    ["Email Notifications", "Set Email Notifications to TRUE and run dailySync()", "Receipt emails sent to sample clients", ""],
-    ["", "", "", ""],
     ["💡 How Retainers Work", "", "", ""],
     ["•", "Clients are automatically created when they make their first payment", "", ""],
-    ["•", "Each payment generates an automatic receipt with current balance", "", ""],
-    ["•", "Time is logged against the retainer balance", "", ""],
-    ["•", "Monthly summaries show hours used vs. balance", "", ""],
-    ["•", "Low balance warnings are sent automatically", "", ""],
-    ["•", "Payment links are auto-generated for easy top-ups", "", ""],
+    ["•", "Each payment generates a beautiful HTML receipt with current balance", "", ""],
+    ["•", "Time is logged against the retainer balance with lawyer rates", "", ""],
+    ["•", "Professional monthly summaries show hours used vs. balance", "", ""],
+    ["•", "Low balance warnings are sent automatically with payment links", "", ""],
+    ["•", "Payment links are auto-generated for easy client top-ups", "", ""],
+    ["", "", "", ""],
+    ["✨ What's New in v2.0", "", "", ""],
+    ["Feature", "Benefit", "Impact", ""],
+    ["Professional Email System", "Beautiful HTML emails with templates", "Better client communication", ""],
+    ["Comprehensive Logging", "Detailed monitoring and debugging", "Easier troubleshooting", ""],
+    ["Error Resilience", "Graceful error handling throughout", "More reliable operation", ""],
+    ["Testing Utilities", "Built-in validation and testing tools", "Confidence in system setup", ""],
+    ["Menu Integration", "Easy access to all features", "Better user experience", ""],
+    ["Template Caching", "Fast template loading with validation", "Improved performance", ""],
     ["", "", "", ""],
     ["❓ Need Help?", "", "", ""],
     ["•", "Email: support@blawby.com", "", ""],
-    ["•", "Docs: blawby.com/docs", "", ""]
+    ["•", "Docs: blawby.com/docs", "", ""],
+    ["•", "GitHub Issues: Report bugs or request features", "", ""]
   ];
 
   // Write content to sheet
@@ -668,7 +693,7 @@ function setupWelcomeSheet(ss) {
              .merge();
 
   // Format section headers
-  const sectionHeaders = [3, 11, 22, 30, 38, 46];
+  const sectionHeaders = [3, 11, 22, 30, 38, 46, 55, 63, 71, 79];
   sectionHeaders.forEach(row => {
     welcomeSheet.getRange(row, 1, 1, 4)
                 .setFontWeight("bold")

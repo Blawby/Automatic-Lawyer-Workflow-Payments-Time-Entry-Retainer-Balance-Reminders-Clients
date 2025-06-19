@@ -62,7 +62,54 @@ function isTestMode() {
 }
 
 /**
- * Get the firm email address
+ * Safely detect the user's email address with multiple fallback methods
+ * @return {string} - Valid email address or fallback placeholder
+ */
+function detectEmail() {
+  let email = "your-email@example.com"; // fallback
+  
+  // Method 1: Try Session.getActiveUser() (most reliable when authorized)
+  try {
+    const user = Session.getActiveUser().getEmail();
+    if (user && user.includes("@") && user !== "") {
+      log(`📧 Detected email from Session: ${user}`);
+      return user;
+    }
+  } catch (e) {
+    log(`⚠️ Session.getActiveUser() failed: ${e.message}`);
+  }
+  
+  // Method 2: Try spreadsheet owner (works even without authorization)
+  try {
+    const owner = SpreadsheetApp.getActiveSpreadsheet().getOwner().getEmail();
+    if (owner && owner.includes("@") && owner !== "") {
+      log(`📧 Detected email from Owner: ${owner}`);
+      return owner;
+    }
+  } catch (e) {
+    log(`⚠️ Spreadsheet owner detection failed: ${e.message}`);
+  }
+  
+  // Method 3: Try to get from current user (alternative method)
+  try {
+    const currentUser = Session.getActiveUser();
+    if (currentUser && currentUser.getEmail) {
+      const currentEmail = currentUser.getEmail();
+      if (currentEmail && currentEmail.includes("@") && currentEmail !== "") {
+        log(`📧 Detected email from Current User: ${currentEmail}`);
+        return currentEmail;
+      }
+    }
+  } catch (e) {
+    log(`⚠️ Current user detection failed: ${e.message}`);
+  }
+  
+  log(`⚠️ No valid email detected, using fallback: ${email}`);
+  return email;
+}
+
+/**
+ * Get the firm email address with improved detection
  * @return {string} - Firm email address
  */
 function getFirmEmail() {
@@ -72,20 +119,16 @@ function getFirmEmail() {
     const firmEmail = settings[SETTINGS_KEYS.FIRM_EMAIL];
     
     // If it's a valid email, use it
-    if (firmEmail && typeof firmEmail === 'string' && firmEmail.includes('@')) {
+    if (firmEmail && typeof firmEmail === 'string' && firmEmail.includes('@') && firmEmail !== 'your-email@example.com') {
+      log(`📧 Using firm email from settings: ${firmEmail}`);
       return firmEmail;
     }
     
-    // If not valid, try to get from active user
-    const userEmail = Session.getActiveUser().getEmail();
-    if (userEmail && userEmail.includes('@')) {
-      return userEmail;
-    }
-    
-    // If that fails, try spreadsheet owner
-    const ownerEmail = SpreadsheetApp.getActiveSpreadsheet().getOwner().getEmail();
-    if (ownerEmail && ownerEmail.includes('@')) {
-      return ownerEmail;
+    // If not valid, try to detect email
+    const detectedEmail = detectEmail();
+    if (detectedEmail && detectedEmail.includes('@') && detectedEmail !== 'your-email@example.com') {
+      log(`📧 Using detected email: ${detectedEmail}`);
+      return detectedEmail;
     }
     
     // Final fallback - this will cause a clear error
@@ -317,20 +360,17 @@ function loadSettings() {
       settings[SETTINGS_KEYS.FIRM_EMAIL] === true || 
       settings[SETTINGS_KEYS.FIRM_EMAIL] === "TRUE" ||
       !settings[SETTINGS_KEYS.FIRM_EMAIL].includes('@')) {
-    // Try to get a real email
+    // Try to detect email using the improved function
     try {
-      const userEmail = Session.getActiveUser().getEmail();
-      if (userEmail && userEmail.includes('@')) {
-        settings[SETTINGS_KEYS.FIRM_EMAIL] = userEmail;
+      const detectedEmail = detectEmail();
+      if (detectedEmail && detectedEmail !== 'your-email@example.com') {
+        settings[SETTINGS_KEYS.FIRM_EMAIL] = detectedEmail;
+        log(`📧 Auto-detected email in loadSettings: ${detectedEmail}`);
       } else {
-        const ownerEmail = SpreadsheetApp.getActiveSpreadsheet().getOwner().getEmail();
-        if (ownerEmail && ownerEmail.includes('@')) {
-          settings[SETTINGS_KEYS.FIRM_EMAIL] = ownerEmail;
-        } else {
-          settings[SETTINGS_KEYS.FIRM_EMAIL] = "your-email@example.com";
-        }
+        settings[SETTINGS_KEYS.FIRM_EMAIL] = "your-email@example.com";
       }
     } catch (e) {
+      logError('loadSettings email detection', e);
       settings[SETTINGS_KEYS.FIRM_EMAIL] = "your-email@example.com";
     }
   }

@@ -226,24 +226,29 @@ function checkServiceResumption() {
 function onOpen(e) {
   const ui = SpreadsheetApp.getUi();
   
-  // Validate firm email configuration
+  // Validate firm email configuration with improved detection
   try {
     const firmEmail = getFirmEmail();
     if (!firmEmail || !firmEmail.includes('@') || firmEmail === 'your-email@example.com') {
       ui.alert(
         '⚠️ Email Configuration Required',
         'Your firm email is not properly configured.\n\n' +
-        'Please go to the Welcome sheet and update the "Firm Email" setting with your actual email address.\n\n' +
-        'This is required for the system to send you notifications and test emails.',
+        '📧 Please go to the Welcome sheet and update the "Firm Email" setting with your actual email address.\n\n' +
+        '🔧 This is required for the system to send you notifications and test emails.\n\n' +
+        '💡 Tip: The system will try to auto-detect your email, but you may need to set it manually.',
         ui.ButtonSet.OK
       );
+    } else {
+      // Show success message for first-time users
+      log(`✅ Firm email configured: ${firmEmail}`);
     }
   } catch (error) {
     ui.alert(
       '⚠️ Email Configuration Error',
       'There was an error reading your email configuration.\n\n' +
-      'Please go to the Welcome sheet and update the "Firm Email" setting.\n\n' +
-      'Error: ' + error.message,
+      '📧 Please go to the Welcome sheet and update the "Firm Email" setting.\n\n' +
+      '🔧 Error: ' + error.message + '\n\n' +
+      '💡 This usually happens when the system cannot detect your email automatically.',
       ui.ButtonSet.OK
     );
   }
@@ -390,6 +395,30 @@ function setupSystem() {
     
     console.log('✅ System setup completed successfully');
     
+    // Try to detect and set email automatically
+    try {
+      const detectedEmail = detectEmail();
+      if (detectedEmail && detectedEmail !== 'your-email@example.com') {
+        log(`📧 Auto-detected email: ${detectedEmail}`);
+        
+        // Update the Welcome sheet with the detected email
+        const welcomeSheet = getSheet("Welcome");
+        const settingsRange = welcomeSheet.getRange(5, 1, 6, 2);
+        const settingsData = settingsRange.getValues();
+        
+        // Find and update the Firm Email setting
+        for (let i = 0; i < settingsData.length; i++) {
+          if (settingsData[i][0] === "Firm Email") {
+            settingsRange.getCell(i + 1, 2).setValue(detectedEmail);
+            log(`✅ Updated Firm Email setting to: ${detectedEmail}`);
+            break;
+          }
+        }
+      }
+    } catch (emailError) {
+      log(`⚠️ Could not auto-detect email: ${emailError.message}`);
+    }
+    
     // Send welcome email
     try {
       sendWelcomeEmail();
@@ -402,11 +431,11 @@ function setupSystem() {
     ui.alert(
       'Setup Complete',
       'The Blawby system has been set up successfully!\n\n' +
-      '• All sheets have been created and formatted\n' +
-      '• Daily sync trigger has been created (6 AM)\n' +
-      '• Service resumption trigger has been created (every 6 hours)\n' +
-      '• Welcome email has been sent to your firm email\n\n' +
-      'You can now start using the system. Try "Run Full Daily Sync" to test everything!',
+      '✅ All sheets have been created and formatted\n' +
+      '✅ Daily sync trigger has been created (6 AM)\n' +
+      '✅ Service resumption trigger has been created (every 6 hours)\n' +
+      '📧 Welcome email has been sent to your firm email\n\n' +
+      '🚀 You can now start using the system. Try "Run Full Daily Sync" to test everything!',
       ui.ButtonSet.OK
     );
   } catch (error) {

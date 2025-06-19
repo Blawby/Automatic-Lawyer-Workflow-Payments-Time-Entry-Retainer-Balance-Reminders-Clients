@@ -1,31 +1,45 @@
 // ========== SYNC PAYMENTS AND CLIENTS ==========
 function syncPaymentsAndClients() {
-  const sheets = getSheets();
-  const data = loadSheetData(sheets);
+  logStart('syncPaymentsAndClients');
   
-  const lawyerData = buildLawyerMaps(data.lawyers);
-  const clientsById = buildClientMap(data.clientData);
+  try {
+    const sheets = getSheets();
+    const data = loadSheetData(sheets);
+    
+    log("📊 Processing payments and clients...");
+    const lawyerData = buildLawyerMaps(data.lawyers);
+    const clientsById = buildClientMap(data.clientData);
+    
+    // Process new payments and create clients if needed
+    log("💳 Processing payments...");
+    processPayments(sheets.paymentsSheet, clientsById);
+    
+    // Update matters sheet with client names
+    log("📋 Updating matters with client names...");
+    updateMattersWithClientNames(sheets.mattersSheet, clientsById);
+    
+    // Calculate balances and send low balance warnings
+    log("💰 Calculating client balances...");
+    const today = new Date().toISOString().split('T')[0];
+    const { updatedClientRows, lowBalanceRows, emailsSent } = processClientBalances(
+      clientsById, 
+      data, 
+      lawyerData, 
+      today
+    );
+    
+    // Update sheets
+    log("📝 Updating client and low balance sheets...");
+    updateClientsSheet(sheets.clientsSheet, updatedClientRows);
+    updateLowBalanceSheet(sheets.lowBalanceSheet, lowBalanceRows);
+    
+    log(`✅ Processed ${updatedClientRows.length - 1} clients, sent ${emailsSent} emails`);
+  } catch (error) {
+    logError('syncPaymentsAndClients', error);
+    throw error;
+  }
   
-  // Process new payments and create clients if needed
-  processPayments(sheets.paymentsSheet, clientsById);
-  
-  // Update matters sheet with client names
-  updateMattersWithClientNames(sheets.mattersSheet, clientsById);
-  
-  // Calculate balances and send low balance warnings
-  const today = new Date().toISOString().split('T')[0];
-  const { updatedClientRows, lowBalanceRows, emailsSent } = processClientBalances(
-    clientsById, 
-    data, 
-    lawyerData, 
-    today
-  );
-  
-  // Update sheets
-  updateClientsSheet(sheets.clientsSheet, updatedClientRows);
-  updateLowBalanceSheet(sheets.lowBalanceSheet, lowBalanceRows);
-  
-  console.log(`📊 Processed ${updatedClientRows.length - 1} clients, sent ${emailsSent} emails`);
+  logEnd('syncPaymentsAndClients');
 }
 
 function processPayments(paymentsSheet, clientsById) {

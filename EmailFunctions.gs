@@ -14,7 +14,7 @@ function sendEmail(recipient, subject, body, options = {}) {
   const finalRecipient = isTest ? firmEmail : recipient;
   const finalSubject = isTest ? `[TEST] ${subject}` : subject;
   
-  log(`📧 Sending email to ${finalRecipient}: ${finalSubject}`);
+  log(`📧 Sending email to: ${finalRecipient} | Subject: ${finalSubject}`);
   
   try {
     const emailOptions = {
@@ -27,8 +27,10 @@ function sendEmail(recipient, subject, body, options = {}) {
     if (options.isHtml) {
       emailOptions.htmlBody = body;
       delete emailOptions.isHtml; // Remove our custom option
+      log("📧 Using HTML email format");
     } else {
       emailOptions.body = body;
+      log("📧 Using plain text email format");
     }
     
     MailApp.sendEmail(emailOptions);
@@ -108,49 +110,62 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
 function sendDailyBalanceDigest() {
   logStart('sendDailyBalanceDigest');
   
-  const sheets = getSheets();
-  const data = loadSheetData(sheets);
-  
-  const lawyerData = buildLawyerMaps(data.lawyers);
-  const clientsById = buildClientMap(data.clientData);
-  
-  // Get low balance clients
-  const lowBalanceClients = [];
-  for (const [clientID, row] of Object.entries(clientsById)) {
-    const email = row[0];
-    const clientName = row[1] || "Client";
-    const targetBalance = parseFloat(row[2]) || 0;
+  try {
+    const sheets = getSheets();
+    const data = loadSheetData(sheets);
     
-    const balanceInfo = calculateClientBalance(clientID, email, data, lawyerData.rates);
-    const balance = balanceInfo.totalPaid - balanceInfo.totalUsed;
-    const topUp = Math.max(0, targetBalance - balance);
+    log("📊 Analyzing client balances...");
+    const lawyerData = buildLawyerMaps(data.lawyers);
+    const clientsById = buildClientMap(data.clientData);
     
-    if (topUp > 0) {
-      lowBalanceClients.push({
-        name: clientName,
-        email: email,
-        balance: balance,
-        targetBalance: targetBalance,
-        topUp: topUp,
-        lastActivity: lawyerData.emails[balanceInfo.lastLawyerID] || 'Unknown'
-      });
+    // Get low balance clients
+    const lowBalanceClients = [];
+    log(`📋 Checking ${Object.keys(clientsById).length} clients for low balances...`);
+    
+    for (const [clientID, row] of Object.entries(clientsById)) {
+      const email = row[0];
+      const clientName = row[1] || "Client";
+      const targetBalance = parseFloat(row[2]) || 0;
+      
+      const balanceInfo = calculateClientBalance(clientID, email, data, lawyerData.rates);
+      const balance = balanceInfo.totalPaid - balanceInfo.totalUsed;
+      const topUp = Math.max(0, targetBalance - balance);
+      
+      if (topUp > 0) {
+        lowBalanceClients.push({
+          name: clientName,
+          email: email,
+          balance: balance,
+          targetBalance: targetBalance,
+          topUp: topUp,
+          lastActivity: lawyerData.emails[balanceInfo.lastLawyerID] || 'Unknown'
+        });
+        log(`⚠️ Low balance detected for ${clientName}: $${balance.toFixed(2)} (needs $${topUp.toFixed(2)})`);
+      }
     }
+    
+    if (lowBalanceClients.length === 0) {
+      log("📧 No low balance clients to report");
+      logEnd('sendDailyBalanceDigest');
+      return;
+    }
+    
+    // Sort by top-up amount (highest first)
+    lowBalanceClients.sort((a, b) => b.topUp - a.topUp);
+    
+    log(`📧 Sending digest for ${lowBalanceClients.length} low balance clients...`);
+    
+    // Send digest using template
+    const subject = renderTemplate('DAILY_DIGEST', 'SUBJECT');
+    const body = renderTemplate('DAILY_DIGEST', 'BODY', lowBalanceClients);
+    
+    sendEmailToFirm(subject, body, { isHtml: true });
+    
+    log(`✅ Daily balance digest sent with ${lowBalanceClients.length} clients`);
+  } catch (error) {
+    logError('sendDailyBalanceDigest', error);
+    throw error;
   }
-  
-  if (lowBalanceClients.length === 0) {
-    log("📧 No low balance clients to report");
-    logEnd('sendDailyBalanceDigest');
-    return;
-  }
-  
-  // Sort by top-up amount (highest first)
-  lowBalanceClients.sort((a, b) => b.topUp - a.topUp);
-  
-  // Send digest using template
-  const subject = renderTemplate('DAILY_DIGEST', 'SUBJECT');
-  const body = renderTemplate('DAILY_DIGEST', 'BODY', lowBalanceClients);
-  
-  sendEmailToFirm(subject, body, { isHtml: true });
   
   logEnd('sendDailyBalanceDigest');
 }

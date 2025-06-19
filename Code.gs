@@ -232,6 +232,7 @@ function onOpen(e) {
     .addItem('Send Balance Digest', 'manualSendDigest')
     .addItem('Generate Invoices', 'manualGenerateInvoices')
     .addSeparator()
+    .addItem('Send Test Email', 'sendTestEmail')
     .addItem('Validate Email Templates', 'validateTemplates')
     .addItem('Clear Template Cache', 'clearTemplateCache')
     .addItem('Setup System', 'setupSystem')
@@ -442,4 +443,51 @@ function clearTemplateCache() {
   }
   
   logEnd('clearTemplateCache');
+}
+
+/**
+ * Sends a test email to validate the email system is working
+ */
+function sendTestEmail() {
+  logStart('sendTestEmail');
+  
+  try {
+    const testRecipient = "test@example.com";
+    const testSubject = "Blawby System Test";
+    const testBody = `
+      Hello from your Blawby legal automation system!
+      
+      This is a test email to confirm that:
+      ✅ Email system is working
+      ✅ Test mode is properly configured
+      ✅ Templates are loading correctly
+      
+      System Status: Operational
+      Test Time: ${new Date().toISOString()}
+      
+      Best regards,
+      The Blawby Team
+    `;
+    
+    sendEmail(testRecipient, testSubject, testBody);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Test Email Sent',
+      '✅ Test email has been sent successfully!\n\n' +
+      'Check your email (or firm email if in test mode) to confirm the system is working.',
+      ui.ButtonSet.OK
+    );
+  } catch (error) {
+    logError('sendTestEmail', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Test Email Failed',
+      `❌ Test email failed: ${error.message}\n\nPlease check your email configuration.`,
+      ui.ButtonSet.OK
+    );
+  }
+  
+  logEnd('sendTestEmail');
 } 

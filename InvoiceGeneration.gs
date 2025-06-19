@@ -209,31 +209,47 @@ function getAllClients() {
  * @returns {Object} Summary of invoice generation
  */
 function generateInvoicesForAllClients() {
-  const sheets = getSheets();
-  const settings = loadSettings();
-  const clients = getAllClients();
-  const summary = {
-    total: clients.length,
-    generated: 0,
-    skipped: 0,
-    errors: 0
-  };
+  logStart('generateInvoicesForAllClients');
+  
+  try {
+    const sheets = getSheets();
+    const settings = loadSettings();
+    const clients = getAllClients();
+    
+    log(`📊 Generating invoices for ${clients.length} clients...`);
+    
+    const summary = {
+      total: clients.length,
+      generated: 0,
+      skipped: 0,
+      errors: 0
+    };
 
-  clients.forEach(client => {
-    try {
-      const result = generateInvoiceForClient(client.email);
-      if (result === true) {
-        summary.generated++;
-      } else {
-        summary.skipped++;
+    clients.forEach((client, index) => {
+      try {
+        log(`📄 Processing invoice for client ${index + 1}/${clients.length}: ${client.name}`);
+        const result = generateInvoiceForClient(client.email);
+        if (result === true) {
+          summary.generated++;
+          log(`✅ Invoice generated for ${client.name}`);
+        } else {
+          summary.skipped++;
+          log(`⏭️ Invoice skipped for ${client.name}`);
+        }
+      } catch (error) {
+        logError(`generateInvoiceForClient(${client.name})`, error);
+        summary.errors++;
       }
-    } catch (error) {
-      console.error(`Error generating invoice for ${client.name}:`, error);
-      summary.errors++;
-    }
-  });
+    });
 
-  return summary;
+    log(`📊 Invoice generation summary: ${summary.generated} generated, ${summary.skipped} skipped, ${summary.errors} errors`);
+    return summary;
+  } catch (error) {
+    logError('generateInvoicesForAllClients', error);
+    throw error;
+  }
+  
+  logEnd('generateInvoicesForAllClients');
 }
 
 function generateInvoiceForClient(clientEmail) {
@@ -365,7 +381,7 @@ function getLawyerRate(lawyerId) {
     
     return lawyer ? parseFloat(lawyer[2]) : 0; // Rate is in column 3
   } catch (error) {
-    console.error(`Error getting rate for lawyer ${lawyerId}: ${error.message}`);
+    logError(`getLawyerRate(${lawyerId})`, error);
     return 0;
   }
 }
@@ -373,13 +389,13 @@ function getLawyerRate(lawyerId) {
 function saveInvoice(invoice) {
   try {
     if (!invoice || !invoice.clientEmail) {
-      console.log('Invalid invoice data');
+      log('Invalid invoice data');
       return false;
     }
 
     const invoicesSheet = getSheet('Invoices');
     if (!invoicesSheet) {
-      console.log('Invoices sheet not found');
+      log('Invoices sheet not found');
       return false;
     }
     
@@ -391,9 +407,10 @@ function saveInvoice(invoice) {
       invoice.status
     ]);
     
+    log(`✅ Invoice saved for ${invoice.clientEmail}`);
     return true;
   } catch (error) {
-    console.error(`Error saving invoice: ${error.message}`);
+    logError('saveInvoice', error);
     return false;
   }
 }
@@ -401,13 +418,13 @@ function saveInvoice(invoice) {
 function sendInvoiceEmail(invoice) {
   try {
     if (!invoice || !invoice.clientEmail) {
-      console.log('Invalid invoice data for email');
+      log('Invalid invoice data for email');
       return false;
     }
 
     const client = getClientByEmail(invoice.clientEmail);
     if (!client) {
-      console.log(`Client not found for email ${invoice.clientEmail}`);
+      log(`Client not found for email ${invoice.clientEmail}`);
       return false;
     }
 
@@ -426,15 +443,12 @@ function sendInvoiceEmail(invoice) {
       Your Law Firm
     `;
 
-    MailApp.sendEmail({
-      to: client.email,
-      subject: subject,
-      body: body
-    });
+    sendEmail(client.email, subject, body);
+    log(`✅ Invoice email sent to ${client.email}`);
     
     return true;
   } catch (error) {
-    console.error(`Error sending invoice email: ${error.message}`);
+    logError('sendInvoiceEmail', error);
     return false;
   }
 }

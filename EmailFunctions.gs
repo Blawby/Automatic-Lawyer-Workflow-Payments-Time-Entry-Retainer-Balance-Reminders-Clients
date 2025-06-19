@@ -1,6 +1,59 @@
 // ========== EMAIL FUNCTIONS ==========
 
 /**
+ * Simple fallback renderTemplate function for when the main one is not accessible
+ * @param {string} type - Template type
+ * @param {string} subtype - Template subtype
+ * @param {...any} params - Parameters to pass to the template function
+ * @return {string} - Rendered template
+ */
+function renderTemplate(type, subtype, ...params) {
+  try {
+    // Simple fallback templates
+    const templates = {
+      'LOW_BALANCE': {
+        'CLIENT_SUBJECT': 'Low Balance Alert - Blawby',
+        'CLIENT_BODY': (clientName, balance, targetBalance, paymentLink) => 
+          `Dear ${clientName},\n\nYour account balance is currently $${balance.toFixed(2)}. Your target balance is $${targetBalance.toFixed(2)}.\n\nPlease top up your balance at: ${paymentLink}`,
+        'OWNER_SUBJECT': (clientName) => `Low Balance Alert - ${clientName}`,
+        'OWNER_BODY': (clientName, balance, targetBalance, lastActivity) => 
+          `Client ${clientName} has a low balance of $${balance.toFixed(2)}. Target balance is $${targetBalance.toFixed(2)}. Last activity: ${lastActivity || 'No recent activity'}`
+      },
+      'DAILY_DIGEST': {
+        'SUBJECT': 'Daily Low Balance Digest - Blawby',
+        'BODY': (lowBalanceClients) => {
+          let body = 'The following clients have low balances:\n\n';
+          lowBalanceClients.forEach(client => {
+            body += `${client.name}: $${client.balance.toFixed(2)} (needs $${client.topUp.toFixed(2)})\n`;
+          });
+          return body;
+        }
+      },
+      'SERVICE_RESUMED': {
+        'CLIENT_SUBJECT': 'Service Resumed - Blawby',
+        'CLIENT_BODY': (clientName) => `Dear ${clientName},\n\nYour Blawby services have been resumed. Thank you for maintaining your balance.`,
+        'OWNER_SUBJECT': (clientName) => `Service Resumed - ${clientName}`,
+        'OWNER_BODY': (clientName) => `Services have been resumed for client ${clientName}.`
+      }
+    };
+    
+    if (!templates[type] || !templates[type][subtype]) {
+      throw new Error(`Template ${type}.${subtype} not found`);
+    }
+    
+    const template = templates[type][subtype];
+    if (typeof template === 'function') {
+      return template(...params);
+    }
+    return template;
+  } catch (error) {
+    logError('renderTemplate', error);
+    // Return a simple fallback message
+    return `Template rendering failed: ${error.message}`;
+  }
+}
+
+/**
  * Universal email sending function that handles test mode automatically
  * @param {string} recipient - Email recipient
  * @param {string} subject - Email subject

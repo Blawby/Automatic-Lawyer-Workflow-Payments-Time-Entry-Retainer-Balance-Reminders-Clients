@@ -541,25 +541,27 @@ function setupLowBalanceSheet(sheet) {
 
 function setupInvoicesSheet(sheet) {
   const headers = [
-    "Month",
-    "Client Email",
+    "Invoice Number",
     "Client Name",
-    "Total Hours",
-    "Total Used ($)",
-    "Lawyers Involved",
-    "Generated At",
+    "Date",
+    "Amount",
     "Currency",
-    "Trust Account",
-    "Client Ref",
-    "UUID",
-    "Invoice ID",
-    "Client ID",
-    "Invoice Date",
-    "Matter Totals",
-    "Total Amount",
-    "Status"
+    "Status",
+    "Payment Link",
+    "Notes"
   ];
   setupSheet(sheet, headers);
+  
+  // Add sample invoice data for testing
+  const sampleInvoices = [
+    ["INV-001", "Sample Client", "2025-01-15", "1000", "USD", "Paid", "https://app.blawby.com/pay", "Sample invoice"],
+    ["INV-002", "Another Client", "2025-01-16", "2000", "USD", "Pending", "https://app.blawby.com/pay", "Another sample"]
+  ];
+  
+  sheet.getRange(2, 1, sampleInvoices.length, 8).setValues(sampleInvoices);
+  
+  // Add note to explain sample data
+  sheet.getRange(1, 1).setNote("Sample invoice data for testing. These are invoices for balance top-ups.");
   // No instructions or protection
 }
 

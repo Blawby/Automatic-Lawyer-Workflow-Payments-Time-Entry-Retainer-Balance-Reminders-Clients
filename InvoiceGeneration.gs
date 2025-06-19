@@ -1,43 +1,7 @@
 // ========== INVOICE GENERATION ==========
-function setupInvoiceSheet() {
-  const sheet = getOrCreateSheet('Invoices');
-  
-  const headers = [
-    "Invoice Number",
-    "Client Name",
-    "Date",
-    "Amount",
-    "Currency",
-    "Status",
-    "Payment Link",
-    "Notes"
-  ];
-  
-  setupSheet(sheet, headers);
-  
-  // Add sample data if sheet is empty
-  if (sheet.getLastRow() === 1) {
-    const sampleData = [
-      ["INV-001", "Sample Client", new Date(), 1000, "USD", "Paid", "https://app.blawby.com/pay", "Sample invoice"],
-      ["INV-002", "Another Client", new Date(), 2000, "USD", "Pending", "https://app.blawby.com/pay", "Another sample"]
-    ];
-    
-    sheet.getRange(2, 1, sampleData.length, headers.length).setValues(sampleData);
-    
-    // Format the sheet
-    sheet.getRange(1, 1, 1, headers.length).setBackground('#4285f4')
-          .setFontColor('white')
-          .setFontWeight('bold');
-    
-    sheet.autoResizeColumns(1, headers.length);
-  }
-}
 
 function generateReceipt(paymentData, clientData) {
   const sheets = getSheets();
-  
-  // Ensure invoice sheet is properly set up
-  setupInvoiceSheet();
   
   const [date, email, amount, paymentMethod] = paymentData;
   
@@ -69,24 +33,15 @@ function generateReceipt(paymentData, clientData) {
   const rates = monthlyTimeLogs.map(log => lawyerData.rates[log[3]] || 0).filter(rate => rate > 0);
   const averageRate = rates.length > 0 ? rates.reduce((sum, rate) => sum + rate, 0) / rates.length : 0;
   
+  // Add receipt data to Payments sheet (not Invoices sheet)
   const receiptRow = [
     date,
     email,
-    clientName,
-    "Top-up Payment",
     amount,
-    getSetting(SETTINGS_KEYS.DEFAULT_CURRENCY, "USD"), // Use default currency from settings
-    `Retainer top-up payment - Receipt #${receiptIdValue}`,
-    receiptIdValue,
-    clientId,
-    "Completed", // Default status for all payments
-    newBalance,
-    `${firstOfMonth.toISOString().substring(0, 7)}`, // YYYY-MM format
-    hoursUsed,
-    averageRate
+    `Retainer top-up payment - Receipt #${receiptIdValue}`
   ];
   
-  sheets.invoicesSheet.appendRow(receiptRow);
+  sheets.paymentsSheet.appendRow(receiptRow);
   
   // Send receipt email
   sendReceiptEmail(email, clientName, receiptIdValue, date, amount, getSetting(SETTINGS_KEYS.DEFAULT_CURRENCY, "USD"), newBalance, hoursUsed, averageRate);
@@ -97,71 +52,6 @@ function sendReceiptEmail(email, clientName, receiptId, date, amount, currency, 
   const body = renderTemplate('RECEIPT', 'BODY', clientName, receiptId, date, amount, currency, newBalance, hoursUsed, averageRate);
   
   sendEmail(email, subject, body, { isHtml: true, emailType: 'receipt' });
-}
-
-function generateMonthlySummary() {
-  const sheets = getSheets();
-  
-  // Get all clients
-  const clients = sheets.clientsSheet.getDataRange().getValues();
-  const today = new Date();
-  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  
-  // For each client, generate a monthly summary
-  for (let i = 1; i < clients.length; i++) {
-    const client = clients[i];
-    const email = client[0];
-    const clientName = client[1] || "Client";
-    const balance = parseFloat(client[6]) || 0;
-    
-    // Get time logs for this month
-    const timeLogs = sheets.timeLogsSheet.getDataRange().getValues();
-    const monthlyTimeLogs = timeLogs.filter(log => {
-      const logDate = new Date(log[0]);
-      return log[1] === email && logDate >= firstOfMonth;
-    });
-    
-    if (monthlyTimeLogs.length === 0) continue;
-    
-    // Calculate monthly totals - get lawyers from Welcome sheet
-    const hoursUsed = monthlyTimeLogs.reduce((sum, log) => sum + (parseFloat(log[4]) || 0), 0);
-    const lawyers = getLawyersFromWelcomeSheet(sheets.welcomeSheet);
-    const lawyerData = buildLawyerMaps(lawyers);
-    const rates = monthlyTimeLogs.map(log => lawyerData.rates[log[3]] || 0).filter(rate => rate > 0);
-    const averageRate = rates.length > 0 ? rates.reduce((sum, rate) => sum + rate, 0) / rates.length : 0;
-    const estimatedUsage = hoursUsed * averageRate;
-    
-    // Generate summary row
-    const summaryRow = [
-      today.toISOString().split('T')[0],
-      email,
-      clientName,
-      "Monthly Summary",
-      estimatedUsage,
-      getSetting(SETTINGS_KEYS.DEFAULT_CURRENCY, "USD"),
-      `Monthly summary for ${firstOfMonth.toISOString().substring(0, 7)}`,
-      "MONTHLY-" + firstOfMonth.toISOString().substring(0, 7),
-      client[9], // Client ID
-      "Completed",
-      balance,
-      firstOfMonth.toISOString().substring(0, 7),
-      hoursUsed,
-      averageRate
-    ];
-    
-    sheets.invoicesSheet.appendRow(summaryRow);
-    
-    // Send monthly summary email
-    sendMonthlySummaryEmail(email, clientName, firstOfMonth, hoursUsed, averageRate, estimatedUsage, balance);
-  }
-}
-
-function sendMonthlySummaryEmail(email, clientName, month, hoursUsed, averageRate, estimatedUsage, balance) {
-  const monthStr = month.toISOString().substring(0, 7);
-  const subject = renderTemplate('MONTHLY_SUMMARY', 'SUBJECT', monthStr);
-  const body = renderTemplate('MONTHLY_SUMMARY', 'BODY', clientName, monthStr, hoursUsed, averageRate, estimatedUsage, balance);
-  
-  sendEmail(email, subject, body, { isHtml: true, emailType: 'monthly_summary' });
 }
 
 /**

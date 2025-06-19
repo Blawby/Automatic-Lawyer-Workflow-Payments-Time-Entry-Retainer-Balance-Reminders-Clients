@@ -47,6 +47,22 @@ function executeSyncOperations(sheets) {
   logStart('executeSyncOperations');
   
   try {
+    // Clear email flags in test mode to allow repeated testing
+    if (isTestMode()) {
+      const props = PropertiesService.getScriptProperties();
+      const allProps = props.getProperties();
+      let deletedCount = 0;
+      for (const [key, value] of Object.entries(allProps)) {
+        if (key.startsWith('low_balance_') || key.startsWith('service_resumed_')) {
+          props.deleteProperty(key);
+          deletedCount++;
+        }
+      }
+      if (deletedCount > 0) {
+        log(`🧪 Test mode: Cleared ${deletedCount} email flags for testing`);
+      }
+    }
+    
     // 1. Sync payments and clients (creates/updates client records)
     log("📊 Syncing payments and clients...");
     try {
@@ -106,24 +122,6 @@ function syncPaymentsAndClientsOnly() {
 }
 
 /**
- * Sends only the daily balance digest (for manual testing)
- */
-function sendDailyBalanceDigestOnly() {
-  logStart('sendDailyBalanceDigestOnly');
-  
-  try {
-    validateSpreadsheetAccess();
-    sendDailyBalanceDigest();
-    log("✅ Daily balance digest sent");
-  } catch (error) {
-    logError('sendDailyBalanceDigestOnly', error);
-    throw error;
-  }
-  
-  logEnd('sendDailyBalanceDigestOnly');
-}
-
-/**
  * Generates only invoices (for manual testing)
  */
 function generateInvoicesOnly() {
@@ -152,7 +150,7 @@ function manualGenerateInvoices() {
 }
 
 function manualSendDigest() {
-  sendDailyBalanceDigestOnly();
+  sendDailyBalanceDigest();
 }
 
 // Time-based triggers
@@ -288,6 +286,7 @@ function onOpen(e) {
     .addItem('View Email Log', 'viewEmailLog')
     .addItem('Validate Email Templates', 'validateTemplates')
     .addItem('Clear Template Cache', 'clearTemplateCache')
+    .addItem('Clear Email Flags (Test)', 'clearEmailFlags')
     .addItem('Setup System', 'setupSystem')
     .addToUi();
 }
@@ -416,4 +415,282 @@ function viewEmailLog() {
 function doGet(e) {
   // Replace this ID with your template spreadsheet ID
   const templateId = SpreadsheetApp.getActiveSpreadsheet().getId();
-  const url = `
+  const url = `https://docs.google.com/spreadsheets/d/${templateId}/copy`;
+  
+  const output = HtmlService.createHtmlOutput(
+    `<html>
+      <head>
+        <title>Redirecting to Blawby Template...</title>
+        <script>
+          window.location.href = "${url}";
+        </script>
+      </head>
+      <body>
+        <p>Redirecting to the Blawby template spreadsheet...</p>
+        <p>If you are not redirected, <a href="${url}">click here</a>.</p>
+      </body>
+    </html>`
+  );
+  
+  return output;
+}
+
+/**
+ * Sets up the entire system (sheets, triggers, etc.)
+ * This function can be run manually for initial setup.
+ */
+function setupSystem() {
+  console.log('🚀 Setting up Blawby system...');
+  
+  try {
+    validateSpreadsheetAccess();
+    const sheets = getSheetsAndSetup();
+    
+    // Create triggers
+    createDailyTrigger();
+    createServiceResumeTrigger();
+    
+    console.log('✅ System setup completed successfully');
+    
+    // Try to detect and set email automatically
+    try {
+      const ownerEmail = SpreadsheetApp.getActiveSpreadsheet().getOwner().getEmail();
+      if (ownerEmail && ownerEmail !== 'your-email@example.com') {
+        log(`📧 Auto-detected email: ${ownerEmail}`);
+        
+        // Update the Welcome sheet with the detected email
+        const welcomeSheet = getSheet("Welcome");
+        const settingsRange = welcomeSheet.getRange(5, 1, 6, 2);
+        const settingsData = settingsRange.getValues();
+        
+        // Find and update the Firm Email setting
+        for (let i = 0; i < settingsData.length; i++) {
+          if (settingsData[i][0] === "Firm Email") {
+            settingsRange.getCell(i + 1, 2).setValue(ownerEmail);
+            log(`✅ Updated Firm Email setting to: ${ownerEmail}`);
+            break;
+          }
+        }
+      }
+    } catch (emailError) {
+      log(`⚠️ Could not auto-detect email: ${emailError.message}`);
+    }
+    
+    // Send welcome email
+    try {
+      sendWelcomeEmail();
+      console.log('✅ Welcome email sent successfully');
+    } catch (emailError) {
+      console.log('⚠️ Could not send welcome email:', emailError.message);
+    }
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Setup Complete',
+      'The Blawby system has been set up successfully!\n\n' +
+      '✅ All sheets have been created and formatted\n' +
+      '✅ Daily sync trigger has been created (6 AM)\n' +
+      '✅ Service resumption trigger has been created (every 6 hours)\n' +
+      '📧 Welcome email has been sent to your firm email\n\n' +
+      '🚀 You can now start using the system. Try "Run Full Daily Sync" to test everything!',
+      ui.ButtonSet.OK
+    );
+  } catch (error) {
+    console.error('❌ System setup failed:', error.message);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Setup Failed',
+      `System setup failed: ${error.message}\n\nPlease check the logs and try again.`,
+      ui.ButtonSet.OK
+    );
+  }
+}
+
+/**
+ * Deletes all triggers for a specific function
+ * @param {string} functionName - Name of the function to delete triggers for
+ */
+function deleteTriggersByFunction(functionName) {
+  const triggers = ScriptApp.getProjectTriggers();
+  let deletedCount = 0;
+  
+  for (const trigger of triggers) {
+    if (trigger.getHandlerFunction() === functionName) {
+      ScriptApp.deleteTrigger(trigger);
+      deletedCount++;
+    }
+  }
+  
+  if (deletedCount > 0) {
+    console.log(`🗑️ Deleted ${deletedCount} existing trigger(s) for ${functionName}`);
+  }
+}
+
+/**
+ * Validates all email templates and shows results
+ */
+function validateTemplates() {
+  logStart('validateTemplates');
+  
+  try {
+    const isValid = validateEmailTemplates();
+    
+    if (isValid) {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert(
+        'Template Validation',
+        '✅ All email templates are valid and ready to use!',
+        ui.ButtonSet.OK
+      );
+    } else {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert(
+        'Template Validation',
+        '❌ Some email templates are missing or invalid. Please check the logs.',
+        ui.ButtonSet.OK
+      );
+    }
+  } catch (error) {
+    logError('validateTemplates', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Template Validation Error',
+      `Template validation failed: ${error.message}`,
+      ui.ButtonSet.OK
+    );
+  }
+  
+  logEnd('validateTemplates');
+}
+
+/**
+ * Clears the template cache and shows confirmation
+ */
+function clearTemplateCache() {
+  logStart('clearTemplateCache');
+  
+  try {
+    const templateLoader = getTemplateLoader();
+    templateLoader.clearCache();
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Template Cache Cleared',
+      '✅ Template cache has been cleared successfully!\n\nThis is useful when you update email templates.',
+      ui.ButtonSet.OK
+    );
+  } catch (error) {
+    logError('clearTemplateCache', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Template Cache Error',
+      `Failed to clear template cache: ${error.message}`,
+      ui.ButtonSet.OK
+    );
+  }
+  
+  logEnd('clearTemplateCache');
+}
+
+/**
+ * Sends a test email to validate the email system is working
+ */
+function sendTestEmail() {
+  logStart('sendTestEmail');
+  
+  try {
+    const testRecipient = "test@example.com";
+    const testSubject = "Blawby System Test";
+    const testBody = `
+      Hello from your Blawby legal automation system!
+      
+      This is a test email to confirm that:
+      ✅ Email system is working
+      ✅ Test mode is properly configured
+      ✅ Templates are loading correctly
+      
+      System Status: Operational
+      Test Time: ${new Date().toISOString()}
+      
+      Best regards,
+      The Blawby Team
+    `;
+    
+    sendEmail(testRecipient, testSubject, testBody, { emailType: 'test' });
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Test Email Sent',
+      '✅ Test email has been sent successfully!\n\n' +
+      'Check your email (or firm email if in test mode) to confirm the system is working.',
+      ui.ButtonSet.OK
+    );
+  } catch (error) {
+    logError('sendTestEmail', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Test Email Failed',
+      `❌ Test email failed: ${error.message}\n\nPlease check your email configuration.`,
+      ui.ButtonSet.OK
+    );
+  }
+  
+  logEnd('sendTestEmail');
+}
+
+/**
+ * Clears email sent flags for testing purposes
+ * This allows you to test email sending multiple times in test mode
+ */
+function clearEmailFlags() {
+  logStart('clearEmailFlags');
+  
+  try {
+    if (!isTestMode()) {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert(
+        'Test Mode Required',
+        'This function is only available in Test Mode.\n\nPlease enable Test Mode in the Welcome sheet first.',
+        ui.ButtonSet.OK
+      );
+      return;
+    }
+    
+    const props = PropertiesService.getScriptProperties();
+    const allProps = props.getProperties();
+    
+    // Find and delete email sent flags
+    let deletedCount = 0;
+    for (const [key, value] of Object.entries(allProps)) {
+      if (key.startsWith('low_balance_') || key.startsWith('service_resumed_')) {
+        props.deleteProperty(key);
+        deletedCount++;
+      }
+    }
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Email Flags Cleared',
+      `✅ Cleared ${deletedCount} email sent flags.\n\n` +
+      'You can now test email sending again without the "already sent today" restriction.',
+      ui.ButtonSet.OK
+    );
+    
+    log(`🗑️ Cleared ${deletedCount} email sent flags`);
+  } catch (error) {
+    logError('clearEmailFlags', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Clear Email Flags Error',
+      `Failed to clear email flags: ${error.message}`,
+      ui.ButtonSet.OK
+    );
+  }
+  
+  logEnd('clearEmailFlags');
+}

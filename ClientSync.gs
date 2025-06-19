@@ -90,6 +90,17 @@ function processPayments(paymentsSheet, clientsById) {
       clientsById[clientEmail] = newClient;
       console.log(`👤 Created new client: ${clientEmail}`);
     }
+    
+    // Generate receipt for the payment
+    const clientData = clientsById[clientEmail];
+    if (clientData) {
+      try {
+        generateReceipt([paymentDate, clientEmail, paymentAmount, row[3] || "card"], clientData);
+        log(`✅ Generated receipt for payment of $${paymentAmount} from ${clientEmail}`);
+      } catch (error) {
+        logError('generateReceipt', error);
+      }
+    }
   }
 }
 

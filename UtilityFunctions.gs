@@ -62,50 +62,24 @@ function isTestMode() {
 }
 
 /**
- * Safely detect the user's email address with multiple fallback methods
+ * Safely detect the user's email address using the spreadsheet owner
  * @return {string} - Valid email address or fallback placeholder
  */
 function detectEmail() {
-  let email = "your-email@example.com"; // fallback
-  
-  // Method 1: Try Session.getActiveUser() (most reliable when authorized)
-  try {
-    const user = Session.getActiveUser().getEmail();
-    if (user && user.includes("@") && user !== "") {
-      log(`📧 Detected email from Session: ${user}`);
-      return user;
-    }
-  } catch (e) {
-    log(`⚠️ Session.getActiveUser() failed: ${e.message}`);
-  }
-  
-  // Method 2: Try spreadsheet owner (works even without authorization)
   try {
     const owner = SpreadsheetApp.getActiveSpreadsheet().getOwner().getEmail();
     if (owner && owner.includes("@") && owner !== "") {
-      log(`📧 Detected email from Owner: ${owner}`);
+      log(`📧 Detected email from spreadsheet owner: ${owner}`);
       return owner;
     }
   } catch (e) {
     log(`⚠️ Spreadsheet owner detection failed: ${e.message}`);
   }
   
-  // Method 3: Try to get from current user (alternative method)
-  try {
-    const currentUser = Session.getActiveUser();
-    if (currentUser && currentUser.getEmail) {
-      const currentEmail = currentUser.getEmail();
-      if (currentEmail && currentEmail.includes("@") && currentEmail !== "") {
-        log(`📧 Detected email from Current User: ${currentEmail}`);
-        return currentEmail;
-      }
-    }
-  } catch (e) {
-    log(`⚠️ Current user detection failed: ${e.message}`);
-  }
-  
-  log(`⚠️ No valid email detected, using fallback: ${email}`);
-  return email;
+  // Only fallback if owner detection completely fails
+  const fallback = "your-email@example.com";
+  log(`⚠️ No valid email detected, using fallback: ${fallback}`);
+  return fallback;
 }
 
 /**
@@ -124,12 +98,17 @@ function fixFirmEmailField() {
         !currentValue || !currentValue.includes('@') || 
         currentValue === 'your-email@example.com') {
       
-      // Try to detect a valid email
-      const detectedEmail = detectEmail();
+      // Try to get the spreadsheet owner's email
+      let ownerEmail = "your-email@example.com";
+      try {
+        ownerEmail = SpreadsheetApp.getActiveSpreadsheet().getOwner().getEmail();
+      } catch (e) {
+        log(`⚠️ Could not get spreadsheet owner email: ${e.message}`);
+      }
       
-      if (detectedEmail && detectedEmail !== 'your-email@example.com') {
-        firmEmailCell.setValue(detectedEmail);
-        log(`✅ Fixed Firm Email field: "${currentValue}" → "${detectedEmail}"`);
+      if (ownerEmail && ownerEmail !== 'your-email@example.com') {
+        firmEmailCell.setValue(ownerEmail);
+        log(`✅ Fixed Firm Email field: "${currentValue}" → "${ownerEmail}"`);
         return true;
       } else {
         log(`⚠️ Could not detect valid email to replace "${currentValue}"`);
@@ -161,11 +140,15 @@ function getFirmEmail() {
       return firmEmail;
     }
     
-    // If not valid, try to detect email
-    const detectedEmail = detectEmail();
-    if (detectedEmail && detectedEmail.includes('@') && detectedEmail !== 'your-email@example.com') {
-      log(`📧 Using detected email: ${detectedEmail}`);
-      return detectedEmail;
+    // If not valid, try to get from spreadsheet owner
+    try {
+      const ownerEmail = SpreadsheetApp.getActiveSpreadsheet().getOwner().getEmail();
+      if (ownerEmail && ownerEmail.includes('@') && ownerEmail !== 'your-email@example.com') {
+        log(`📧 Using spreadsheet owner email: ${ownerEmail}`);
+        return ownerEmail;
+      }
+    } catch (e) {
+      log(`⚠️ Spreadsheet owner detection failed: ${e.message}`);
     }
     
     // Final fallback - this will cause a clear error
@@ -668,14 +651,14 @@ function setupWelcomeSheet(ss) {
     preservedValues = [];
   }
 
-  // --- Get the current user's email using improved detection ---
-  let userEmail = "your-email@example.com"; // placeholder
+  // --- Get the spreadsheet owner's email (whoever copied the sheet) ---
+  let ownerEmail = "your-email@example.com"; // placeholder
   try {
-    userEmail = detectEmail();
-    log(`📧 Detected email for Welcome sheet: ${userEmail}`);
+    ownerEmail = ss.getOwner().getEmail();
+    log(`📧 Detected spreadsheet owner email: ${ownerEmail}`);
   } catch (e) {
-    logError('setupWelcomeSheet email detection', e);
-    userEmail = "your-email@example.com";
+    logError('setupWelcomeSheet owner detection', e);
+    ownerEmail = "your-email@example.com";
   }
 
   // --- Preserve existing lawyers section if present ---
@@ -689,10 +672,10 @@ function setupWelcomeSheet(ss) {
   } catch (e) {
     preservedLawyers = [];
   }
-
+  
   // Clear existing content
   welcomeSheet.clear();
-
+  
   // Set up the content (ensure every row has exactly 4 columns)
   const content = [
     ["Welcome to Blawby Retainer Management v2.0", "", "", ""],
@@ -703,7 +686,7 @@ function setupWelcomeSheet(ss) {
     ["Default Currency", preservedValues[1] || "USD", "Default currency for all payments (USD, EUR, etc.)", ""],
     ["Low Balance Threshold", preservedValues[2] || "1000", "Amount in default currency that triggers low balance alerts", ""],
     ["Email Notifications", preservedValues[3] || "TRUE", "Send email notifications (true/false)", ""],
-    ["Firm Email", preservedValues[4] || userEmail, "Email address for system notifications", ""],
+    ["Firm Email", preservedValues[4] || ownerEmail, "Email address for system notifications", ""],
     ["Test Mode", preservedValues[5] || "TRUE", "Enable test mode to try the system safely (true/false)", ""],
     ["", "", "", ""],
     ["👩‍⚖️ Lawyers", "", "", ""],
@@ -778,7 +761,7 @@ function setupWelcomeSheet(ss) {
     ["•", "Docs: blawby.com/docs", "", ""],
     ["•", "GitHub Issues: Report bugs or request features", "", ""]
   ];
-
+  
   // Write content to sheet
   welcomeSheet.getRange(1, 1, content.length, 4).setValues(content);
 
@@ -793,8 +776,8 @@ function setupWelcomeSheet(ss) {
           if (preservedEmail === true || preservedEmail === false || 
               preservedEmail === "TRUE" || preservedEmail === "FALSE" ||
               !preservedEmail.includes('@') || preservedEmail === 'your-email@example.com') {
-            welcomeSheet.getRange(5 + i, 2).setValue(userEmail);
-            log(`📧 Replaced invalid Firm Email value "${preservedEmail}" with detected email: ${userEmail}`);
+            welcomeSheet.getRange(5 + i, 2).setValue(ownerEmail);
+            log(`📧 Replaced invalid Firm Email value "${preservedEmail}" with detected email: ${ownerEmail}`);
           } else {
             // Valid email, keep it
             welcomeSheet.getRange(5 + i, 2).setValue(preservedEmail);
@@ -817,7 +800,7 @@ function setupWelcomeSheet(ss) {
       }
     }
   }
-
+  
   // Format the sheet
   const headerRange = welcomeSheet.getRange(1, 1, 1, 4);
   headerRange.setFontSize(16)
@@ -826,7 +809,7 @@ function setupWelcomeSheet(ss) {
              .setFontColor("white")
              .setHorizontalAlignment("center")
              .merge();
-
+  
   // Format section headers
   const sectionHeaders = [3, 11, 22, 30, 38, 46, 55, 63, 71, 79];
   sectionHeaders.forEach(row => {
@@ -836,7 +819,7 @@ function setupWelcomeSheet(ss) {
                 .setFontSize(14)
                 .merge();
   });
-
+  
   // Format settings table
   const settingsRange = welcomeSheet.getRange(4, 1, 7, 4);
   settingsRange.setBorder(true, true, true, true, true, true)
@@ -845,13 +828,13 @@ function setupWelcomeSheet(ss) {
   // Format lawyers table
   const lawyersRange = welcomeSheet.getRange(12, 1, 8, 4);
   lawyersRange.setBorder(true, true, true, true, true, true)
-              .setHorizontalAlignment("left");
-
+               .setHorizontalAlignment("left");
+  
   // Format quick start guide
   const guideRange = welcomeSheet.getRange(23, 1, 6, 4);
   guideRange.setBorder(true, true, true, true, true, true)
             .setHorizontalAlignment("left");
-
+  
   // Format sheet overview
   const overviewRange = welcomeSheet.getRange(31, 1, 7, 4);
   overviewRange.setBorder(true, true, true, true, true, true)
@@ -860,22 +843,22 @@ function setupWelcomeSheet(ss) {
   // Format testing features
   const testingRange = welcomeSheet.getRange(39, 1, 5, 4);
   testingRange.setBorder(true, true, true, true, true, true)
-              .setHorizontalAlignment("left");
-
+               .setHorizontalAlignment("left");
+  
   // Format how retainers work
   const retainersRange = welcomeSheet.getRange(47, 1, 6, 4);
   retainersRange.setHorizontalAlignment("left");
-
+  
   // Format need help
   const helpRange = welcomeSheet.getRange(55, 1, 2, 4);
   helpRange.setHorizontalAlignment("left");
-
+  
   // Auto-resize columns
   welcomeSheet.autoResizeColumns(1, 4);
-
+  
   // Freeze header row
   welcomeSheet.setFrozenRows(1);
-
+  
   // Set column widths
   welcomeSheet.setColumnWidth(1, 200);
   welcomeSheet.setColumnWidth(2, 200);

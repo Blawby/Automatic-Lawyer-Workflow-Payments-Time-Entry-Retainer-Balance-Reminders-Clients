@@ -63,8 +63,9 @@ function generateReceipt(paymentData, clientData) {
   // Calculate hours used this month
   const hoursUsed = monthlyTimeLogs.reduce((sum, log) => sum + (parseFloat(log[4]) || 0), 0);
   
-  // Get average rate used
-  const lawyerData = buildLawyerMaps(sheets.lawyersSheet.getDataRange().getValues());
+  // Get average rate used - get lawyers from Welcome sheet
+  const lawyers = getLawyersFromWelcomeSheet(sheets.welcomeSheet);
+  const lawyerData = buildLawyerMaps(lawyers);
   const rates = monthlyTimeLogs.map(log => lawyerData.rates[log[3]] || 0).filter(rate => rate > 0);
   const averageRate = rates.length > 0 ? rates.reduce((sum, rate) => sum + rate, 0) / rates.length : 0;
   
@@ -122,9 +123,10 @@ function generateMonthlySummary() {
     
     if (monthlyTimeLogs.length === 0) continue;
     
-    // Calculate monthly totals
+    // Calculate monthly totals - get lawyers from Welcome sheet
     const hoursUsed = monthlyTimeLogs.reduce((sum, log) => sum + (parseFloat(log[4]) || 0), 0);
-    const lawyerData = buildLawyerMaps(sheets.lawyersSheet.getDataRange().getValues());
+    const lawyers = getLawyersFromWelcomeSheet(sheets.welcomeSheet);
+    const lawyerData = buildLawyerMaps(lawyers);
     const rates = monthlyTimeLogs.map(log => lawyerData.rates[log[3]] || 0).filter(rate => rate > 0);
     const averageRate = rates.length > 0 ? rates.reduce((sum, rate) => sum + rate, 0) / rates.length : 0;
     const estimatedUsage = hoursUsed * averageRate;

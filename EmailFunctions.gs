@@ -34,6 +34,28 @@ function renderTemplate(type, subtype, ...params) {
         'CLIENT_BODY': (clientName) => `Dear ${clientName},\n\nYour Blawby services have been resumed. Thank you for maintaining your balance.`,
         'OWNER_SUBJECT': (clientName) => `Service Resumed - ${clientName}`,
         'OWNER_BODY': (clientName) => `Services have been resumed for client ${clientName}.`
+      },
+      'RECEIPT': {
+        'SUBJECT': (receiptId) => `Payment Receipt #${receiptId} - Blawby`,
+        'BODY': (clientName, receiptId, date, amount, currency, newBalance, hoursUsed, averageRate) => 
+          `Dear ${clientName},\n\nThank you for your payment. Here is your receipt:\n\n` +
+          `Receipt #: ${receiptId}\n` +
+          `Date: ${date}\n` +
+          `Amount: ${currency} ${amount}\n` +
+          `New Balance: ${currency} ${newBalance.toFixed(2)}\n\n` +
+          `${hoursUsed > 0 ? `Monthly Summary:\nHours Used This Month: ${hoursUsed.toFixed(2)}\nAverage Rate: ${currency} ${averageRate.toFixed(2)}/hour\nEstimated Monthly Usage: ${currency} ${(hoursUsed * averageRate).toFixed(2)}\n\n` : ''}` +
+          `Thank you for your business.`
+      },
+      'MONTHLY_SUMMARY': {
+        'SUBJECT': (month) => `Monthly Summary - ${month} - Blawby`,
+        'BODY': (clientName, month, hoursUsed, averageRate, estimatedUsage, balance) => 
+          `Dear ${clientName},\n\nHere is your monthly summary for ${month}:\n\n` +
+          `Hours Used: ${hoursUsed.toFixed(2)}\n` +
+          `Average Rate: $${averageRate.toFixed(2)}/hour\n` +
+          `Estimated Usage: $${estimatedUsage.toFixed(2)}\n` +
+          `Current Balance: $${balance.toFixed(2)}\n\n` +
+          `${balance < estimatedUsage ? `Note: Your current balance is below the estimated monthly usage. Consider topping up your retainer to ensure uninterrupted service.\n\n` : ''}` +
+          `Thank you for your business.`
       }
     };
     
@@ -101,7 +123,13 @@ function sendEmail(recipient, subject, body, options = {}) {
     throw new Error(errorMsg);
   }
   
-  log(`📧 Sending email to: ${finalRecipient} | Subject: ${finalSubject}`);
+  // Enhanced logging for test mode
+  if (isTest) {
+    log(`🧪 TEST MODE: Redirecting email from ${recipient} → ${finalRecipient}`);
+    log(`📧 Sending [TEST] email to: ${finalRecipient} | Subject: ${finalSubject}`);
+  } else {
+    log(`📧 Sending email to: ${finalRecipient} | Subject: ${finalSubject}`);
+  }
   
   try {
     const emailOptions = {
@@ -126,7 +154,11 @@ function sendEmail(recipient, subject, body, options = {}) {
     const emailType = options.emailType || 'general';
     logEmail(finalRecipient, finalSubject, emailType);
     
-    log(`✅ Email sent successfully to ${finalRecipient}`);
+    if (isTest) {
+      log(`✅ [TEST] Email sent successfully to ${finalRecipient} (originally intended for ${recipient})`);
+    } else {
+      log(`✅ Email sent successfully to ${finalRecipient}`);
+    }
   } catch (error) {
     logError('sendEmail', error);
     throw error;
@@ -150,11 +182,18 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
   const props = PropertiesService.getScriptProperties();
   const emailKey = `low_balance_${clientID}_${today}`;
   
-  // Check if email already sent today
-  if (props.getProperty(emailKey)) {
+  // Check if email already sent today (skip this check in test mode)
+  if (!isTestMode() && props.getProperty(emailKey)) {
     log(`📧 Low balance email already sent today for ${clientName}`);
     logEnd('sendLowBalanceEmail');
     return false;
+  }
+  
+  // Log test mode behavior
+  if (isTestMode()) {
+    log(`🧪 Test mode active — allowing low balance email resend for ${clientName}`);
+    log(`🧪 Email key: ${emailKey}`);
+    log(`🧪 Current flag value: ${props.getProperty(emailKey) || 'not set'}`);
   }
   
   // Send to client using template
@@ -163,17 +202,21 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
   
   sendEmail(email, clientSubject, clientBody, { isHtml: true, emailType: 'low_balance_client' });
   
-  // Send to firm (only if not in test mode) using template
+  // Send to firm using template (always send in test mode, optional in production)
+  const lastActivity = lawyerEmails[lastLawyerID] || 'Unknown';
+  const ownerSubject = renderTemplate('LOW_BALANCE', 'OWNER_SUBJECT', clientName);
+  const ownerBody = renderTemplate('LOW_BALANCE', 'OWNER_BODY', clientName, balance, targetBalance, lastActivity);
+  
+  sendEmailToFirm(ownerSubject, ownerBody, { isHtml: true, emailType: 'low_balance_firm' });
+  
+  // Mark as sent (only in production mode)
   if (!isTestMode()) {
-    const lastActivity = lawyerEmails[lastLawyerID] || 'Unknown';
-    const ownerSubject = renderTemplate('LOW_BALANCE', 'OWNER_SUBJECT', clientName);
-    const ownerBody = renderTemplate('LOW_BALANCE', 'OWNER_BODY', clientName, balance, targetBalance, lastActivity);
-    
-    sendEmailToFirm(ownerSubject, ownerBody, { isHtml: true, emailType: 'low_balance_firm' });
+    props.setProperty(emailKey, "1");
+    log(`📧 Marked low balance email as sent for ${clientName}`);
+  } else {
+    log(`🧪 Test mode: Not setting email flag for ${clientName}`);
   }
   
-  // Mark as sent
-  props.setProperty(emailKey, "1");
   logEnd('sendLowBalanceEmail');
   return true;
 }
@@ -247,11 +290,18 @@ function notifyServiceResumed(clientID, email, clientName, balance, today) {
   const props = PropertiesService.getScriptProperties();
   const emailKey = `service_resumed_${clientID}_${today}`;
   
-  // Check if notification already sent today
-  if (props.getProperty(emailKey)) {
+  // Check if notification already sent today (skip this check in test mode)
+  if (!isTestMode() && props.getProperty(emailKey)) {
     log(`📧 Service resumed notification already sent today for ${clientName}`);
     logEnd('notifyServiceResumed');
     return;
+  }
+  
+  // Log test mode behavior
+  if (isTestMode()) {
+    log(`🧪 Test mode active — allowing service resumed email resend for ${clientName}`);
+    log(`🧪 Email key: ${emailKey}`);
+    log(`🧪 Current flag value: ${props.getProperty(emailKey) || 'not set'}`);
   }
   
   // Send to client using template
@@ -266,8 +316,14 @@ function notifyServiceResumed(clientID, email, clientName, balance, today) {
   
   sendEmailToFirm(ownerSubject, ownerBody, { isHtml: true, emailType: 'service_resumed_firm' });
   
-  // Mark as sent
-  props.setProperty(emailKey, "1");
+  // Mark as sent (only in production mode)
+  if (!isTestMode()) {
+    props.setProperty(emailKey, "1");
+    log(`📧 Marked service resumed email as sent for ${clientName}`);
+  } else {
+    log(`🧪 Test mode: Not setting email flag for ${clientName}`);
+  }
+  
   logEnd('notifyServiceResumed');
 }
 

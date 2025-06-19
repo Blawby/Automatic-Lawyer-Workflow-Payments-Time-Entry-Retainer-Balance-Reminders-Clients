@@ -109,6 +109,43 @@ function detectEmail() {
 }
 
 /**
+ * Automatically fix the Firm Email field if it's showing boolean values
+ * This function can be called to clean up invalid email values
+ */
+function fixFirmEmailField() {
+  try {
+    const welcomeSheet = getSheet("Welcome");
+    const firmEmailCell = welcomeSheet.getRange(9, 2); // Firm Email is in row 9, column 2
+    const currentValue = firmEmailCell.getValue();
+    
+    // Check if the current value is invalid
+    if (currentValue === true || currentValue === false || 
+        currentValue === "TRUE" || currentValue === "FALSE" ||
+        !currentValue || !currentValue.includes('@') || 
+        currentValue === 'your-email@example.com') {
+      
+      // Try to detect a valid email
+      const detectedEmail = detectEmail();
+      
+      if (detectedEmail && detectedEmail !== 'your-email@example.com') {
+        firmEmailCell.setValue(detectedEmail);
+        log(`✅ Fixed Firm Email field: "${currentValue}" → "${detectedEmail}"`);
+        return true;
+      } else {
+        log(`⚠️ Could not detect valid email to replace "${currentValue}"`);
+        return false;
+      }
+    } else {
+      log(`✅ Firm Email field already has valid value: ${currentValue}`);
+      return true;
+    }
+  } catch (error) {
+    logError('fixFirmEmailField', error);
+    return false;
+  }
+}
+
+/**
  * Get the firm email address with improved detection
  * @return {string} - Firm email address
  */
@@ -631,28 +668,14 @@ function setupWelcomeSheet(ss) {
     preservedValues = [];
   }
 
-  // --- Get the current user's email for Firm Email setting ---
+  // --- Get the current user's email using improved detection ---
   let userEmail = "your-email@example.com"; // placeholder
   try {
-    userEmail = Session.getActiveUser().getEmail();
-    if (!userEmail || !userEmail.includes('@')) {
-      // Try spreadsheet owner as fallback
-      userEmail = SpreadsheetApp.getActiveSpreadsheet().getOwner().getEmail();
-    }
-    if (!userEmail || !userEmail.includes('@')) {
-      userEmail = "your-email@example.com";
-    }
+    userEmail = detectEmail();
+    log(`📧 Detected email for Welcome sheet: ${userEmail}`);
   } catch (e) {
-    // If Session.getActiveUser() fails, try to get from the spreadsheet owner
-    try {
-      userEmail = SpreadsheetApp.getActiveSpreadsheet().getOwner().getEmail();
-      if (!userEmail || !userEmail.includes('@')) {
-        userEmail = "your-email@example.com";
-      }
-    } catch (e2) {
-      // Keep the placeholder if both fail
-      log("Could not get user email, using placeholder");
-    }
+    logError('setupWelcomeSheet email detection', e);
+    userEmail = "your-email@example.com";
   }
 
   // --- Preserve existing lawyers section if present ---
@@ -680,7 +703,7 @@ function setupWelcomeSheet(ss) {
     ["Default Currency", preservedValues[1] || "USD", "Default currency for all payments (USD, EUR, etc.)", ""],
     ["Low Balance Threshold", preservedValues[2] || "1000", "Amount in default currency that triggers low balance alerts", ""],
     ["Email Notifications", preservedValues[3] || "TRUE", "Send email notifications (true/false)", ""],
-    ["Firm Email", preservedValues[4] || userEmail, "Email address for system notifications (fallback when user session unavailable)", ""],
+    ["Firm Email", preservedValues[4] || userEmail, "Email address for system notifications", ""],
     ["Test Mode", preservedValues[5] || "TRUE", "Enable test mode to try the system safely (true/false)", ""],
     ["", "", "", ""],
     ["👩‍⚖️ Lawyers", "", "", ""],
@@ -763,7 +786,24 @@ function setupWelcomeSheet(ss) {
   if (preservedValues.length > 0) {
     for (let i = 0; i < preservedValues.length; i++) {
       if (preservedValues[i] !== "" && preservedValues[i] !== undefined && preservedValues[i] !== null) {
-        welcomeSheet.getRange(5 + i, 2).setValue(preservedValues[i]);
+        // Special handling for Firm Email field (index 4)
+        if (i === 4) { // Firm Email is the 5th setting (index 4)
+          const preservedEmail = preservedValues[i];
+          // If the preserved value is a boolean or invalid, use the detected email
+          if (preservedEmail === true || preservedEmail === false || 
+              preservedEmail === "TRUE" || preservedEmail === "FALSE" ||
+              !preservedEmail.includes('@') || preservedEmail === 'your-email@example.com') {
+            welcomeSheet.getRange(5 + i, 2).setValue(userEmail);
+            log(`📧 Replaced invalid Firm Email value "${preservedEmail}" with detected email: ${userEmail}`);
+          } else {
+            // Valid email, keep it
+            welcomeSheet.getRange(5 + i, 2).setValue(preservedEmail);
+            log(`📧 Preserved valid Firm Email: ${preservedEmail}`);
+          }
+        } else {
+          // For all other settings, preserve the value as-is
+          welcomeSheet.getRange(5 + i, 2).setValue(preservedValues[i]);
+        }
       }
     }
   }

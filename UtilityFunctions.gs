@@ -168,16 +168,29 @@ function getAllSheets() {
 
 /**
  * Get or create a sheet by name
- * @param {string} name - Sheet name
+ * @param {string|GoogleAppsScript.Spreadsheet.Spreadsheet} nameOrSs - Sheet name or spreadsheet object
+ * @param {string} name - Sheet name (optional, only if first param is spreadsheet)
  * @return {GoogleAppsScript.Spreadsheet.Sheet} - The sheet object
  */
-function getOrCreateSheet(name) {
-  const ss = getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(name);
+function getOrCreateSheet(nameOrSs, name) {
+  let ss, sheetName;
+  
+  // Handle both function signatures for backward compatibility
+  if (typeof nameOrSs === 'string') {
+    // Called as getOrCreateSheet(name)
+    ss = getActiveSpreadsheet();
+    sheetName = nameOrSs;
+  } else {
+    // Called as getOrCreateSheet(ss, name)
+    ss = nameOrSs;
+    sheetName = name;
+  }
+  
+  let sheet = ss.getSheetByName(sheetName);
   
   if (!sheet) {
-    sheet = ss.insertSheet(name);
-    log(`📄 Created new sheet: ${name}`);
+    sheet = ss.insertSheet(sheetName);
+    log(`📄 Created new sheet: ${sheetName}`);
   }
   
   return sheet;

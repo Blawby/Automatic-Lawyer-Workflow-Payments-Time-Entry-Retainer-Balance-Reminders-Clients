@@ -1,7 +1,6 @@
 // ========== SYNC PAYMENTS AND CLIENTS ==========
 function syncPaymentsAndClients() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheets = getSheets(ss);
+  const sheets = getSheets();
   const data = loadSheetData(sheets);
   
   const lawyerData = buildLawyerMaps(data.lawyers);

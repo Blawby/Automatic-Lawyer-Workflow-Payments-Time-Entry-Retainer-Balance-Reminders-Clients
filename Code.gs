@@ -23,10 +23,7 @@ function dailySync() {
  * Validates that we have access to the active spreadsheet
  */
 function validateSpreadsheetAccess() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (!ss) {
-    throw new Error("No active spreadsheet found");
-  }
+  getActiveSpreadsheet();
 }
 
 /**
@@ -34,8 +31,7 @@ function validateSpreadsheetAccess() {
  * @return {Object} Sheets object with all required sheets
  */
 function getSheetsAndSetup() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheets = getSheets(ss);
+  const sheets = getSheets();
   
   // Set up all sheets with proper headers and formatting
   setupAllSheets(sheets);
@@ -149,8 +145,7 @@ function createServiceResumeTrigger() {
 }
 
 function checkServiceResumption() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheets = getSheets(ss);
+  const sheets = getSheets();
   const data = loadSheetData(sheets);
   
   const lawyerData = buildLawyerMaps(data.lawyers);
@@ -193,7 +188,6 @@ function onOpen(e) {
  * Only works when Test Mode is enabled.
  */
 function manualDailySync() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
   console.log('🔍 Starting manualDailySync...');
   
   if (!isTestMode()) {

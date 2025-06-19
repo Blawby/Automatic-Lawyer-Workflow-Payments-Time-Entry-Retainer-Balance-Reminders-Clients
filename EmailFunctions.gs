@@ -49,7 +49,7 @@ function getFirmEmail() {
     console.log("Warning: Could not get active user email, using fallback");
     // Try to get from settings first
     try {
-      const settings = loadSettings(SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Welcome"));
+      const settings = loadSettings();
       const firmEmail = settings[SETTINGS_KEYS.FIRM_EMAIL];
       if (firmEmail && typeof firmEmail === 'string' && firmEmail.includes('@')) {
         return firmEmail;
@@ -119,8 +119,7 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
 function sendDailyBalanceDigest() {
   logStart('sendDailyBalanceDigest');
   
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheets = getSheets(ss);
+  const sheets = getSheets();
   const data = loadSheetData(sheets);
   
   const lawyerData = buildLawyerMaps(data.lawyers);

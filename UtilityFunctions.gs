@@ -121,36 +121,85 @@ function logError(funcName, error) {
   console.error(error);
 }
 
+// ========== SHEET ACCESS HELPERS ==========
+
+/**
+ * Get a sheet by name with error handling
+ * @param {string} name - Sheet name
+ * @return {GoogleAppsScript.Spreadsheet.Sheet} - The sheet object
+ */
+function getSheet(name) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
+  if (!sheet) {
+    throw new Error(`Sheet '${name}' not found`);
+  }
+  return sheet;
+}
+
+/**
+ * Get the active spreadsheet with error handling
+ * @return {GoogleAppsScript.Spreadsheet.Spreadsheet} - The active spreadsheet
+ */
+function getActiveSpreadsheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    throw new Error("No active spreadsheet found");
+  }
+  return ss;
+}
+
+/**
+ * Get all required sheets in one call
+ * @return {Object} Object containing all required sheets
+ */
+function getAllSheets() {
+  const ss = getActiveSpreadsheet();
+  
+  return {
+    welcome: getSheet("Welcome"),
+    payments: getSheet("Payments"),
+    clients: getSheet("Clients"),
+    timeLogs: getSheet("TimeLogs"),
+    matters: getSheet("Matters"),
+    invoices: getSheet("Invoices"),
+    lowBalance: getSheet("LowBalanceWarnings")
+  };
+}
+
+/**
+ * Get or create a sheet by name
+ * @param {string} name - Sheet name
+ * @return {GoogleAppsScript.Spreadsheet.Sheet} - The sheet object
+ */
+function getOrCreateSheet(name) {
+  const ss = getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(name);
+  
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+    log(`📄 Created new sheet: ${name}`);
+  }
+  
+  return sheet;
+}
+
 function getSheets(ss) {
   if (!ss) {
-    ss = SpreadsheetApp.getActiveSpreadsheet();
+    ss = getActiveSpreadsheet();
   }
   
   // Get or create each required sheet (no Lawyers tab)
   const sheets = {
-    paymentsSheet: getOrCreateSheet(ss, "Payments"),
-    clientsSheet: getOrCreateSheet(ss, "Clients"),
-    timeLogsSheet: getOrCreateSheet(ss, "TimeLogs"),
-    lowBalanceSheet: getOrCreateSheet(ss, "LowBalanceWarnings"),
-    invoicesSheet: getOrCreateSheet(ss, "Invoices"),
-    mattersSheet: getOrCreateSheet(ss, "Matters"),
-    welcomeSheet: getOrCreateSheet(ss, "Welcome")
+    paymentsSheet: getOrCreateSheet("Payments"),
+    clientsSheet: getOrCreateSheet("Clients"),
+    timeLogsSheet: getOrCreateSheet("TimeLogs"),
+    lowBalanceSheet: getOrCreateSheet("LowBalanceWarnings"),
+    invoicesSheet: getOrCreateSheet("Invoices"),
+    mattersSheet: getOrCreateSheet("Matters"),
+    welcomeSheet: getOrCreateSheet("Welcome")
   };
   
   return sheets;
-}
-
-function getOrCreateSheet(ss, sheetName) {
-  if (!ss) {
-    throw new Error("Spreadsheet object is required");
-  }
-  
-  let sheet = ss.getSheetByName(sheetName);
-  if (!sheet) {
-    sheet = ss.insertSheet(sheetName);
-    console.log(`Created new sheet: ${sheetName}`);
-  }
-  return sheet;
 }
 
 function loadSheetData(sheets) {
@@ -164,12 +213,7 @@ function loadSheetData(sheets) {
 }
 
 function loadSettings() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const welcomeSheet = ss.getSheetByName("Welcome");
-  if (!welcomeSheet) {
-    throw new Error("Welcome sheet not found. Please run setupWelcomeSheet first.");
-  }
-  
+  const welcomeSheet = getSheet("Welcome");
   const settingsData = welcomeSheet.getRange(5, 1, 6, 2).getValues(); // Get settings from Welcome sheet (rows 5-10, columns 1-2)
   console.log('🟦 Raw settingsData from Welcome sheet:', JSON.stringify(settingsData));
   const settings = { ...DEFAULT_SETTINGS }; // Start with defaults
@@ -286,7 +330,7 @@ function findClientByEmail(clientsById, email) {
 
 function setupAllSheets(sheets) {
   // Setup welcome sheet first
-  setupWelcomeSheet(SpreadsheetApp.getActiveSpreadsheet());
+  setupWelcomeSheet(getActiveSpreadsheet());
   
   // Setup each sheet with its specific headers and formatting (no Lawyers tab)
   setupPaymentsSheet(sheets.paymentsSheet);

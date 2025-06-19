@@ -1,12 +1,6 @@
 // ========== INVOICE GENERATION ==========
 function setupInvoiceSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName('Invoices');
-  
-  // Create the sheet if it doesn't exist
-  if (!sheet) {
-    sheet = ss.insertSheet('Invoices');
-  }
+  const sheet = getOrCreateSheet('Invoices');
   
   const headers = [
     "Invoice Number",
@@ -40,11 +34,10 @@ function setupInvoiceSheet() {
 }
 
 function generateReceipt(paymentData, clientData) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheets = getSheets(ss);
+  const sheets = getSheets();
   
   // Ensure invoice sheet is properly set up
-  setupInvoiceSheet(sheets.invoicesSheet);
+  setupInvoiceSheet();
   
   const [date, email, amount, paymentMethod] = paymentData;
   
@@ -126,8 +119,7 @@ function sendReceiptEmail(email, clientName, receiptId, date, amount, currency, 
 }
 
 function generateMonthlySummary() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheets = getSheets(ss);
+  const sheets = getSheets();
   
   // Get all clients
   const clients = sheets.clientsSheet.getDataRange().getValues();
@@ -212,12 +204,7 @@ function sendMonthlySummaryEmail(email, clientName, month, hoursUsed, averageRat
  * @returns {Array} Array of client objects
  */
 function getAllClients() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const clientSheet = ss.getSheetByName("Clients");
-  if (!clientSheet) {
-    console.log("Clients sheet not found");
-    return [];
-  }
+  const clientSheet = getSheet("Clients");
   
   const clientData = clientSheet.getDataRange().getValues();
   if (clientData.length <= 1) {
@@ -259,9 +246,8 @@ function getAllClients() {
  * @returns {Object} Summary of invoice generation
  */
 function generateInvoicesForAllClients() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheets = getSheets(ss);
-  const settings = loadSettings(sheets.settingsSheet);
+  const sheets = getSheets();
+  const settings = loadSettings();
   const clients = getAllClients();
   const summary = {
     total: clients.length,
@@ -488,4 +474,4 @@ function sendInvoiceEmail(invoice) {
     console.error(`Error sending invoice email: ${error.message}`);
     return false;
   }
-} 
+}

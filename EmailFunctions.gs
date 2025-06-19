@@ -14,6 +14,13 @@ function sendEmail(recipient, subject, body, options = {}) {
   const finalRecipient = isTest ? firmEmail : recipient;
   const finalSubject = isTest ? `[TEST] ${subject}` : subject;
   
+  // Validate email address
+  if (!finalRecipient || !finalRecipient.includes('@') || finalRecipient === 'your-email@example.com') {
+    const errorMsg = `Invalid email recipient: "${finalRecipient}". Please set your email address in the Welcome sheet under 'Firm Email' setting.`;
+    logError('sendEmail', new Error(errorMsg));
+    throw new Error(errorMsg);
+  }
+  
   log(`📧 Sending email to: ${finalRecipient} | Subject: ${finalSubject}`);
   
   try {
@@ -198,4 +205,73 @@ function notifyServiceResumed(clientID, email, clientName, balance, today) {
   // Mark as sent
   props.setProperty(emailKey, "1");
   logEnd('notifyServiceResumed');
+}
+
+/**
+ * Sends a welcome email to the firm when the system is first set up
+ */
+function sendWelcomeEmail() {
+  logStart('sendWelcomeEmail');
+  
+  try {
+    const firmEmail = getFirmEmail();
+    const subject = "🎉 Welcome to Blawby Legal Retainer Management";
+    const body = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #2c3e50;">🎉 Welcome to Blawby!</h1>
+        
+        <p>Your legal retainer management system is now set up and ready to use!</p>
+        
+        <div style="background-color: #d4edda; color: #155724; padding: 15px; border-radius: 5px; margin: 15px 0;">
+          <h3>✅ System Status</h3>
+          <ul>
+            <li><strong>Test Mode:</strong> ON (safe for testing)</li>
+            <li><strong>Firm Email:</strong> ${firmEmail}</li>
+            <li><strong>Email Templates:</strong> Loaded and validated</li>
+            <li><strong>Sample Data:</strong> Ready for testing</li>
+          </ul>
+        </div>
+        
+        <h3>🚀 Next Steps</h3>
+        <ol>
+          <li><strong>Test the System:</strong> Click "Run Full Daily Sync" in the Blawby menu</li>
+          <li><strong>Check Your Email:</strong> You'll receive test receipts and notifications</li>
+          <li><strong>Review Results:</strong> Check the Clients sheet to see sample clients created</li>
+          <li><strong>Customize Settings:</strong> Update the Welcome sheet with your preferences</li>
+        </ol>
+        
+        <h3>📧 What You'll Receive</h3>
+        <ul>
+          <li>Payment receipts for sample clients</li>
+          <li>Daily balance digest (if low balances detected)</li>
+          <li>Low balance warnings (when applicable)</li>
+        </ul>
+        
+        <div style="background-color: #fff3cd; color: #856404; padding: 15px; border-radius: 5px; margin: 15px 0;">
+          <h3>💡 Pro Tips</h3>
+          <ul>
+            <li>All emails will be marked with [TEST] until you disable Test Mode</li>
+            <li>Use "Send Test Email" to verify your configuration anytime</li>
+            <li>Check the Welcome sheet for detailed setup instructions</li>
+          </ul>
+        </div>
+        
+        <p>If you have any questions, check the Welcome sheet or contact support@blawby.com</p>
+        
+        <p style="color: #7f8c8d; font-size: 14px; margin-top: 20px;">
+          Best regards,<br>
+          The Blawby Team
+        </p>
+      </div>
+    `;
+    
+    sendEmail(firmEmail, subject, body, { isHtml: true });
+    
+    log(`✅ Welcome email sent to ${firmEmail}`);
+  } catch (error) {
+    logError('sendWelcomeEmail', error);
+    throw error;
+  }
+  
+  logEnd('sendWelcomeEmail');
 } 

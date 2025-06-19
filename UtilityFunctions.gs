@@ -66,7 +66,34 @@ function isTestMode() {
  * @return {string} - Firm email address
  */
 function getFirmEmail() {
-  return getSetting("Firm Email", "your-email@example.com");
+  try {
+    // First try to get from settings
+    const settings = loadSettings();
+    const firmEmail = settings[SETTINGS_KEYS.FIRM_EMAIL];
+    
+    // If it's a valid email, use it
+    if (firmEmail && typeof firmEmail === 'string' && firmEmail.includes('@')) {
+      return firmEmail;
+    }
+    
+    // If not valid, try to get from active user
+    const userEmail = Session.getActiveUser().getEmail();
+    if (userEmail && userEmail.includes('@')) {
+      return userEmail;
+    }
+    
+    // If that fails, try spreadsheet owner
+    const ownerEmail = SpreadsheetApp.getActiveSpreadsheet().getOwner().getEmail();
+    if (ownerEmail && ownerEmail.includes('@')) {
+      return ownerEmail;
+    }
+    
+    // Final fallback - this will cause a clear error
+    throw new Error("No valid email found. Please set your email address in the Welcome sheet under 'Firm Email' setting.");
+  } catch (error) {
+    logError('getFirmEmail', error);
+    throw new Error("Firm Email not configured. Please set your email address in the Welcome sheet under 'Firm Email' setting.");
+  }
 }
 
 /**
@@ -286,8 +313,26 @@ function loadSettings() {
   });
   
   // If Firm Email is not set or is invalid, set a placeholder
-  if (!settings[SETTINGS_KEYS.FIRM_EMAIL] || settings[SETTINGS_KEYS.FIRM_EMAIL] === true || settings[SETTINGS_KEYS.FIRM_EMAIL] === "TRUE") {
-    settings[SETTINGS_KEYS.FIRM_EMAIL] = "your-email@example.com";
+  if (!settings[SETTINGS_KEYS.FIRM_EMAIL] || 
+      settings[SETTINGS_KEYS.FIRM_EMAIL] === true || 
+      settings[SETTINGS_KEYS.FIRM_EMAIL] === "TRUE" ||
+      !settings[SETTINGS_KEYS.FIRM_EMAIL].includes('@')) {
+    // Try to get a real email
+    try {
+      const userEmail = Session.getActiveUser().getEmail();
+      if (userEmail && userEmail.includes('@')) {
+        settings[SETTINGS_KEYS.FIRM_EMAIL] = userEmail;
+      } else {
+        const ownerEmail = SpreadsheetApp.getActiveSpreadsheet().getOwner().getEmail();
+        if (ownerEmail && ownerEmail.includes('@')) {
+          settings[SETTINGS_KEYS.FIRM_EMAIL] = ownerEmail;
+        } else {
+          settings[SETTINGS_KEYS.FIRM_EMAIL] = "your-email@example.com";
+        }
+      }
+    } catch (e) {
+      settings[SETTINGS_KEYS.FIRM_EMAIL] = "your-email@example.com";
+    }
   }
   
   console.log('⚙️ Settings loaded:', settings);
@@ -550,13 +595,23 @@ function setupWelcomeSheet(ss) {
   let userEmail = "your-email@example.com"; // placeholder
   try {
     userEmail = Session.getActiveUser().getEmail();
+    if (!userEmail || !userEmail.includes('@')) {
+      // Try spreadsheet owner as fallback
+      userEmail = SpreadsheetApp.getActiveSpreadsheet().getOwner().getEmail();
+    }
+    if (!userEmail || !userEmail.includes('@')) {
+      userEmail = "your-email@example.com";
+    }
   } catch (e) {
     // If Session.getActiveUser() fails, try to get from the spreadsheet owner
     try {
       userEmail = SpreadsheetApp.getActiveSpreadsheet().getOwner().getEmail();
+      if (!userEmail || !userEmail.includes('@')) {
+        userEmail = "your-email@example.com";
+      }
     } catch (e2) {
       // Keep the placeholder if both fail
-      console.log("Could not get user email, using placeholder");
+      log("Could not get user email, using placeholder");
     }
   }
 

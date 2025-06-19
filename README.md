@@ -140,6 +140,49 @@ The **Blawby** menu provides easy access to all system features:
 
 ---
 
+## 🚀 Quick Start for Lawyers
+
+### 1. Get Your Copy (2 minutes)
+1. [Click here to make your copy](https://docs.google.com/spreadsheets/d/1DO0IOXluqBD6QZ7cIteS1clIz6dymNy4ODbcS4cxKjY/copy)
+2. Name it something like "Your Law Firm - Retainer Management"
+3. Click "Make a copy"
+
+### 2. Initial Setup (5 minutes)
+1. Open the **Welcome** sheet in your copy
+2. Update the **System Settings** section:
+   - Enter your **Blawby Payment URL** (get this from your Blawby account)
+   - Set your **Default Currency** (USD, EUR, etc.)
+   - Enter your **Firm Email** address
+   - Keep **Test Mode** as "TRUE" for now
+3. Add your lawyers in the **Lawyers** section:
+   - Enter their email, name, hourly rate, and a unique Lawyer ID
+4. Click **"Setup System"** in the Blawby menu
+
+### 3. Test the System (3 minutes)
+1. Click **"Send Test Email"** to verify your email configuration
+2. Click **"Run Full Daily Sync"** to process the sample data
+3. Check your email for test receipts and notifications
+4. Review the **Clients** sheet to see sample clients created
+
+### 4. Connect Your Payment System (10 minutes)
+1. Set up a Zapier integration:
+   - Trigger: New payment in Stripe/your payment processor
+   - Action: Add row to Google Sheets (your Payments sheet)
+   - Map: Date, Client Email, Amount, Payment Method
+2. Test with a real payment
+3. Run **"Sync Payments & Clients"** to process it
+
+### 5. Start Using (Ongoing)
+1. Set **Test Mode** to "FALSE" when ready for production
+2. Delete sample data and add your real clients
+3. The system will automatically:
+   - Create client records from payments
+   - Send professional receipts
+   - Track balances and send low balance alerts
+   - Generate monthly summaries
+
+---
+
 ## 🛠️ Developer Documentation
 
 ### Project Structure

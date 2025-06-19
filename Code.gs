@@ -225,6 +225,29 @@ function checkServiceResumption() {
  */
 function onOpen(e) {
   const ui = SpreadsheetApp.getUi();
+  
+  // Validate firm email configuration
+  try {
+    const firmEmail = getFirmEmail();
+    if (!firmEmail || !firmEmail.includes('@') || firmEmail === 'your-email@example.com') {
+      ui.alert(
+        '⚠️ Email Configuration Required',
+        'Your firm email is not properly configured.\n\n' +
+        'Please go to the Welcome sheet and update the "Firm Email" setting with your actual email address.\n\n' +
+        'This is required for the system to send you notifications and test emails.',
+        ui.ButtonSet.OK
+      );
+    }
+  } catch (error) {
+    ui.alert(
+      '⚠️ Email Configuration Error',
+      'There was an error reading your email configuration.\n\n' +
+      'Please go to the Welcome sheet and update the "Firm Email" setting.\n\n' +
+      'Error: ' + error.message,
+      ui.ButtonSet.OK
+    );
+  }
+  
   ui.createMenu('Blawby')
     .addItem('Run Full Daily Sync', 'manualDailySync')
     .addSeparator()
@@ -259,16 +282,48 @@ function manualDailySync() {
   
   console.log('🔄 Starting manual daily sync...');
   
-  // Run the daily sync process
-  dailySync();
-  
-  // Show completion message
-  const ui = SpreadsheetApp.getUi();
-  ui.alert(
-    'Sync Complete',
-    'The daily sync process has completed. Check your email for the digest.',
-    ui.ButtonSet.OK
-  );
+  try {
+    // Validate email configuration first
+    const firmEmail = getFirmEmail();
+    if (!firmEmail || !firmEmail.includes('@') || firmEmail === 'your-email@example.com') {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert(
+        '⚠️ Email Configuration Required',
+        'Your firm email is not properly configured.\n\n' +
+        'Please go to the Welcome sheet and update the "Firm Email" setting with your actual email address.\n\n' +
+        'Without this, you won\'t receive any emails from the system.',
+        ui.ButtonSet.OK
+      );
+      return;
+    }
+    
+    // Run the daily sync process
+    dailySync();
+    
+    // Show completion message with email info
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Sync Complete',
+      `✅ The daily sync process has completed successfully!\n\n` +
+      `📧 Test emails have been sent to: ${firmEmail}\n\n` +
+      `🔍 Check your inbox for:\n` +
+      `• Payment receipts for sample clients\n` +
+      `• Daily balance digest\n` +
+      `• Any low balance warnings\n\n` +
+      `💡 If you don't see emails, check your spam folder or verify your email address in the Welcome sheet.`,
+      ui.ButtonSet.OK
+    );
+  } catch (error) {
+    logError('manualDailySync', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Sync Failed',
+      `❌ The daily sync process failed:\n\n${error.message}\n\n` +
+      `Please check your email configuration in the Welcome sheet and try again.`,
+      ui.ButtonSet.OK
+    );
+  }
 }
 
 /**
@@ -335,14 +390,23 @@ function setupSystem() {
     
     console.log('✅ System setup completed successfully');
     
+    // Send welcome email
+    try {
+      sendWelcomeEmail();
+      console.log('✅ Welcome email sent successfully');
+    } catch (emailError) {
+      console.log('⚠️ Could not send welcome email:', emailError.message);
+    }
+    
     const ui = SpreadsheetApp.getUi();
     ui.alert(
       'Setup Complete',
       'The Blawby system has been set up successfully!\n\n' +
       '• All sheets have been created and formatted\n' +
       '• Daily sync trigger has been created (6 AM)\n' +
-      '• Service resumption trigger has been created (every 6 hours)\n\n' +
-      'You can now start using the system.',
+      '• Service resumption trigger has been created (every 6 hours)\n' +
+      '• Welcome email has been sent to your firm email\n\n' +
+      'You can now start using the system. Try "Run Full Daily Sync" to test everything!',
       ui.ButtonSet.OK
     );
   } catch (error) {

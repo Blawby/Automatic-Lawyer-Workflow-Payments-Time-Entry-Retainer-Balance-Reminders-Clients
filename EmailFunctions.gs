@@ -1,7 +1,7 @@
 // ========== EMAIL FUNCTIONS ==========
 
 /**
- * Centralized email sending function that handles test mode automatically
+ * Universal email sending function that handles test mode automatically
  * @param {string} recipient - Email recipient
  * @param {string} subject - Email subject
  * @param {string} body - Email body

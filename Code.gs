@@ -44,49 +44,102 @@ function getSheetsAndSetup() {
  * @param {Object} sheets - Sheets object with all required sheets
  */
 function executeSyncOperations(sheets) {
-  // 1. Sync payments and clients (creates/updates client records)
-  console.log("📊 Syncing payments and clients...");
-  syncPaymentsAndClients();
+  logStart('executeSyncOperations');
   
-  // 2. Send daily balance digest (notifies about low balances)
-  console.log("📧 Sending daily balance digest...");
-  sendDailyBalanceDigest();
+  try {
+    // 1. Sync payments and clients (creates/updates client records)
+    log("📊 Syncing payments and clients...");
+    try {
+      syncPaymentsAndClients();
+      log("✅ Payments and clients sync completed");
+    } catch (error) {
+      logError('syncPaymentsAndClients', error);
+      // Continue with other operations even if this fails
+    }
+    
+    // 2. Send daily balance digest (notifies about low balances)
+    log("📧 Sending daily balance digest...");
+    try {
+      sendDailyBalanceDigest();
+      log("✅ Daily balance digest sent");
+    } catch (error) {
+      logError('sendDailyBalanceDigest', error);
+      // Continue with other operations even if this fails
+    }
+    
+    // 3. Generate invoices (creates monthly summaries)
+    log("🧾 Generating invoices...");
+    try {
+      generateInvoicesForAllClients();
+      log("✅ Invoice generation completed");
+    } catch (error) {
+      logError('generateInvoicesForAllClients', error);
+      // Continue with other operations even if this fails
+    }
+    
+    log("✅ All sync operations completed");
+  } catch (error) {
+    logError('executeSyncOperations', error);
+    throw error;
+  }
   
-  // 3. Generate invoices (creates monthly summaries)
-  console.log("🧾 Generating invoices...");
-  generateInvoicesForAllClients();
+  logEnd('executeSyncOperations');
 }
 
 /**
  * Syncs only payments and clients (for manual testing)
  */
 function syncPaymentsAndClientsOnly() {
-  console.log("📊 Syncing payments and clients only...");
-  validateSpreadsheetAccess();
-  const sheets = getSheetsAndSetup();
-  syncPaymentsAndClients();
-  console.log("✅ Payments and clients sync completed");
+  logStart('syncPaymentsAndClientsOnly');
+  
+  try {
+    validateSpreadsheetAccess();
+    const sheets = getSheetsAndSetup();
+    syncPaymentsAndClients();
+    log("✅ Payments and clients sync completed");
+  } catch (error) {
+    logError('syncPaymentsAndClientsOnly', error);
+    throw error;
+  }
+  
+  logEnd('syncPaymentsAndClientsOnly');
 }
 
 /**
  * Sends only the daily balance digest (for manual testing)
  */
 function sendDailyBalanceDigestOnly() {
-  console.log("📧 Sending daily balance digest only...");
-  validateSpreadsheetAccess();
-  sendDailyBalanceDigest();
-  console.log("✅ Daily balance digest sent");
+  logStart('sendDailyBalanceDigestOnly');
+  
+  try {
+    validateSpreadsheetAccess();
+    sendDailyBalanceDigest();
+    log("✅ Daily balance digest sent");
+  } catch (error) {
+    logError('sendDailyBalanceDigestOnly', error);
+    throw error;
+  }
+  
+  logEnd('sendDailyBalanceDigestOnly');
 }
 
 /**
  * Generates only invoices (for manual testing)
  */
 function generateInvoicesOnly() {
-  console.log("🧾 Generating invoices only...");
-  validateSpreadsheetAccess();
-  const sheets = getSheetsAndSetup();
-  generateInvoicesForAllClients();
-  console.log("✅ Invoice generation completed");
+  logStart('generateInvoicesOnly');
+  
+  try {
+    validateSpreadsheetAccess();
+    const sheets = getSheetsAndSetup();
+    generateInvoicesForAllClients();
+    log("✅ Invoice generation completed");
+  } catch (error) {
+    logError('generateInvoicesOnly', error);
+    throw error;
+  }
+  
+  logEnd('generateInvoicesOnly');
 }
 
 // Manual trigger functions
@@ -180,6 +233,7 @@ function onOpen(e) {
     .addItem('Generate Invoices', 'manualGenerateInvoices')
     .addSeparator()
     .addItem('Validate Email Templates', 'validateTemplates')
+    .addItem('Clear Template Cache', 'clearTemplateCache')
     .addItem('Setup System', 'setupSystem')
     .addToUi();
 }
@@ -358,4 +412,34 @@ function validateTemplates() {
   }
   
   logEnd('validateTemplates');
+}
+
+/**
+ * Clears the template cache and shows confirmation
+ */
+function clearTemplateCache() {
+  logStart('clearTemplateCache');
+  
+  try {
+    const templateLoader = getTemplateLoader();
+    templateLoader.clearCache();
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Template Cache Cleared',
+      '✅ Template cache has been cleared successfully!\n\nThis is useful when you update email templates.',
+      ui.ButtonSet.OK
+    );
+  } catch (error) {
+    logError('clearTemplateCache', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Template Cache Error',
+      `Failed to clear template cache: ${error.message}`,
+      ui.ButtonSet.OK
+    );
+  }
+  
+  logEnd('clearTemplateCache');
 } 

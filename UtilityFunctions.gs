@@ -88,11 +88,11 @@ function getDefaultCurrency() {
 // ========== LOGGING UTILITIES ==========
 
 /**
- * Log a message with timestamp
- * @param {string} msg - Message to log
+ * Simple logging function with timestamp
+ * @param {string} message - Message to log
  */
-function log(msg) {
-  console.log(`[${new Date().toISOString()}] ${msg}`);
+function log(message) {
+  console.log(`[${new Date().toISOString()}] ${message}`);
 }
 
 /**

@@ -170,6 +170,7 @@ class TemplateLoader {
   constructor() {
     this.templates = TEMPLATES;
     this.cache = new Map();
+    this._templateMap = null; // Cached template map for performance
   }
 
   /**
@@ -196,6 +197,29 @@ class TemplateLoader {
     const template = this.templates[type][subtype];
     this.cache.set(cacheKey, template);
     return template;
+  }
+
+  /**
+   * Get template by name (for backward compatibility)
+   * @param {string} name - Template name
+   * @return {Function|string} - The template
+   */
+  getTemplateByName(name) {
+    if (!this._templateMap) {
+      // Build template map on first access
+      this._templateMap = {};
+      for (const [type, subtypes] of Object.entries(this.templates)) {
+        for (const [subtype, template] of Object.entries(subtypes)) {
+          this._templateMap[`${type}_${subtype}`] = template;
+        }
+      }
+    }
+    
+    if (!this._templateMap[name]) {
+      throw new Error(`Template '${name}' not found`);
+    }
+    
+    return this._templateMap[name];
   }
 
   /**
@@ -269,6 +293,15 @@ class TemplateLoader {
       throw new Error(`Template type '${type}' not found`);
     }
     return Object.keys(this.templates[type]);
+  }
+
+  /**
+   * Clear the template cache (useful for testing or updates)
+   */
+  clearCache() {
+    this.cache.clear();
+    this._templateMap = null;
+    log("🧹 Template cache cleared");
   }
 }
 

@@ -4,15 +4,15 @@ function getSheets(ss) {
     ss = SpreadsheetApp.getActiveSpreadsheet();
   }
   
-  // Get or create each required sheet
+  // Get or create each required sheet (no Lawyers tab)
   const sheets = {
     paymentsSheet: getOrCreateSheet(ss, "Payments"),
     clientsSheet: getOrCreateSheet(ss, "Clients"),
     timeLogsSheet: getOrCreateSheet(ss, "TimeLogs"),
-    lawyersSheet: getOrCreateSheet(ss, "Lawyers"),
     lowBalanceSheet: getOrCreateSheet(ss, "LowBalanceWarnings"),
     invoicesSheet: getOrCreateSheet(ss, "Invoices"),
-    mattersSheet: getOrCreateSheet(ss, "Matters")
+    mattersSheet: getOrCreateSheet(ss, "Matters"),
+    welcomeSheet: getOrCreateSheet(ss, "Welcome")
   };
   
   return sheets;
@@ -36,7 +36,7 @@ function loadSheetData(sheets) {
     paymentData: sheets.paymentsSheet.getDataRange().getValues(),
     clientData: sheets.clientsSheet.getDataRange().getValues(),
     timeLogs: sheets.timeLogsSheet.getDataRange().getValues(),
-    lawyers: sheets.lawyersSheet.getDataRange().getValues(),
+    lawyers: getLawyersFromWelcomeSheet(sheets.welcomeSheet),
     matters: sheets.mattersSheet.getDataRange().getValues()
   };
 }
@@ -110,7 +110,7 @@ function buildLawyerMaps(lawyers) {
   const emails = {};
   
   for (let i = 1; i < lawyers.length; i++) {
-    const [lawyerID, , rate, email] = lawyers[i];
+    const [email, name, rate, lawyerID] = lawyers[i];
     if (!lawyerID) continue;
     
     rates[lawyerID] = parseFloat(rate) || 0;
@@ -126,8 +126,8 @@ function buildClientMap(clientData) {
   for (let i = 1; i < clientData.length; i++) {
     const row = clientData[i];
     
-    // Skip instruction rows
-    if (!row[0] || row[0].includes("⚠️ INSTRUCTIONS") || row[0].includes("Field")) {
+    // Skip empty rows
+    if (!row[0]) {
       continue;
     }
     
@@ -155,11 +155,10 @@ function setupAllSheets(sheets) {
   // Setup welcome sheet first
   setupWelcomeSheet(SpreadsheetApp.getActiveSpreadsheet());
   
-  // Setup each sheet with its specific headers and formatting
+  // Setup each sheet with its specific headers and formatting (no Lawyers tab)
   setupPaymentsSheet(sheets.paymentsSheet);
   setupClientsSheet(sheets.clientsSheet);
   setupTimeLogsSheet(sheets.timeLogsSheet);
-  setupLawyersSheet(sheets.lawyersSheet);
   setupLowBalanceSheet(sheets.lowBalanceSheet);
   setupInvoicesSheet(sheets.invoicesSheet);
   setupMattersSheet(sheets.mattersSheet);
@@ -170,108 +169,10 @@ function setupPaymentsSheet(sheet) {
     "Date",
     "Client Email",
     "Amount",
-    "Currency",
-    "Status",
-    "Receipt ID"
+    "Currency"
   ];
-  
   setupSheet(sheet, headers);
-  
-  // Get the last row after headers
-  const lastRow = Math.max(2, sheet.getLastRow());
-  
-  // Add data validation
-  const dateRange = sheet.getRange(2, 1, Math.max(1, lastRow - 1), 1);
-  const emailRange = sheet.getRange(2, 2, Math.max(1, lastRow - 1), 1);
-  const amountRange = sheet.getRange(2, 3, Math.max(1, lastRow - 1), 1);
-  const currencyRange = sheet.getRange(2, 4, Math.max(1, lastRow - 1), 1);
-  const statusRange = sheet.getRange(2, 5, Math.max(1, lastRow - 1), 1);
-  
-  // Date validation
-  dateRange.setDataValidation(
-    SpreadsheetApp.newDataValidation()
-      .requireDate()
-      .build()
-  );
-  
-  // Email validation
-  emailRange.setDataValidation(
-    SpreadsheetApp.newDataValidation()
-      .requireTextIsEmail()
-      .build()
-  );
-  
-  // Amount validation (positive number)
-  amountRange.setDataValidation(
-    SpreadsheetApp.newDataValidation()
-      .requireNumberGreaterThan(0)
-      .build()
-  );
-  
-  // Currency validation
-  currencyRange.setDataValidation(
-    SpreadsheetApp.newDataValidation()
-      .requireValueInList(['USD', 'EUR', 'GBP', 'CAD', 'AUD'], true)
-      .build()
-  );
-  
-  // Status validation
-  statusRange.setDataValidation(
-    SpreadsheetApp.newDataValidation()
-      .requireValueInList(['Pending', 'Completed', 'Failed'], true)
-      .build()
-  );
-  
-  // Add instructions in a separate section below the data area
-  const instructionsStartRow = lastRow + 3;
-  const instructions = [
-    ["⚠️ INSTRUCTIONS (DO NOT MODIFY OR DELETE THIS SECTION) ⚠️", "", "", "", "", ""],
-    ["Field", "Description", "Format", "Required", "Example", "Notes"],
-    ["Date", "Date of payment", "YYYY-MM-DD", "Yes", "2025-01-01", "Must be a valid date"],
-    ["Client Email", "Client's email address", "email@domain.com", "Yes", "lawyer@firm.com", "Must be valid email"],
-    ["Amount", "Payment amount", "Number > 0", "Yes", "1000.00", "Must be positive"],
-    ["Currency", "Payment currency", "USD/EUR/GBP/CAD/AUD", "Yes", "USD", "Must be from list"],
-    ["Status", "Payment status", "Pending/Completed/Failed", "Yes", "Completed", "Must be from list"],
-    ["Receipt ID", "Payment receipt ID", "Any text", "No", "INV-2025-001", "Optional identifier"]
-  ];
-  
-  // Add a visual separator before instructions
-  const separatorRange = sheet.getRange(lastRow + 2, 1, 1, 6);
-  separatorRange.setBackground('#f3f3f3');
-  separatorRange.setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID);
-  
-  // Add and format instructions
-  const instructionsRange = sheet.getRange(instructionsStartRow, 1, instructions.length, 6);
-  instructionsRange.setValues(instructions);
-  
-  // Format header row
-  const headerRange = sheet.getRange(instructionsStartRow, 1, 1, 6);
-  headerRange.merge();
-  headerRange.setBackground('#f4cccc');  // Light red background
-  headerRange.setFontWeight("bold");
-  headerRange.setHorizontalAlignment("center");
-  
-  // Format the instruction table
-  const tableRange = sheet.getRange(instructionsStartRow + 1, 1, instructions.length - 1, 6);
-  tableRange.setBackground('#f3f3f3');  // Light gray background
-  tableRange.setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID);
-  
-  // Make the "Field" column bold
-  sheet.getRange(instructionsStartRow + 1, 1, instructions.length - 1, 1).setFontWeight("bold");
-  
-  // Add a note to clarify these are instructions
-  headerRange.setNote("These instructions are protected. They provide guidance for entering payment data correctly. Please enter your data in the rows above this section.");
-  
-  // Auto-resize columns
-  sheet.autoResizeColumns(1, 6);
-  
-  // Set column widths to ensure readability
-  sheet.setColumnWidth(1, 150);  // Date
-  sheet.setColumnWidth(2, 200);  // Email
-  sheet.setColumnWidth(3, 100);  // Amount
-  sheet.setColumnWidth(4, 100);  // Currency
-  sheet.setColumnWidth(5, 100);  // Status
-  sheet.setColumnWidth(6, 150);  // Receipt ID
+  // No instructions or protection
 }
 
 function setupClientsSheet(sheet) {
@@ -287,48 +188,8 @@ function setupClientsSheet(sheet) {
     "Payment Link",
     "Client ID"
   ];
-  
   setupSheet(sheet, headers);
-  
-  // Get the last row after headers
-  const lastRow = Math.max(2, sheet.getLastRow());
-  
-  // Add data validation
-  const emailRange = sheet.getRange(2, 1, Math.max(1, lastRow - 1), 1);
-  const targetBalanceRange = sheet.getRange(2, 3, Math.max(1, lastRow - 1), 1);
-  
-  // Email validation
-  emailRange.setDataValidation(
-    SpreadsheetApp.newDataValidation()
-      .requireTextIsEmail()
-      .build()
-  );
-  
-  // Target Balance validation (positive number)
-  targetBalanceRange.setDataValidation(
-    SpreadsheetApp.newDataValidation()
-      .requireNumberGreaterThan(0)
-      .build()
-  );
-  
-  // Add instructions in a separate section below the data area
-  const instructionsStartRow = lastRow + 4; // Increased spacing
-  const instructions = [
-    ["⚠️ INSTRUCTIONS (DO NOT MODIFY OR DELETE THIS SECTION) ⚠️", "", "", "", "", "", "", "", "", ""],
-    ["Field", "Description", "Format", "Required", "Notes", "", "", "", "", ""],
-    ["Email", "Client's email address", "email@domain.com", "Yes", "Must be a valid email", "", "", "", "", ""],
-    ["Name", "Client's full name", "Text", "Yes", "Individual or company name", "", "", "", "", ""],
-    ["Target Balance", "Desired retainer balance", "Number > 0", "Yes", "Minimum balance to maintain", "", "", "", "", ""],
-    ["Total Paid", "Sum of all payments", "Number", "Auto", "Automatically calculated", "", "", "", "", ""],
-    ["Total Hours", "Sum of all time logs", "Number", "Auto", "Automatically calculated", "", "", "", "", ""],
-    ["Total Used", "Total amount billed", "Number", "Auto", "Automatically calculated", "", "", "", "", ""],
-    ["Balance", "Current retainer balance", "Number", "Auto", "Total Paid - Total Used", "", "", "", "", ""],
-    ["Top Up", "Suggested payment", "Number", "Auto", "Amount needed to reach target", "", "", "", "", ""],
-    ["Payment Link", "Client's payment URL", "URL", "Auto", "Generated payment link", "", "", "", "", ""],
-    ["Client ID", "Unique identifier", "UUID", "Auto", "System-generated ID", "", "", "", "", ""]
-  ];
-  
-  addInstructionTable(sheet, instructionsStartRow, instructions, 10);
+  // No instructions or protection
 }
 
 function setupTimeLogsSheet(sheet) {
@@ -339,96 +200,8 @@ function setupTimeLogsSheet(sheet) {
     "Lawyer ID",
     "Hours"
   ];
-  
   setupSheet(sheet, headers);
-  
-  // Get the last row after headers
-  const lastRow = Math.max(2, sheet.getLastRow());
-  
-  // Add data validation
-  const dateRange = sheet.getRange(2, 1, Math.max(1, lastRow - 1), 1);
-  const emailRange = sheet.getRange(2, 2, Math.max(1, lastRow - 1), 1);
-  const hoursRange = sheet.getRange(2, 5, Math.max(1, lastRow - 1), 1);
-  
-  // Date validation
-  dateRange.setDataValidation(
-    SpreadsheetApp.newDataValidation()
-      .requireDate()
-      .build()
-  );
-  
-  // Email validation
-  emailRange.setDataValidation(
-    SpreadsheetApp.newDataValidation()
-      .requireTextIsEmail()
-      .build()
-  );
-  
-  // Hours validation (positive number)
-  hoursRange.setDataValidation(
-    SpreadsheetApp.newDataValidation()
-      .requireNumberGreaterThan(0)
-      .build()
-  );
-  
-  // Add instructions in a separate section below the data area
-  const instructionsStartRow = lastRow + 3;
-  const instructions = [
-    ["⚠️ INSTRUCTIONS (DO NOT MODIFY OR DELETE THIS SECTION) ⚠️", "", "", "", ""],
-    ["Field", "Description", "Format", "Required", "Notes"],
-    ["Date", "Date work was performed", "YYYY-MM-DD", "Yes", "Must be a valid date"],
-    ["Client Email", "Client's email address", "email@domain.com", "Yes", "Must match an existing client"],
-    ["Matter ID", "Matter identifier", "M-YYYY-XXX", "Yes", "Must match an existing matter"],
-    ["Lawyer ID", "Lawyer's identifier", "INITIALS", "Yes", "Must match a lawyer in Lawyers sheet"],
-    ["Hours", "Time spent (in hours)", "Number > 0", "Yes", "Can use decimals (e.g., 1.5)"]
-  ];
-  
-  addInstructionTable(sheet, instructionsStartRow, instructions, 5);
-}
-
-function setupLawyersSheet(sheet) {
-  const headers = [
-    "Email",
-    "Name",
-    "Rate",
-    "Lawyer ID"
-  ];
-  
-  setupSheet(sheet, headers);
-  
-  // Get the last row after headers
-  const lastRow = Math.max(2, sheet.getLastRow());
-  
-  // Add data validation
-  const emailRange = sheet.getRange(2, 1, Math.max(1, lastRow - 1), 1);
-  const rateRange = sheet.getRange(2, 3, Math.max(1, lastRow - 1), 1);
-  
-  // Email validation
-  emailRange.setDataValidation(
-    SpreadsheetApp.newDataValidation()
-      .requireTextIsEmail()
-      .build()
-  );
-  
-  // Rate validation (positive number)
-  rateRange.setDataValidation(
-    SpreadsheetApp.newDataValidation()
-      .requireNumberGreaterThan(0)
-      .build()
-  );
-  
-  // Add instructions in a separate section below the data area
-  const instructionsStartRow = lastRow + 3;
-  const instructions = [
-    ["⚠️ INSTRUCTIONS (DO NOT MODIFY OR DELETE THIS SECTION) ⚠️", "", "", "", ""],
-    ["Field", "Description", "Format", "Required", "Notes"],
-    ["Email", "Lawyer's email address", "email@firm.com", "Yes", "Must be a valid email"],
-    ["Name", "Lawyer's full name", "Text", "Yes", "First and last name"],
-    ["Rate", "Hourly billing rate", "Number > 0", "Yes", "In default currency"],
-    ["Lawyer ID", "Unique identifier", "INITIALS", "Yes", "Usually lawyer's initials"]
-  ];
-  
-  addInstructionTable(sheet, instructionsStartRow, instructions, 5);
+  // No instructions or protection
 }
 
 function setupLowBalanceSheet(sheet) {
@@ -441,8 +214,8 @@ function setupLowBalanceSheet(sheet) {
     "Status",
     "Last Notification"
   ];
-  
   setupSheet(sheet, headers);
+  // No instructions or protection
 }
 
 function setupInvoicesSheet(sheet) {
@@ -465,8 +238,8 @@ function setupInvoicesSheet(sheet) {
     "Total Amount",
     "Status"
   ];
-  
   setupSheet(sheet, headers);
+  // No instructions or protection
 }
 
 function setupMattersSheet(sheet) {
@@ -479,8 +252,8 @@ function setupMattersSheet(sheet) {
     "Status",
     "Case Value"
   ];
-  
   setupSheet(sheet, headers);
+  // No instructions or protection
 }
 
 function setupSheet(sheet, headers) {
@@ -538,62 +311,84 @@ function setupWelcomeSheet(ss) {
   const welcomeSheet = getOrCreateSheet(ss, "Welcome");
 
   // --- Preserve existing values in the Value column (column 2) for settings rows ---
-  // We'll assume settings start at row 5 (after header) and go for 5 rows (update if you add more settings)
   let preservedValues = [];
   try {
     const maybeExisting = welcomeSheet.getRange(5, 1, 5, 2).getValues();
-    preservedValues = maybeExisting.map(row => row[1]); // just the Value column
+    preservedValues = maybeExisting.map(row => row[1]);
   } catch (e) {
     preservedValues = [];
+  }
+
+  // --- Preserve existing lawyers section if present ---
+  let preservedLawyers = [];
+  try {
+    const values = welcomeSheet.getDataRange().getValues();
+    const lawyerHeaderRow = values.findIndex(row => row[0] && row[0].toString().includes('Lawyers'));
+    if (lawyerHeaderRow > -1) {
+      preservedLawyers = values.slice(lawyerHeaderRow + 2, lawyerHeaderRow + 7).map(row => row.slice(0, 4));
+    }
+  } catch (e) {
+    preservedLawyers = [];
   }
 
   // Clear existing content
   welcomeSheet.clear();
 
-  // Set up the content (no Default column, Value column prepopulated)
+  // Set up the content (ensure every row has exactly 4 columns)
   const content = [
-    ["Welcome to Blawby Retainer Management", "", ""],
-    ["", "", ""],
-    ["⚙️ System Settings", "", ""],
-    ["Setting", "Value", "Description"],
-    ["Blawby Payment URL", preservedValues[0] || "https://app.blawby.com/pay", "Your Blawby payment page URL (e.g. https://app.blawby.com/...)",],
-    ["Default Currency", preservedValues[1] || "USD", "Default currency for all payments (USD, EUR, etc.)"],
-    ["Low Balance Threshold", preservedValues[2] || "1000", "Amount in default currency that triggers low balance alerts"],
-    ["Email Notifications", preservedValues[3] || "TRUE", "Send email notifications (true/false)"],
-    ["Test Mode", preservedValues[4] || "TRUE", "Enable test mode to try the system safely (true/false)"],
-    ["", "", ""],
-    ["✅ Quick Start Guide", "", ""],
-    ["Step", "Action", "Details"],
-    ["1", "Connect Blawby", "Enter your Blawby payment page URL in the settings above"],
-    ["2", "Add Your Team", "Go to the Lawyers tab and add your legal team members"],
-    ["3", "Set Up Zapier", "Create a Zap that triggers on new Stripe payments → sends payment info to this sheet"],
-    ["4", "Start Logging Time", "Use the TimeLogs tab to record billable hours"],
-    ["5", "Monitor Activity", "Check the daily summary emails for updates"],
-    ["", "", ""],
-    ["📊 Sheet Overview", "", ""],
-    ["Sheet", "Purpose", "Editable?"],
-    ["Lawyers", "Manage your legal team and their rates", "Yes"],
-    ["Clients", "Track client balances and payment links", "Auto-updated"],
-    ["TimeLogs", "Record billable hours and activities", "Yes"],
-    ["Payments", "Track client payments and receipts", "Auto-updated"],
-    ["Invoices", "View payment receipts and monthly summaries", "Auto-updated"],
-    ["Matters", "Track client matters and case values", "Yes"],
-    ["", "", ""],
-    ["💡 How Retainers Work", "", ""],
-    ["•", "Clients are automatically created when they make their first payment", ""],
-    ["•", "Each payment generates an automatic receipt with current balance", ""],
-    ["•", "Time is logged against the retainer balance", ""],
-    ["•", "Monthly summaries show hours used vs. balance", ""],
-    ["•", "Low balance warnings are sent automatically", ""],
-    ["•", "Payment links are auto-generated for easy top-ups", ""],
-    ["", "", ""],
-    ["❓ Need Help?", "", ""],
-    ["•", "Email: support@blawby.com", ""],
-    ["•", "Docs: blawby.com/docs", ""]
+    ["Welcome to Blawby Retainer Management", "", "", ""],
+    ["", "", "", ""],
+    ["⚙️ System Settings", "", "", ""],
+    ["Setting", "Value", "Description", ""],
+    ["Blawby Payment URL", preservedValues[0] || "https://app.blawby.com/pay", "Your Blawby payment page URL (e.g. https://app.blawby.com/...)", ""],
+    ["Default Currency", preservedValues[1] || "USD", "Default currency for all payments (USD, EUR, etc.)", ""],
+    ["Low Balance Threshold", preservedValues[2] || "1000", "Amount in default currency that triggers low balance alerts", ""],
+    ["Email Notifications", preservedValues[3] || "TRUE", "Send email notifications (true/false)", ""],
+    ["Test Mode", preservedValues[4] || "TRUE", "Enable test mode to try the system safely (true/false)", ""],
+    ["", "", "", ""],
+    ["👩‍⚖️ Lawyers", "", "", ""],
+    ["Email", "Name", "Rate", "Lawyer ID"],
+    ["lawyer1@email.com", "Jane Smith", "250", "JS"],
+    ["lawyer2@email.com", "John Doe", "300", "JD"],
+    ["", "", "", ""],
+    ["", "", "", ""],
+    ["", "", "", ""],
+    ["", "", "", ""],
+    ["", "", "", ""],
+    ["", "", "", ""],
+    ["", "", "", ""],
+    ["✅ Quick Start Guide", "", "", ""],
+    ["Step", "Action", "Details", ""],
+    ["1", "Connect Blawby", "Enter your Blawby payment page URL in the settings above", ""],
+    ["2", "Add Your Team", "Add your lawyers in the section above", ""],
+    ["3", "Set Up Zapier", "Create a Zap that triggers on new Stripe payments → sends payment info to this sheet", ""],
+    ["4", "Start Logging Time", "Use the TimeLogs tab to record billable hours", ""],
+    ["5", "Monitor Activity", "Check the daily summary emails for updates", ""],
+    ["", "", "", ""],
+    ["📊 Sheet Overview", "", "", ""],
+    ["Sheet", "Purpose", "Editable?", ""],
+    ["Lawyers (in Welcome)", "Manage your legal team and their rates", "Yes", ""],
+    ["Clients", "Track client balances and payment links", "Auto-updated", ""],
+    ["TimeLogs", "Record billable hours and activities", "Yes", ""],
+    ["Payments", "Track client payments and receipts", "Auto-updated", ""],
+    ["Invoices", "View payment receipts and monthly summaries", "Auto-updated", ""],
+    ["Matters", "Track client matters and case values", "Yes", ""],
+    ["", "", "", ""],
+    ["💡 How Retainers Work", "", "", ""],
+    ["•", "Clients are automatically created when they make their first payment", "", ""],
+    ["•", "Each payment generates an automatic receipt with current balance", "", ""],
+    ["•", "Time is logged against the retainer balance", "", ""],
+    ["•", "Monthly summaries show hours used vs. balance", "", ""],
+    ["•", "Low balance warnings are sent automatically", "", ""],
+    ["•", "Payment links are auto-generated for easy top-ups", "", ""],
+    ["", "", "", ""],
+    ["❓ Need Help?", "", "", ""],
+    ["•", "Email: support@blawby.com", "", ""],
+    ["•", "Docs: blawby.com/docs", "", ""]
   ];
 
   // Write content to sheet
-  welcomeSheet.getRange(1, 1, content.length, 3).setValues(content);
+  welcomeSheet.getRange(1, 1, content.length, 4).setValues(content);
 
   // --- Restore preserved values into the Value column ---
   if (preservedValues.length > 0) {
@@ -604,8 +399,18 @@ function setupWelcomeSheet(ss) {
     }
   }
 
+  // --- Restore preserved lawyers ---
+  if (preservedLawyers.length > 0) {
+    for (let i = 0; i < Math.min(preservedLawyers.length, 5); i++) {
+      const lawyer = preservedLawyers[i];
+      if (lawyer[0] && lawyer[0].includes('@')) {
+        welcomeSheet.getRange(13 + i, 1, 1, 4).setValues([lawyer]);
+      }
+    }
+  }
+
   // Format the sheet
-  const headerRange = welcomeSheet.getRange(1, 1, 1, 3);
+  const headerRange = welcomeSheet.getRange(1, 1, 1, 4);
   headerRange.setFontSize(16)
              .setFontWeight("bold")
              .setBackground("#4285f4")
@@ -614,9 +419,9 @@ function setupWelcomeSheet(ss) {
              .merge();
 
   // Format section headers
-  const sectionHeaders = [3, 11, 19, 27, 35];
+  const sectionHeaders = [3, 11, 22, 30, 38];
   sectionHeaders.forEach(row => {
-    welcomeSheet.getRange(row, 1, 1, 3)
+    welcomeSheet.getRange(row, 1, 1, 4)
                 .setFontWeight("bold")
                 .setBackground("#f3f3f3")
                 .setFontSize(14)
@@ -624,30 +429,35 @@ function setupWelcomeSheet(ss) {
   });
 
   // Format settings table
-  const settingsRange = welcomeSheet.getRange(4, 1, 6, 3);
+  const settingsRange = welcomeSheet.getRange(4, 1, 6, 4);
   settingsRange.setBorder(true, true, true, true, true, true)
                .setHorizontalAlignment("left");
 
+  // Format lawyers table
+  const lawyersRange = welcomeSheet.getRange(12, 1, 8, 4);
+  lawyersRange.setBorder(true, true, true, true, true, true)
+              .setHorizontalAlignment("left");
+
   // Format quick start guide
-  const guideRange = welcomeSheet.getRange(12, 1, 6, 3);
+  const guideRange = welcomeSheet.getRange(23, 1, 6, 4);
   guideRange.setBorder(true, true, true, true, true, true)
             .setHorizontalAlignment("left");
 
   // Format sheet overview
-  const overviewRange = welcomeSheet.getRange(20, 1, 7, 3);
+  const overviewRange = welcomeSheet.getRange(31, 1, 7, 4);
   overviewRange.setBorder(true, true, true, true, true, true)
                .setHorizontalAlignment("left");
 
   // Format how retainers work
-  const retainersRange = welcomeSheet.getRange(28, 1, 6, 3);
+  const retainersRange = welcomeSheet.getRange(39, 1, 6, 4);
   retainersRange.setHorizontalAlignment("left");
 
   // Format need help
-  const helpRange = welcomeSheet.getRange(36, 1, 2, 3);
+  const helpRange = welcomeSheet.getRange(47, 1, 2, 4);
   helpRange.setHorizontalAlignment("left");
 
   // Auto-resize columns
-  welcomeSheet.autoResizeColumns(1, 3);
+  welcomeSheet.autoResizeColumns(1, 4);
 
   // Freeze header row
   welcomeSheet.setFrozenRows(1);
@@ -655,7 +465,8 @@ function setupWelcomeSheet(ss) {
   // Set column widths
   welcomeSheet.setColumnWidth(1, 200);
   welcomeSheet.setColumnWidth(2, 200);
-  welcomeSheet.setColumnWidth(3, 400);
+  welcomeSheet.setColumnWidth(3, 200);
+  welcomeSheet.setColumnWidth(4, 150);
 }
 
 // Add the missing invoice generation function
@@ -772,19 +583,17 @@ function getLawyerRate(lawyerId) {
   try {
     if (!lawyerId) return 0;
     
-    const lawyersSheet = getSheet('Lawyers');
-    if (!lawyersSheet) {
-      console.log('Lawyers sheet not found');
+    const welcomeSheet = getSheet('Welcome');
+    if (!welcomeSheet) {
+      console.log('Welcome sheet not found');
       return 0;
     }
     
-    const data = lawyersSheet.getDataRange().getValues();
+    const data = welcomeSheet.getDataRange().getValues();
     if (data.length <= 1) {
       console.log('No lawyers found in sheet');
       return 0;
     }
-    
-    const headers = data[0];
     
     const lawyer = data.slice(1)
       .find(row => row && row[3] === lawyerId); // Lawyer ID is in column 4
@@ -865,54 +674,13 @@ function sendInvoiceEmail(invoice) {
   }
 }
 
-// Helper function to add formatted instruction table
-function addInstructionTable(sheet, startRow, instructions, columnCount) {
-  // Add a visual separator before instructions (2 rows)
-  const separatorRange = sheet.getRange(startRow - 2, 1, 2, columnCount);
-  separatorRange.setBackground('#f3f3f3');
-  separatorRange.setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID);
-  
-  // Add and format instructions
-  const instructionsRange = sheet.getRange(startRow, 1, instructions.length, columnCount);
-  instructionsRange.setValues(instructions);
-  
-  // Format header row
-  const headerRange = sheet.getRange(startRow, 1, 1, columnCount);
-  headerRange.merge();
-  headerRange.setBackground('#f4cccc');  // Light red background
-  headerRange.setFontWeight("bold");
-  headerRange.setHorizontalAlignment("center");
-  
-  // Format the instruction table
-  const tableRange = sheet.getRange(startRow + 1, 1, instructions.length - 1, columnCount);
-  tableRange.setBackground('#f3f3f3');  // Light gray background
-  tableRange.setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID);
-  
-  // Make the "Field" column bold
-  sheet.getRange(startRow + 1, 1, instructions.length - 1, 1).setFontWeight("bold");
-  
-  // Add a note to clarify these are instructions
-  headerRange.setNote("These instructions are protected. They provide guidance for entering data correctly. Please enter your data in the rows above this section.");
-  
-  // Set reasonable column widths
-  for (let i = 1; i <= columnCount; i++) {
-    sheet.setColumnWidth(i, 150);
-  }
-  
-  // Make description column wider
-  sheet.setColumnWidth(2, 200);
-  
-  // Freeze the header row
-  sheet.setFrozenRows(1);
-  
-  // Protect the instruction section
-  const protection = sheet.protect();
-  protection.setDescription('Instructions Section');
-  protection.setUnprotectedRanges([sheet.getRange(2, 1, startRow - 3, columnCount)]); // Only allow editing in data area
-  protection.setWarningOnly(true);
-  
-  // Add a named range for the instruction section to help identify it
-  const instructionRange = sheet.getRange(startRow, 1, instructions.length, columnCount);
-  const ss = sheet.getParent();
-  ss.setNamedRange('INSTRUCTIONS_SECTION_' + sheet.getName(), instructionRange);
+// Helper to parse lawyers from Welcome sheet
+function getLawyersFromWelcomeSheet(welcomeSheet) {
+  const values = welcomeSheet.getDataRange().getValues();
+  const lawyerHeaderRow = values.findIndex(row => row[0] && row[0].toString().includes('Lawyers'));
+  if (lawyerHeaderRow === -1) return [];
+  // Lawyers data starts 2 rows below header (header + column names)
+  const lawyers = values.slice(lawyerHeaderRow + 2).filter(row => row[0] && row[0].toString().includes('@'));
+  // Add header row for compatibility with buildLawyerMaps
+  return [["Email", "Name", "Rate", "Lawyer ID"], ...lawyers];
 } 

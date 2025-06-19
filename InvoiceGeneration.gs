@@ -47,7 +47,11 @@ function generateReceipt(paymentData, clientData) {
   // Ensure invoice sheet is properly set up
   setupInvoiceSheet(sheets.invoicesSheet);
   
-  const [date, email, amount, currency, status, receiptId] = paymentData;
+  const [date, email, amount, currency] = paymentData;
+  
+  // Generate a receipt ID automatically
+  const receiptIdValue = `REC-${Date.now()}`;
+  
   const clientName = clientData[1] || "Client";
   const clientId = clientData[9];
   
@@ -79,10 +83,10 @@ function generateReceipt(paymentData, clientData) {
     "Top-up Payment",
     amount,
     currency || settings[SETTINGS_KEYS.DEFAULT_CURRENCY],
-    `Retainer top-up payment - Receipt #${receiptId}`,
-    receiptId,
+    `Retainer top-up payment - Receipt #${receiptIdValue}`,
+    receiptIdValue,
     clientId,
-    status,
+    "Completed", // Default status for all payments
     newBalance,
     `${firstOfMonth.toISOString().substring(0, 7)}`, // YYYY-MM format
     hoursUsed,
@@ -92,7 +96,7 @@ function generateReceipt(paymentData, clientData) {
   sheets.invoicesSheet.appendRow(receiptRow);
   
   // Send receipt email
-  sendReceiptEmail(email, clientName, receiptId, date, amount, currency, newBalance, hoursUsed, averageRate);
+  sendReceiptEmail(email, clientName, receiptIdValue, date, amount, currency, newBalance, hoursUsed, averageRate);
 }
 
 function sendReceiptEmail(email, clientName, receiptId, date, amount, currency, newBalance, hoursUsed, averageRate) {
@@ -211,36 +215,24 @@ function sendMonthlySummaryEmail(email, clientName, month, hoursUsed, averageRat
  */
 function getAllClients() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheets = getSheets(ss);
-  const clientData = sheets.clientsSheet.getDataRange().getValues();
-  const headerRow = clientData[0];
+  const clientSheet = ss.getSheetByName("Clients");
+  if (!clientSheet) {
+    console.log("Clients sheet not found");
+    return [];
+  }
   
-  // Known instruction field values to skip
-  const instructionFields = new Set([
-    "Email",
-    "Name",
-    "Target Balance",
-    "Total Paid",
-    "Total Hours",
-    "Total Used",
-    "Balance",
-    "Top Up",
-    "Payment Link",
-    "Client ID",
-    "⚠️ INSTRUCTIONS",
-    "Field",
-    "Must be a valid",
-    "Instructions:"
-  ]);
+  const clientData = clientSheet.getDataRange().getValues();
+  if (clientData.length <= 1) {
+    console.log("No client data found");
+    return [];
+  }
   
-  // Skip header row and instruction rows, map to client objects
+  // Skip header row, map to client objects
   return clientData.slice(1)
     .filter(row => {
       const email = row[0];
-      // Skip empty rows, instruction rows, and column headers
-      if (!email || 
-          typeof email !== 'string' ||
-          instructionFields.has(email)) {
+      // Skip empty rows
+      if (!email || typeof email !== 'string') {
         return false;
       }
       // Validate email format
@@ -282,16 +274,6 @@ function generateInvoicesForAllClients() {
 
   clients.forEach(client => {
     try {
-      // Skip instruction rows
-      if (!client.email || 
-          client.email.includes("⚠️ INSTRUCTIONS") || 
-          client.email.includes("Field") || 
-          client.email.includes("Must be a valid") || 
-          client.email.includes("Instructions:")) {
-        summary.skipped++;
-        return;
-      }
-
       const result = generateInvoiceForClient(client.email);
       if (result === true) {
         summary.generated++;
@@ -311,14 +293,6 @@ function generateInvoiceForClient(clientEmail) {
   try {
     if (!clientEmail || typeof clientEmail !== 'string') {
       console.log('Invalid client email provided');
-      return false;
-    }
-
-    // Skip instruction rows
-    if (clientEmail.includes("⚠️ INSTRUCTIONS") || 
-        clientEmail.includes("Field") || 
-        clientEmail.includes("Must be a valid") || 
-        clientEmail.includes("Instructions:")) {
       return false;
     }
 
@@ -409,17 +383,7 @@ function getTimeLogsForClient(clientEmail) {
     const headers = data[0];
     
     return data.slice(1)
-      .filter(row => {
-        // Skip instruction rows
-        if (!row || !row[1] || 
-            row[1].includes("⚠️ INSTRUCTIONS") || 
-            row[1].includes("Field") || 
-            row[1].includes("Must be a valid") || 
-            row[1].includes("Instructions:")) {
-          return false;
-        }
-        return row[1] === clientEmail;
-      })
+      .filter(row => row && row[1] === clientEmail)
       .map(row => ({
         date: row[0],
         clientEmail: row[1],
@@ -430,5 +394,100 @@ function getTimeLogsForClient(clientEmail) {
   } catch (error) {
     console.error(`Error getting time logs for ${clientEmail}: ${error.message}`);
     return [];
+  }
+}
+
+function getLawyerRate(lawyerId) {
+  try {
+    if (!lawyerId) return 0;
+    
+    const welcomeSheet = getSheet('Welcome');
+    if (!welcomeSheet) {
+      console.log('Welcome sheet not found');
+      return 0;
+    }
+    
+    const data = welcomeSheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      console.log('No lawyers found in sheet');
+      return 0;
+    }
+    
+    const lawyer = data.slice(1)
+      .find(row => row && row[3] === lawyerId); // Lawyer ID is in column 4
+    
+    return lawyer ? parseFloat(lawyer[2]) : 0; // Rate is in column 3
+  } catch (error) {
+    console.error(`Error getting rate for lawyer ${lawyerId}: ${error.message}`);
+    return 0;
+  }
+}
+
+function saveInvoice(invoice) {
+  try {
+    if (!invoice || !invoice.clientEmail) {
+      console.log('Invalid invoice data');
+      return false;
+    }
+
+    const invoicesSheet = getSheet('Invoices');
+    if (!invoicesSheet) {
+      console.log('Invoices sheet not found');
+      return false;
+    }
+    
+    invoicesSheet.appendRow([
+      invoice.date,
+      invoice.clientEmail,
+      invoice.totalHours,
+      invoice.totalAmount,
+      invoice.status
+    ]);
+    
+    return true;
+  } catch (error) {
+    console.error(`Error saving invoice: ${error.message}`);
+    return false;
+  }
+}
+
+function sendInvoiceEmail(invoice) {
+  try {
+    if (!invoice || !invoice.clientEmail) {
+      console.log('Invalid invoice data for email');
+      return false;
+    }
+
+    const client = getClientByEmail(invoice.clientEmail);
+    if (!client) {
+      console.log(`Client not found for email ${invoice.clientEmail}`);
+      return false;
+    }
+
+    const subject = `Invoice for ${client.name} - ${formatDate(invoice.date)}`;
+    const body = `
+      Dear ${client.name},
+
+      Please find attached your invoice for ${formatDate(invoice.date)}.
+
+      Total Hours: ${invoice.totalHours}
+      Total Amount: ${formatCurrency(invoice.totalAmount)}
+
+      Thank you for your business.
+
+      Best regards,
+      Your Law Firm
+    `;
+
+    MailApp.sendEmail({
+      to: client.email,
+      subject: subject,
+      body: body
+    });
+    
+    return true;
+  } catch (error) {
+    console.error(`Error sending invoice email: ${error.message}`);
+    return false;
   }
 } 

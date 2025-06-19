@@ -45,9 +45,7 @@ const PAYMENT_COLUMNS = {
   DATE: 0,
   CLIENT_EMAIL: 1,
   AMOUNT: 2,
-  CURRENCY: 3,
-  STATUS: 4,
-  RECEIPT_ID: 5
+  CURRENCY: 3
 };
 
 const LAWYER_COLUMNS = {

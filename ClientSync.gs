@@ -9,7 +9,7 @@ function syncPaymentsAndClients() {
   const clientsById = buildClientMap(data.clientData);
   
   // Process new payments and create clients if needed
-  processNewPayments(sheets.paymentsSheet, clientsById);
+  processPayments(sheets.paymentsSheet, clientsById);
   
   // Update matters sheet with client names
   updateMattersWithClientNames(sheets.mattersSheet, clientsById);
@@ -29,34 +29,30 @@ function syncPaymentsAndClients() {
   console.log(`📊 Processed ${updatedClientRows.length - 1} clients, sent ${emailsSent} emails`);
 }
 
-function processNewPayments(paymentsSheet, clientsById) {
+function processPayments(paymentsSheet, clientsById) {
   const payments = paymentsSheet.getDataRange().getValues();
   const headerRow = payments[0];
   
-  // Known instruction field values to skip
-  const instructionFields = new Set([
+  // Known field values to skip (no longer includes instructions)
+  const skipFields = new Set([
     "Format",
     "YYYY-MM-DD",
     "Number > 0",
     "USD/EUR/GBP/CAD/AUD",
     "Pending/Completed/Failed",
     "Any text",
-    "Client's email address",
-    "⚠️ INSTRUCTIONS",
-    "Field",
-    "Must be a valid",
-    "Instructions:"
+    "Client's email address"
   ]);
   
   // Skip header row
   for (let i = 1; i < payments.length; i++) {
     const row = payments[i];
-    const clientEmail = row[2]; // Client's email address column
+    const clientEmail = row[1]; // Client's email address column (now column 2)
     
-    // Skip empty rows or instruction rows
+    // Skip empty rows
     if (!clientEmail || 
         typeof clientEmail !== 'string' ||
-        instructionFields.has(clientEmail)) {
+        skipFields.has(clientEmail)) {
       continue;
     }
 
@@ -67,7 +63,7 @@ function processNewPayments(paymentsSheet, clientsById) {
     }
 
     // Process the payment
-    const paymentAmount = parseFloat(row[3]);
+    const paymentAmount = parseFloat(row[2]); // Amount is now column 3
     if (isNaN(paymentAmount)) {
       continue;
     }

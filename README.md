@@ -18,12 +18,23 @@ A free, IOLTA-compliant Google Sheets solution for law firms to manage retainers
 
 ---
 
+## 👩‍⚖️ Lawyers
+
+| Email | Name | Rate | Lawyer ID |
+|-------|------|------|-----------|
+| lawyer1@email.com | Jane Smith | 250 | JS |
+| lawyer2@email.com | John Doe | 300 | JD |
+
+> **Note:** Add your legal team members here. The Lawyer ID is used for time logging.
+
+---
+
 ## ✅ Quick Start Guide
 
 | Step | Action           | Details                                                                 |
 |------|------------------|-------------------------------------------------------------------------|
 | 1    | Connect Blawby   | Enter your Blawby payment page URL in the settings above                 |
-| 2    | Add Your Team    | Go to the Lawyers tab and add your legal team members                    |
+| 2    | Add Your Team    | Add your lawyers in the section above                                    |
 | 3    | Set Up Zapier    | Create a Zap that triggers on new Stripe payments → sends payment info to this sheet |
 | 4    | Start Logging Time | Use the TimeLogs tab to record billable hours                          |
 | 5    | Monitor Activity | Check the daily summary emails for updates                               |
@@ -34,7 +45,7 @@ A free, IOLTA-compliant Google Sheets solution for law firms to manage retainers
 
 | Sheet     | Purpose                                   | Editable?      |
 |-----------|-------------------------------------------|----------------|
-| Lawyers   | Manage your legal team and their rates    | Yes            |
+| Lawyers (in Welcome) | Manage your legal team and their rates | Yes            |
 | Clients   | Track client balances and payment links   | Auto-updated   |
 | TimeLogs  | Record billable hours and activities      | Yes            |
 | Payments  | Track client payments and receipts        | Auto-updated   |
@@ -87,11 +98,10 @@ A free, IOLTA-compliant Google Sheets solution for law firms to manage retainers
 ```
 
 ### Key Components
-- **Welcome**: Configuration and settings
+- **Welcome**: Configuration, settings, and lawyers management
 - **Clients**: Client data and balances
-- **Payments**: Transaction records
+- **Payments**: Transaction records (simplified 4-column format)
 - **TimeLogs**: Billable hours
-- **Lawyers**: Team member data
 - **Matters**: Case tracking
 - **Invoices**: Generated invoices
 
@@ -102,6 +112,14 @@ A free, IOLTA-compliant Google Sheets solution for law firms to manage retainers
 - Receipt creation
 - Client creation
 - Balance updates
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! To get started, check out our open issues: [GitHub Issues](https://github.com/Blawby/Automatic-Lawyer-Workflow-Payments-Time-Entry-Retainer-Balance-Reminders-Clients/issues)
+
+Feel free to open new issues or submit pull requests to help improve the project.
 
 ---
 

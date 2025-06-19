@@ -1,14 +1,56 @@
 // ========== UTILITY FUNCTIONS ==========
 
 /**
- * Get a setting value by key
+ * Get all settings as a map from the Welcome sheet
+ * @return {Object} Map of setting key -> value
+ */
+function getConfigMap() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Welcome");
+  if (!sheet) {
+    throw new Error("Welcome sheet not found");
+  }
+  
+  const values = sheet.getRange(5, 1, 6, 2).getValues(); // Settings are in rows 5-10
+  const configMap = {};
+  
+  for (const [key, value] of values) {
+    if (key && key.trim()) {
+      configMap[key.trim()] = value;
+    }
+  }
+  
+  return configMap;
+}
+
+/**
+ * Get a setting value by key with fallback to defaults
  * @param {string} key - The setting key to retrieve
  * @param {*} defaultValue - Default value if setting not found
  * @return {*} - The setting value or default
  */
 function getSetting(key, defaultValue = null) {
-  const settings = loadSettings();
-  return settings[key] !== undefined ? settings[key] : defaultValue;
+  const configMap = getConfigMap();
+  const value = configMap[key];
+  
+  // Handle boolean settings
+  if (key === "Email Notifications" || key === "Test Mode") {
+    return value === true || value === "TRUE" || value === "true";
+  }
+  
+  // Handle numeric settings
+  if (key === "Low Balance Threshold") {
+    return parseInt(value) || defaultValue || 0;
+  }
+  
+  // Handle Firm Email validation
+  if (key === "Firm Email") {
+    if (value && typeof value === 'string' && value.includes('@')) {
+      return value;
+    }
+    return defaultValue || "your-email@example.com";
+  }
+  
+  return value !== undefined ? value : defaultValue;
 }
 
 /**
@@ -16,7 +58,67 @@ function getSetting(key, defaultValue = null) {
  * @return {boolean} - True if test mode is enabled
  */
 function isTestMode() {
-  return getSetting(SETTINGS_KEYS.TEST_MODE, false);
+  return getSetting("Test Mode", false);
+}
+
+/**
+ * Get the firm email address
+ * @return {string} - Firm email address
+ */
+function getFirmEmail() {
+  return getSetting("Firm Email", "your-email@example.com");
+}
+
+/**
+ * Get the base payment URL
+ * @return {string} - Base payment URL
+ */
+function getPaymentUrl() {
+  return getSetting("Blawby Payment URL", "https://app.blawby.com/pay");
+}
+
+/**
+ * Get the default currency
+ * @return {string} - Default currency code
+ */
+function getDefaultCurrency() {
+  return getSetting("Default Currency", "USD");
+}
+
+// ========== LOGGING UTILITIES ==========
+
+/**
+ * Log a message with timestamp
+ * @param {string} msg - Message to log
+ */
+function log(msg) {
+  console.log(`[${new Date().toISOString()}] ${msg}`);
+}
+
+/**
+ * Log the start of a function
+ * @param {string} funcName - Name of the function
+ */
+function logStart(funcName) {
+  log(`→ START ${funcName}`);
+}
+
+/**
+ * Log the end of a function
+ * @param {string} funcName - Name of the function
+ */
+function logEnd(funcName) {
+  log(`✓ END ${funcName}`);
+}
+
+/**
+ * Log an error with context
+ * @param {string} funcName - Name of the function where error occurred
+ * @param {Error} error - The error object
+ */
+function logError(funcName, error) {
+  log(`❌ ERROR in ${funcName}: ${error.message}`);
+  console.error(error);
 }
 
 function getSheets(ss) {

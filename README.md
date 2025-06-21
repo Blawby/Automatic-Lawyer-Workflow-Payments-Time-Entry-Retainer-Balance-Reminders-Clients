@@ -4,52 +4,6 @@ A professional, IOLTA-compliant Google Sheets solution for law firms to manage r
 
 ---
 
-## ✨ What's New in v2.0
-
-### 🚀 **Major Improvements**
-- **Centralized Settings Management** - All configuration in one place
-- **Universal Email System** - Professional HTML emails with templates
-- **Comprehensive Logging** - Detailed monitoring and debugging
-- **Error Resilience** - Graceful error handling throughout
-- **Template System** - Beautiful, customizable email templates
-- **Testing Utilities** - Built-in testing and validation tools
-- **Performance Optimizations** - Cached templates and efficient operations
-
-### 🛠️ **Technical Enhancements**
-- **Modular Architecture** - Clean, maintainable code structure
-- **Sheet Access Helpers** - Eliminated repetitive spreadsheet calls
-- **Centralized Email Logic** - Single wrapper handles test mode automatically
-- **Template Caching** - Fast template loading with validation
-- **Menu Integration** - Easy access to all features
-
----
-
-## ⚙️ System Settings
-
-| Setting                | Value                                | Description                                    |
-|------------------------|--------------------------------------|------------------------------------------------|
-| Blawby Payment URL     | https://app.blawby.com/pay           | Your Blawby payment page URL (e.g. https://app.blawby.com/...) |
-| Default Currency       | USD                                  | Default currency for all payments (USD, EUR, etc.) |
-| Low Balance Threshold  | 1000                                 | Amount in default currency that triggers low balance alerts |
-| Email Notifications    | TRUE                                 | Send email notifications (true/false)          |
-| Firm Email             | admin@blawby.com                     | Email address for system notifications (fallback when user session unavailable) |
-| Test Mode              | TRUE                                 | Enable test mode to try the system safely (true/false) |
-
-> **Note:** Edit the Value column to configure your system. All settings are pre-filled with recommended defaults.
-
----
-
-## 👩‍⚖️ Lawyers
-
-| Email | Name | Rate | Lawyer ID |
-|-------|------|------|-----------|
-| lawyer1@email.com | Jane Smith | 250 | JS |
-| lawyer2@email.com | John Doe | 300 | JD |
-
-> **Note:** Add your legal team members here. The Lawyer ID is used for time logging.
-
----
-
 ## ✅ Quick Start Guide
 
 | Step | Action           | Details                                                                 |
@@ -100,6 +54,56 @@ A professional, IOLTA-compliant Google Sheets solution for law firms to manage r
 - **Monthly Summaries** - Professional monthly summaries show hours used vs. balance
 - **Smart Notifications** - Low balance warnings sent automatically with payment links
 - **Payment Links** - Auto-generated payment links for easy client top-ups
+
+---
+
+## 📧 Email System Overview
+
+Blawby includes a comprehensive email system with professional HTML templates. All emails are automatically handled in test mode (redirected to your firm email).
+
+### **Active Email Types & Triggers**
+
+| Email Type | Trigger | Recipients | Template | Subject | Purpose |
+|------------|---------|------------|----------|---------|---------|
+| **Payment Receipts** | New payment processed | Client + Firm | `RECEIPT` | `Payment Receipt #[ID] - Blawby` | Payment confirmation with balance update |
+| **Low Balance Warnings** | Balance below target | Client + Firm | `LOW_BALANCE` | `Low Balance Alert - Blawby` | Alert client to top up retainer |
+| **Daily Balance Digest** | Daily sync runs | Firm only | `DAILY_DIGEST` | `Daily Low Balance Digest - Blawby` | Summary of all low balance clients |
+| **Service Resumed** | Balance goes positive | Client + Firm | `SERVICE_RESUMED` | `Service Resumed - Blawby` | Notify when services can resume |
+| **Test Email** | Manual trigger | Firm only | Custom | `Welcome to Blawby` | Validate email configuration |
+
+### **Email Content Details**
+
+#### **1. Payment Receipts** (Most Frequent)
+- **When:** Every time a client makes a payment
+- **Content:** Payment confirmation, new balance, monthly usage summary
+- **Includes:** Receipt ID, date, amount, currency, hours used, average rate
+
+#### **2. Low Balance Warnings** (Critical for Business)
+- **When:** Client balance falls below target balance
+- **Content:** Current balance, target balance, payment link
+- **Action:** Client receives payment link for easy top-up
+
+#### **3. Daily Balance Digest** (Firm Operations)
+- **When:** Daily sync runs (automated or manual)
+- **Content:** Summary of all clients with low balances
+- **Purpose:** Keep firm informed of client payment status
+
+#### **4. Service Resumed Notifications** (Client Satisfaction)
+- **When:** Client balance goes from negative to positive
+- **Content:** Service restoration confirmation
+- **Purpose:** Maintain good client relationships
+
+### **Test Mode Behavior**
+- **All emails redirected** to your firm email address
+- **Subject lines prefixed** with `[TEST]`
+- **Email flags cleared** daily to allow repeated testing
+- **No production emails sent** until Test Mode is disabled
+
+### **Production Mode Behavior**
+- **Client emails sent** directly to clients
+- **Firm notifications sent** to your firm email
+- **Email flags prevent** duplicate daily emails
+- **Professional HTML formatting** for all emails
 
 ---
 

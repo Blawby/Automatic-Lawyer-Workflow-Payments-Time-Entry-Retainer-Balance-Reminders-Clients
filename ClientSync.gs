@@ -186,6 +186,12 @@ function processClientBalances(clientsById, data, lawyerData, today) {
     
     // Handle low balance warnings
     if (topUp > 0) {
+      log(`⚠️ LOW BALANCE DETECTED for ${clientName}:`);
+      log(`   - Current balance: $${balance.toFixed(2)}`);
+      log(`   - Target balance: $${targetBalance.toFixed(2)}`);
+      log(`   - Top-up needed: $${topUp.toFixed(2)}`);
+      log(`   - Payment link: ${paymentLink}`);
+      
       lowBalanceRows.push([
         email,
         clientName,
@@ -194,6 +200,7 @@ function processClientBalances(clientsById, data, lawyerData, today) {
       ]);
       
       // Send email if not already sent today
+      log(`📧 Attempting to send low balance email for ${clientName}...`);
       const emailSent = sendLowBalanceEmail(
         clientID, 
         email, 
@@ -206,7 +213,14 @@ function processClientBalances(clientsById, data, lawyerData, today) {
         today
       );
       
-      if (emailSent) emailsSent++;
+      if (emailSent) {
+        emailsSent++;
+        log(`✅ Low balance email sent successfully for ${clientName}`);
+      } else {
+        log(`❌ Low balance email was not sent for ${clientName} (likely already sent today)`);
+      }
+    } else {
+      log(`✅ Balance OK for ${clientName}: $${balance.toFixed(2)} (target: $${targetBalance.toFixed(2)})`);
     }
     
     // Check for service resumption

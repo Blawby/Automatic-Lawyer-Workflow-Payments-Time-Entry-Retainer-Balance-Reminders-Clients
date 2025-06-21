@@ -182,6 +182,15 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
   const props = PropertiesService.getScriptProperties();
   const emailKey = `low_balance_${clientID}_${today}`;
   
+  // Enhanced logging for debugging
+  log(`🔍 Low balance check for ${clientName} (${email}):`);
+  log(`   - Current balance: $${balance.toFixed(2)}`);
+  log(`   - Target balance: $${targetBalance.toFixed(2)}`);
+  log(`   - Top-up needed: $${(targetBalance - balance).toFixed(2)}`);
+  log(`   - Payment link: ${paymentLink}`);
+  log(`   - Test mode: ${isTestMode() ? 'YES' : 'NO'}`);
+  log(`   - Firm email: ${getFirmEmail()}`);
+  
   // Check if email already sent today (skip this check in test mode)
   if (!isTestMode() && props.getProperty(emailKey)) {
     log(`📧 Low balance email already sent today for ${clientName}`);
@@ -200,6 +209,7 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
   const clientSubject = renderTemplate('LOW_BALANCE', 'CLIENT_SUBJECT');
   const clientBody = renderTemplate('LOW_BALANCE', 'CLIENT_BODY', clientName, balance, targetBalance, paymentLink);
   
+  log(`📧 Sending low balance email to client: ${email}`);
   sendEmail(email, clientSubject, clientBody, { isHtml: true, emailType: 'low_balance_client' });
   
   // Send to firm using template (always send in test mode, optional in production)
@@ -207,6 +217,7 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
   const ownerSubject = renderTemplate('LOW_BALANCE', 'OWNER_SUBJECT', clientName);
   const ownerBody = renderTemplate('LOW_BALANCE', 'OWNER_BODY', clientName, balance, targetBalance, lastActivity);
   
+  log(`📧 Sending low balance notification to firm`);
   sendEmailToFirm(ownerSubject, ownerBody, { isHtml: true, emailType: 'low_balance_firm' });
   
   // Mark as sent (only in production mode)
@@ -217,6 +228,7 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
     log(`🧪 Test mode: Not setting email flag for ${clientName}`);
   }
   
+  log(`✅ Low balance email process completed for ${clientName}`);
   logEnd('sendLowBalanceEmail');
   return true;
 }

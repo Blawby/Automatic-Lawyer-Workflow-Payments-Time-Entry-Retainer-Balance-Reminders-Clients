@@ -83,16 +83,6 @@ function executeSyncOperations(sheets) {
       // Continue with other operations even if this fails
     }
     
-    // 3. Generate invoices (creates monthly summaries)
-    log("🧾 Generating invoices...");
-    try {
-      generateInvoicesForAllClients();
-      log("✅ Invoice generation completed");
-    } catch (error) {
-      logError('generateInvoicesForAllClients', error);
-      // Continue with other operations even if this fails
-    }
-    
     log("✅ All sync operations completed");
   } catch (error) {
     logError('executeSyncOperations', error);
@@ -121,32 +111,9 @@ function syncPaymentsAndClientsOnly() {
   logEnd('syncPaymentsAndClientsOnly');
 }
 
-/**
- * Generates only invoices (for manual testing)
- */
-function generateInvoicesOnly() {
-  logStart('generateInvoicesOnly');
-  
-  try {
-    validateSpreadsheetAccess();
-    const sheets = getSheetsAndSetup();
-    generateInvoicesForAllClients();
-    log("✅ Invoice generation completed");
-  } catch (error) {
-    logError('generateInvoicesOnly', error);
-    throw error;
-  }
-  
-  logEnd('generateInvoicesOnly');
-}
-
 // Manual trigger functions
 function manualSyncClients() {
   syncPaymentsAndClientsOnly();
-}
-
-function manualGenerateInvoices() {
-  generateInvoicesOnly();
 }
 
 function manualSendDigest() {
@@ -278,15 +245,9 @@ function onOpen(e) {
     .addItem('Run Full Daily Sync', 'manualDailySync')
     .addSeparator()
     .addItem('Sync Payments & Clients', 'manualSyncClients')
-    .addItem('Send Balance Digest', 'manualSendDigest')
-    .addItem('Generate Invoices', 'manualGenerateInvoices')
     .addSeparator()
     .addItem('Send Test Email', 'sendTestEmail')
     .addItem('Fix Firm Email', 'fixFirmEmailField')
-    .addItem('View Email Log', 'viewEmailLog')
-    .addItem('Validate Email Templates', 'validateTemplates')
-    .addItem('Clear Template Cache', 'clearTemplateCache')
-    .addItem('Clear Email Flags (Test)', 'clearEmailFlags')
     .addItem('Setup System', 'setupSystem')
     .addToUi();
 }

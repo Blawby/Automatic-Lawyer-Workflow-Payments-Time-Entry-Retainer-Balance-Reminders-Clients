@@ -59,7 +59,7 @@ A professional, IOLTA-compliant Google Sheets solution for law firms to manage r
 
 ## 📧 Email System Overview
 
-Blawby includes a comprehensive email system with professional HTML templates. All emails are automatically handled in test mode (redirected to your firm email).
+Blawby includes a comprehensive email system with professional HTML templates. All emails are automatically handled. In test mode emails will be redirected to your firm email with a [TEST] label.
 
 ### **Active Email Types & Triggers**
 

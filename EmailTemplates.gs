@@ -7,43 +7,65 @@ const EMAIL_STYLES = {
   BUTTON: "display: inline-block; padding: 10px 20px; background-color: #3498db; color: white; text-decoration: none; border-radius: 5px; margin: 15px 0;",
   ALERT: "background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px; margin: 10px 0;",
   SUCCESS: "background-color: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin: 10px 0;",
-  FOOTER: "color: #7f8c8d; font-size: 14px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;"
+  FOOTER: "color: #7f8c8d; font-size: 14px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;",
+  ALERT_BOX: "background-color: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #f5c6cb;",
+  BUTTON_CONTAINER: "text-align: center; margin-top: 20px;"
 };
 
 // Rename EMAIL_TEMPLATES to TEMPLATES
 const TEMPLATES = {
   LOW_BALANCE: {
-    CLIENT_SUBJECT: "Low Balance Alert - Blawby",
-    CLIENT_BODY: (clientName, balance, targetBalance, paymentLink) => `
+    SUBJECT: (clientName) => `Low Balance Alert - ${clientName}`,
+    BODY: (clientName, balance, targetBalance, paymentLink) => `
       <div style="${EMAIL_STYLES.CONTAINER}">
         <h1 style="${EMAIL_STYLES.HEADER}">Low Balance Alert</h1>
+        
         <p style="${EMAIL_STYLES.PARAGRAPH}">Dear ${clientName},</p>
-        <p style="${EMAIL_STYLES.PARAGRAPH}">Your Blawby account balance is currently low.</p>
-        <div style="${EMAIL_STYLES.ALERT}">
+        
+        <p style="${EMAIL_STYLES.PARAGRAPH}">Your retainer balance is currently low and needs to be topped up to continue receiving our services.</p>
+        
+        <div style="${EMAIL_STYLES.ALERT_BOX}">
+          <h2 style="${EMAIL_STYLES.SUBHEADER}">Current Balance Status</h2>
           <p><strong>Current Balance:</strong> $${balance.toFixed(2)}</p>
           <p><strong>Target Balance:</strong> $${targetBalance.toFixed(2)}</p>
+          <p><strong>Top-up Needed:</strong> $${(targetBalance - balance).toFixed(2)}</p>
         </div>
-        ${balance <= 0 ? `
-          <div style="${EMAIL_STYLES.ALERT}">
-            <p><strong>Important:</strong> Your balance is now zero. Services will be paused until your balance is topped up.</p>
-          </div>
-        ` : ''}
-        <p style="${EMAIL_STYLES.PARAGRAPH}">To ensure uninterrupted service, please top up your balance.</p>
-        <a href="${paymentLink}" style="${EMAIL_STYLES.BUTTON}">Top Up Balance</a>
-        <p style="${EMAIL_STYLES.FOOTER}">Thank you for your prompt attention to this matter.</p>
+        
+        <p style="${EMAIL_STYLES.PARAGRAPH}">To continue receiving our services without interruption, please top up your retainer using the link below:</p>
+        
+        <div style="${EMAIL_STYLES.BUTTON_CONTAINER}">
+          <a href="${paymentLink}" style="${EMAIL_STYLES.BUTTON}">Top Up Retainer</a>
+        </div>
+        
+        <p style="${EMAIL_STYLES.PARAGRAPH}">If you have any questions about your retainer or our services, please don't hesitate to contact us.</p>
+        
+        <p style="${EMAIL_STYLES.PARAGRAPH}">Thank you for your business.</p>
+        
+        <p style="${EMAIL_STYLES.SIGNATURE}">
+          Best regards,<br>
+          Your Legal Team
+        </p>
       </div>
     `,
     OWNER_SUBJECT: (clientName) => `Low Balance Alert - ${clientName}`,
     OWNER_BODY: (clientName, balance, targetBalance, lastActivity) => `
       <div style="${EMAIL_STYLES.CONTAINER}">
         <h1 style="${EMAIL_STYLES.HEADER}">Low Balance Alert</h1>
-        <p style="${EMAIL_STYLES.PARAGRAPH}">Client ${clientName} has a low balance.</p>
-        <div style="${EMAIL_STYLES.ALERT}">
+        
+        <p style="${EMAIL_STYLES.PARAGRAPH}">Client ${clientName} has a low retainer balance.</p>
+        
+        <div style="${EMAIL_STYLES.ALERT_BOX}">
+          <h2 style="${EMAIL_STYLES.SUBHEADER}">Balance Status</h2>
+          <p><strong>Client:</strong> ${clientName}</p>
           <p><strong>Current Balance:</strong> $${balance.toFixed(2)}</p>
           <p><strong>Target Balance:</strong> $${targetBalance.toFixed(2)}</p>
-          <p><strong>Last Activity:</strong> ${lastActivity || 'No recent activity'}</p>
+          <p><strong>Top-up Needed:</strong> $${(targetBalance - balance).toFixed(2)}</p>
+          <p><strong>Last Activity:</strong> ${lastActivity}</p>
         </div>
-        <p style="${EMAIL_STYLES.PARAGRAPH}">Please follow up with the client to ensure their balance is topped up.</p>
+        
+        <p style="${EMAIL_STYLES.PARAGRAPH}">A low balance notification has been sent to the client. Consider following up if no payment is received within 24 hours.</p>
+        
+        <p style="${EMAIL_STYLES.FOOTER}">This is an automated notification from your Blawby system.</p>
       </div>
     `
   },
@@ -113,24 +135,6 @@ const TEMPLATES = {
         ` : ''}
         
         <p style="${EMAIL_STYLES.FOOTER}">Thank you for your business.</p>
-      </div>
-    `
-  },
-  INVOICE: {
-    SUBJECT: (clientName, date) => `Invoice for ${clientName} - ${date}`,
-    BODY: (clientName, date, totalHours, totalAmount, currency) => `
-      <div style="${EMAIL_STYLES.CONTAINER}">
-        <h1 style="${EMAIL_STYLES.HEADER}">Invoice</h1>
-        <p style="${EMAIL_STYLES.PARAGRAPH}">Dear ${clientName},</p>
-        <p style="${EMAIL_STYLES.PARAGRAPH}">Please find your invoice for ${date}.</p>
-        
-        <div style="${EMAIL_STYLES.SUCCESS}">
-          <p><strong>Total Hours:</strong> ${totalHours.toFixed(2)}</p>
-          <p><strong>Total Amount:</strong> ${currency} ${totalAmount.toFixed(2)}</p>
-        </div>
-        
-        <p style="${EMAIL_STYLES.PARAGRAPH}">Thank you for your business.</p>
-        <p style="${EMAIL_STYLES.FOOTER}">Best regards,<br>The Blawby Team</p>
       </div>
     `
   },
@@ -245,20 +249,12 @@ class TemplateLoader {
    */
   validateTemplates() {
     const requiredTemplates = [
-      ['LOW_BALANCE', 'CLIENT_SUBJECT'],
-      ['LOW_BALANCE', 'CLIENT_BODY'],
-      ['LOW_BALANCE', 'OWNER_SUBJECT'],
-      ['LOW_BALANCE', 'OWNER_BODY'],
-      ['SERVICE_RESUMED', 'CLIENT_SUBJECT'],
-      ['SERVICE_RESUMED', 'CLIENT_BODY'],
-      ['SERVICE_RESUMED', 'OWNER_SUBJECT'],
-      ['SERVICE_RESUMED', 'OWNER_BODY'],
+      ['LOW_BALANCE', 'SUBJECT'],
+      ['LOW_BALANCE', 'BODY'],
+      ['SERVICE_RESUMED', 'SUBJECT'],
+      ['SERVICE_RESUMED', 'BODY'],
       ['DAILY_DIGEST', 'SUBJECT'],
       ['DAILY_DIGEST', 'BODY'],
-      ['RECEIPT', 'SUBJECT'],
-      ['RECEIPT', 'BODY'],
-      ['INVOICE', 'SUBJECT'],
-      ['INVOICE', 'BODY'],
       ['MONTHLY_SUMMARY', 'SUBJECT'],
       ['MONTHLY_SUMMARY', 'BODY']
     ];

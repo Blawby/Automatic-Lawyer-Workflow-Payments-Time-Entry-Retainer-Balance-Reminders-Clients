@@ -6,7 +6,6 @@ const SHEET_NAMES = {
   LAWYERS: "Lawyers",
   SETTINGS: "Settings",
   LOW_BALANCE: "LowBalanceWarnings",
-  INVOICES: "Invoices",
   MATTERS: "Matters"
 };
 
@@ -67,8 +66,6 @@ const SETTINGS_KEYS = {
   MIN_TARGET_BALANCE: "min_target_balance",
   LOW_BALANCE_THRESHOLD: "Low Balance Threshold",
   EMAIL_NOTIFICATIONS: "Email Notifications",
-  AUTO_GENERATE_INVOICES: "auto_generate_invoices",
-  INVOICE_DAY: "invoice_day",
   TEST_MODE: "Test Mode",
   FIRM_EMAIL: "Firm Email"
 };
@@ -80,28 +77,6 @@ const DEFAULT_SETTINGS = {
   [SETTINGS_KEYS.MIN_TARGET_BALANCE]: "500",
   [SETTINGS_KEYS.LOW_BALANCE_THRESHOLD]: "1000",
   [SETTINGS_KEYS.EMAIL_NOTIFICATIONS]: "true",
-  [SETTINGS_KEYS.AUTO_GENERATE_INVOICES]: "true",
-  [SETTINGS_KEYS.INVOICE_DAY]: "1",
   [SETTINGS_KEYS.TEST_MODE]: "false",
   [SETTINGS_KEYS.FIRM_EMAIL]: "admin@blawby.com"
-};
-
-const INVOICE_COLUMNS = {
-  MONTH: 0,
-  CLIENT_EMAIL: 1,
-  CLIENT_NAME: 2,
-  TOTAL_HOURS: 3,
-  TOTAL_USED: 4,
-  LAWYERS_INVOLVED: 5,
-  GENERATED_AT: 6,
-  CURRENCY: 7,
-  TRUST_ACCOUNT: 8,
-  CLIENT_REF: 9,
-  UUID: 10,
-  INVOICE_ID: 11,
-  CLIENT_ID: 12,
-  INVOICE_DATE: 13,
-  MATTER_TOTALS: 14,
-  TOTAL_AMOUNT: 15,
-  STATUS: 16
 }; 

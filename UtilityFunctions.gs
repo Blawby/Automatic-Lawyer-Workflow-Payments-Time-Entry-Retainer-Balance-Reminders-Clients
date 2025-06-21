@@ -246,12 +246,10 @@ function getAllSheets() {
   const ss = getActiveSpreadsheet();
   
   return {
-    welcome: getSheet("Welcome"),
     payments: getSheet("Payments"),
     clients: getSheet("Clients"),
     timeLogs: getSheet("TimeLogs"),
     matters: getSheet("Matters"),
-    invoices: getSheet("Invoices"),
     lowBalance: getSheet("LowBalanceWarnings")
   };
 }
@@ -297,7 +295,6 @@ function getSheets(ss) {
     clientsSheet: getOrCreateSheet("Clients"),
     timeLogsSheet: getOrCreateSheet("TimeLogs"),
     lowBalanceSheet: getOrCreateSheet("LowBalanceWarnings"),
-    invoicesSheet: getOrCreateSheet("Invoices"),
     mattersSheet: getOrCreateSheet("Matters"),
     welcomeSheet: getOrCreateSheet("Welcome")
   };
@@ -450,19 +447,17 @@ function setupAllSheets(sheets) {
   // Setup welcome sheet first
   setupWelcomeSheet(getActiveSpreadsheet());
   
-  // Setup each sheet with its specific headers and formatting (no Lawyers tab)
-  setupPaymentsSheet(sheets.paymentsSheet);
+  // Setup sheets with proper headers
   setupClientsSheet(sheets.clientsSheet);
   setupTimeLogsSheet(sheets.timeLogsSheet);
-  setupLowBalanceSheet(sheets.lowBalanceSheet);
-  setupInvoicesSheet(sheets.invoicesSheet);
+  setupPaymentsSheet(sheets.paymentsSheet);
   setupMattersSheet(sheets.mattersSheet);
 }
 
 function setupPaymentsSheet(sheet) {
   const headers = [
     "Date",
-    "Client Email",
+    "Client Email", 
     "Amount",
     "Payment Method"
   ];
@@ -470,16 +465,15 @@ function setupPaymentsSheet(sheet) {
   
   // Add sample payment data for testing
   const samplePayments = [
-    ["2025-01-15", "client1@example.com", "2500", "card - 4242"],
-    ["2025-01-16", "client2@example.com", "1500", "card - 5555"],
-    ["2025-01-17", "client1@example.com", "1000", "card - 4242"]
+    ["2025-01-15", "client1@example.com", "2500", "card"],
+    ["2025-01-16", "client2@example.com", "1500", "card"],
+    ["2025-01-17", "client1@example.com", "1000", "card"]
   ];
   
   sheet.getRange(2, 1, samplePayments.length, 4).setValues(samplePayments);
   
   // Add note to explain sample data
-  sheet.getRange(1, 1).setNote("Sample data for testing. Delete these rows and add your real payment data from Zapier.");
-  // No instructions or protection
+  sheet.getRange(1, 1).setNote("Sample payment data - delete these rows and add your real payment data");
 }
 
 function setupClientsSheet(sheet) {
@@ -536,32 +530,6 @@ function setupLowBalanceSheet(sheet) {
     "Last Notification"
   ];
   setupSheet(sheet, headers);
-  // No instructions or protection
-}
-
-function setupInvoicesSheet(sheet) {
-  const headers = [
-    "Invoice Number",
-    "Client Name",
-    "Date",
-    "Amount",
-    "Currency",
-    "Status",
-    "Payment Link",
-    "Notes"
-  ];
-  setupSheet(sheet, headers);
-  
-  // Add sample invoice data for testing
-  const sampleInvoices = [
-    ["INV-001", "Sample Client", "2025-01-15", "1000", "USD", "Paid", "https://app.blawby.com/pay", "Sample invoice"],
-    ["INV-002", "Another Client", "2025-01-16", "2000", "USD", "Pending", "https://app.blawby.com/pay", "Another sample"]
-  ];
-  
-  sheet.getRange(2, 1, sampleInvoices.length, 8).setValues(sampleInvoices);
-  
-  // Add note to explain sample data
-  sheet.getRange(1, 1).setNote("Sample invoice data for testing. These are invoices for balance top-ups.");
   // No instructions or protection
 }
 
@@ -715,37 +683,28 @@ function setupWelcomeSheet(ss) {
     ["Feature", "Purpose", "When to Use", ""],
     ["Run Full Daily Sync", "Complete system synchronization", "Daily automation or manual testing", ""],
     ["Sync Payments & Clients", "Process payments and update clients", "After new payments arrive", ""],
-    ["Send Balance Digest", "Send low balance summary to firm", "Daily monitoring of client balances", ""],
-    ["Generate Invoices", "Create invoices for all clients", "Monthly billing cycle", ""],
     ["Send Test Email", "Validate email configuration", "After setup or troubleshooting", ""],
-    ["Validate Email Templates", "Check all templates are working", "After template updates", ""],
-    ["Clear Template Cache", "Refresh email templates", "After template modifications", ""],
+    ["Fix Firm Email", "Auto-detect and fix firm email setting", "If email is not set or invalid", ""],
     ["Setup System", "Initial setup and triggers", "First-time setup only", ""],
     ["", "", "", ""],
     ["🧪 Testing Features", "", "", ""],
     ["Feature", "How to Test", "Expected Result", ""],
     ["System Validation", "Click 'Send Test Email' in menu", "Test email sent to verify configuration", ""],
-    ["Template Validation", "Click 'Validate Email Templates'", "Confirms all email templates are working", ""],
     ["Client Creation", "Run 'Run Full Daily Sync' with sample payments", "Clients sheet populated with client1@example.com and client2@example.com", ""],
     ["Low Balance Warnings", "Add time logs to reduce balance below threshold", "Professional HTML email notifications sent to clients", ""],
-    ["Matter Tracking", "Time logs are linked to matters by Matter ID", "Matter breakdown shown in invoices", ""],
-    ["Email Notifications", "Set Email Notifications to TRUE and run sync", "Receipt emails sent to sample clients", ""],
-    ["Template Cache", "Click 'Clear Template Cache' to refresh templates", "Useful when updating email templates", ""],
+    ["Matter Tracking", "Time logs are linked to matters by Matter ID", "Matter breakdown shown in client records", ""],
     ["", "", "", ""],
     ["📊 Sheet Overview", "", "", ""],
     ["Sheet", "Purpose", "Editable?", ""],
     ["Lawyers (in Welcome)", "Manage your legal team and their rates", "Yes", ""],
     ["Clients", "Track client balances and payment links", "Auto-updated", ""],
     ["TimeLogs", "Record billable hours and activities", "Yes", ""],
-    ["Payments", "Track client payments and receipts", "Auto-updated", ""],
-    ["Invoices", "View payment receipts and monthly summaries", "Auto-updated", ""],
+    ["Payments", "Track client payments", "Auto-updated", ""],
     ["Matters", "Track client matters and case values", "Yes", ""],
     ["", "", "", ""],
     ["💡 How Retainers Work", "", "", ""],
     ["•", "Clients are automatically created when they make their first payment", "", ""],
-    ["•", "Each payment generates a beautiful HTML receipt with current balance", "", ""],
     ["•", "Time is logged against the retainer balance with lawyer rates", "", ""],
-    ["•", "Professional monthly summaries show hours used vs. balance", "", ""],
     ["•", "Low balance warnings are sent automatically with payment links", "", ""],
     ["•", "Payment links are auto-generated for easy client top-ups", "", ""],
     ["", "", "", ""],
@@ -761,7 +720,11 @@ function setupWelcomeSheet(ss) {
     ["❓ Need Help?", "", "", ""],
     ["•", "Email: support@blawby.com", "", ""],
     ["•", "Docs: blawby.com/docs", "", ""],
-    ["•", "GitHub Issues: Report bugs or request features", "", ""]
+    ["•", "GitHub Issues: Report bugs or request features", "", ""],
+    ["📧 What You'll Receive", "", "", ""],
+    ["•", "Daily balance digest (if low balances detected)", "", ""],
+    ["•", "Low balance warnings (when applicable)", "", ""],
+    ["•", "Service resumed notifications (when balance is topped up)", "", ""]
   ];
   
   // Write content to sheet
@@ -868,209 +831,6 @@ function setupWelcomeSheet(ss) {
   welcomeSheet.setColumnWidth(4, 150);
 }
 
-// Add the missing invoice generation function
-function generateInvoiceForClient(clientEmail) {
-  try {
-    if (!clientEmail || typeof clientEmail !== 'string') {
-      console.log('Invalid client email provided');
-      return false;
-    }
-
-    const settings = loadSettings();
-    if (!settings.auto_generate_invoices) {
-      console.log(`Invoice generation is disabled for ${clientEmail}`);
-      return false;
-    }
-
-    const today = new Date();
-    const invoiceDay = parseInt(settings.invoice_day);
-    
-    // Only generate invoices on the specified day
-    if (today.getDate() !== invoiceDay) {
-      console.log(`Not invoice day for ${clientEmail}`);
-      return false;
-    }
-
-    // Get client's time logs
-    const timeLogs = getTimeLogsForClient(clientEmail);
-    if (!timeLogs || timeLogs.length === 0) {
-      console.log(`No time logs found for ${clientEmail}`);
-      return false;
-    }
-
-    // Calculate total hours and amount
-    let totalHours = 0;
-    let totalAmount = 0;
-    timeLogs.forEach(log => {
-      if (log && log.hours) {
-        totalHours += parseFloat(log.hours);
-        const lawyerRate = getLawyerRate(log.lawyerId);
-        totalAmount += parseFloat(log.hours) * lawyerRate;
-      }
-    });
-
-    if (totalHours === 0) {
-      console.log(`No billable hours found for ${clientEmail}`);
-      return false;
-    }
-
-    // Create invoice record
-    const invoice = {
-      clientEmail: clientEmail,
-      date: today,
-      totalHours: totalHours,
-      totalAmount: totalAmount,
-      status: 'Pending'
-    };
-
-    // Save invoice
-    const saved = saveInvoice(invoice);
-    if (!saved) {
-      console.log(`Failed to save invoice for ${clientEmail}`);
-      return false;
-    }
-
-    // Send invoice email
-    if (settings.email_notifications) {
-      const emailSent = sendInvoiceEmail(invoice);
-      if (!emailSent) {
-        console.log(`Failed to send invoice email to ${clientEmail}`);
-      }
-    }
-
-    console.log(`✅ Invoice generated for ${clientEmail}`);
-    return true;
-  } catch (error) {
-    console.error(`Error generating invoice for ${clientEmail}: ${error.message}`);
-    return false;
-  }
-}
-
-// Helper functions for invoice generation
-function getTimeLogsForClient(clientEmail) {
-  try {
-    const timeLogsSheet = getSheet('TimeLogs');
-    if (!timeLogsSheet) {
-      console.log('TimeLogs sheet not found');
-      return [];
-    }
-    
-    const data = timeLogsSheet.getDataRange().getValues();
-    if (data.length <= 1) {
-      console.log('No time logs found in sheet');
-      return [];
-    }
-    
-    const headers = data[0];
-    
-    return data.slice(1)
-      .filter(row => row && row[1] === clientEmail) // Client Email is in column 2
-      .map(row => ({
-        date: row[0],
-        clientEmail: row[1],
-        matterId: row[2],
-        lawyerId: row[3],
-        hours: row[4]
-      }));
-  } catch (error) {
-    console.error(`Error getting time logs for ${clientEmail}: ${error.message}`);
-    return [];
-  }
-}
-
-function getLawyerRate(lawyerId) {
-  try {
-    if (!lawyerId) return 0;
-    
-    const welcomeSheet = getSheet('Welcome');
-    if (!welcomeSheet) {
-      console.log('Welcome sheet not found');
-      return 0;
-    }
-    
-    const data = welcomeSheet.getDataRange().getValues();
-    if (data.length <= 1) {
-      console.log('No lawyers found in sheet');
-      return 0;
-    }
-    
-    const lawyer = data.slice(1)
-      .find(row => row && row[3] === lawyerId); // Lawyer ID is in column 4
-    
-    return lawyer ? parseFloat(lawyer[2]) : 0; // Rate is in column 3
-  } catch (error) {
-    console.error(`Error getting rate for lawyer ${lawyerId}: ${error.message}`);
-    return 0;
-  }
-}
-
-function saveInvoice(invoice) {
-  try {
-    if (!invoice || !invoice.clientEmail) {
-      console.log('Invalid invoice data');
-      return false;
-    }
-
-    const invoicesSheet = getSheet('Invoices');
-    if (!invoicesSheet) {
-      console.log('Invoices sheet not found');
-      return false;
-    }
-    
-    invoicesSheet.appendRow([
-      invoice.date,
-      invoice.clientEmail,
-      invoice.totalHours,
-      invoice.totalAmount,
-      invoice.status
-    ]);
-    
-    return true;
-  } catch (error) {
-    console.error(`Error saving invoice: ${error.message}`);
-    return false;
-  }
-}
-
-function sendInvoiceEmail(invoice) {
-  try {
-    if (!invoice || !invoice.clientEmail) {
-      console.log('Invalid invoice data for email');
-      return false;
-    }
-
-    const client = getClientByEmail(invoice.clientEmail);
-    if (!client) {
-      console.log(`Client not found for email ${invoice.clientEmail}`);
-      return false;
-    }
-
-    const subject = `Invoice for ${client.name} - ${formatDate(invoice.date)}`;
-    const body = `
-      Dear ${client.name},
-
-      Please find attached your invoice for ${formatDate(invoice.date)}.
-
-      Total Hours: ${invoice.totalHours}
-      Total Amount: ${formatCurrency(invoice.totalAmount)}
-
-      Thank you for your business.
-
-      Best regards,
-      Your Law Firm
-    `;
-
-    sendEmail(client.email, subject, body, { emailType: 'invoice' });
-    log(`✅ Invoice email sent to ${client.email}`);
-    
-    return true;
-  } catch (error) {
-    console.error(`Error sending invoice email: ${error.message}`);
-    return false;
-  }
-}
-
-// Helper to parse lawyers from Welcome sheet
 function getLawyersFromWelcomeSheet(welcomeSheet) {
   const values = welcomeSheet.getDataRange().getValues();
   const lawyerHeaderRow = values.findIndex(row => row[0] && row[0].toString().includes('Lawyers'));

@@ -79,7 +79,7 @@ function renderTemplate(type, subtype, ...params) {
  * Log email to EmailLog sheet for tracking
  * @param {string} recipient - Email recipient
  * @param {string} subject - Email subject
- * @param {string} type - Email type (e.g., 'receipt', 'invoice', 'digest')
+ * @param {string} type - Email type (e.g., 'receipt', 'digest')
  */
 function logEmail(recipient, subject, type = 'general') {
   try {
@@ -206,8 +206,8 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
   }
   
   // Send to client using template
-  const clientSubject = renderTemplate('LOW_BALANCE', 'CLIENT_SUBJECT');
-  const clientBody = renderTemplate('LOW_BALANCE', 'CLIENT_BODY', clientName, balance, targetBalance, paymentLink);
+  const clientSubject = renderTemplate('LOW_BALANCE', 'SUBJECT', clientName);
+  const clientBody = renderTemplate('LOW_BALANCE', 'BODY', clientName, balance, targetBalance, paymentLink);
   
   log(`📧 Sending low balance email to client: ${email}`);
   sendEmail(email, clientSubject, clientBody, { isHtml: true, emailType: 'low_balance_client' });
@@ -317,8 +317,8 @@ function notifyServiceResumed(clientID, email, clientName, balance, today) {
   }
   
   // Send to client using template
-  const clientSubject = renderTemplate('SERVICE_RESUMED', 'CLIENT_SUBJECT');
-  const clientBody = renderTemplate('SERVICE_RESUMED', 'CLIENT_BODY', clientName);
+  const clientSubject = renderTemplate('SERVICE_RESUMED', 'SUBJECT', clientName);
+  const clientBody = renderTemplate('SERVICE_RESUMED', 'BODY', clientName, balance);
   
   sendEmail(email, clientSubject, clientBody, { isHtml: true, emailType: 'service_resumed_client' });
   
@@ -406,4 +406,4 @@ function sendWelcomeEmail() {
   }
   
   logEnd('sendWelcomeEmail');
-} 
+}

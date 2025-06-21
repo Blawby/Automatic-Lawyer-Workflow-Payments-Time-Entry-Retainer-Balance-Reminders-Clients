@@ -348,7 +348,6 @@ function viewEmailLog() {
       'The EmailLog sheet has been opened showing all emails sent by the system.\n\n' +
       'This includes:\n' +
       '• Receipt emails\n' +
-      '• Invoice emails\n' +
       '• Low balance alerts\n' +
       '• Daily digests\n' +
       '• Welcome emails\n\n' +

@@ -4,28 +4,45 @@ A professional, IOLTA-compliant Google Sheets solution for law firms to manage r
 
 ---
 
-## ✅ Quick Start Guide
+## 🚀 Quick Start for Lawyers
 
-| Step | Action           | Details                                                                 |
-|------|------------------|-------------------------------------------------------------------------|
-| 1    | Test the System  | Click "Run Full Daily Sync" in the Blawby menu to process sample data |
-| 2    | Send Test Email  | Use "Send Test Email" to validate your email configuration |
-| 3    | Connect Blawby   | Enter your Blawby payment page URL in the settings above                 |
-| 4    | Add Your Team    | Add your lawyers in the section above                                    |
-| 5    | Set Up Zapier    | Create a Zap that triggers on new Stripe payments → sends payment info to this sheet |
-| 6    | Replace Sample Data | Delete sample rows and add your real data                              |
+### 1. Get Your Copy (2 minutes)
+1. [Click here to make your copy](https://docs.google.com/spreadsheets/d/1DO0IOXluqBD6QZ7cIteS1clIz6dymNy4ODbcS4cxKjY/copy)
+2. Name it something like "Your Law Firm - Retainer Management"
+3. Click "Make a copy"
 
----
+### 2. Initial Setup (5 minutes)
+1. Open the **Welcome** sheet in your copy
+2. Update the **System Settings** section:
+   - Enter your **Blawby Payment URL** (get this from your Blawby account)
+   - Set your **Default Currency** (USD, EUR, etc.)
+   - Enter your **Firm Email** address
+   - Keep **Test Mode** as "TRUE" for now
+3. Add your lawyers in the **Lawyers** section:
+   - Enter their email, name, hourly rate, and a unique Lawyer ID
+4. Click **"Setup System"** in the Blawby menu
 
-## 🧪 Testing Features
+### 3. Test the System (3 minutes)
+1. Click **"Send Test Email"** to verify your email configuration
+2. Click **"Run Full Daily Sync"** to process the sample data
+3. Check your email for test notifications
+4. Review the **Clients** sheet to see sample clients created
 
-| Feature | How to Test | Expected Result |
-|---------|-------------|-----------------|
-| **System Validation** | Click "Send Test Email" in menu | Test email sent to verify configuration |
-| **Client Creation** | Run "Run Full Daily Sync" with sample payments | Clients sheet populated with client1@example.com and client2@example.com |
-| **Low Balance Warnings** | Add time logs to reduce balance below threshold | Professional HTML email notifications sent to clients |
-| **Matter Tracking** | Time logs are linked to matters by Matter ID | Matter breakdown shown in client records |
-| **Email Notifications** | Set Email Notifications to TRUE and run sync | Low balance, service resumed, and digest emails sent to firm/clients |
+### 4. Connect Your Payment System (10 minutes)
+1. Set up a Zapier integration:
+   - Trigger: New payment in Stripe/your payment processor
+   - Action: Add row to Google Sheets (your Payments sheet)
+   - Map: Date, Client Email, Amount, Payment Method
+2. Test with a real payment
+3. Run **"Sync Payments & Clients"** to process it
+
+### 5. Start Using (Ongoing)
+1. Set **Test Mode** to "FALSE" when ready for production
+2. Delete sample data and add your real clients
+3. The system will automatically:
+   - Create client records from payments
+   - Track balances and send low balance alerts
+   - Notify clients when service resumes
 
 ---
 
@@ -97,18 +114,6 @@ Blawby includes a professional email system with HTML templates. All emails are 
 
 ---
 
-## 🎯 Menu Features
-
-The **Blawby** menu provides easy access to all system features:
-
-- **Run Full Daily Sync** - Complete system synchronization (requires Test Mode)
-- **Sync Payments & Clients** - Process payments and update client data
-- **Send Test Email** - Validate email system configuration
-- **Fix Firm Email** - Auto-detect and fix firm email setting
-- **Setup System** - Initial system setup and trigger creation
-
----
-
 ## ❓ Need Help?
 
 - **Email:** support@blawby.com
@@ -131,48 +136,6 @@ The **Blawby** menu provides easy access to all system features:
 
 ---
 
-## 🚀 Quick Start for Lawyers
-
-### 1. Get Your Copy (2 minutes)
-1. [Click here to make your copy](https://docs.google.com/spreadsheets/d/1DO0IOXluqBD6QZ7cIteS1clIz6dymNy4ODbcS4cxKjY/copy)
-2. Name it something like "Your Law Firm - Retainer Management"
-3. Click "Make a copy"
-
-### 2. Initial Setup (5 minutes)
-1. Open the **Welcome** sheet in your copy
-2. Update the **System Settings** section:
-   - Enter your **Blawby Payment URL** (get this from your Blawby account)
-   - Set your **Default Currency** (USD, EUR, etc.)
-   - Enter your **Firm Email** address
-   - Keep **Test Mode** as "TRUE" for now
-3. Add your lawyers in the **Lawyers** section:
-   - Enter their email, name, hourly rate, and a unique Lawyer ID
-4. Click **"Setup System"** in the Blawby menu
-
-### 3. Test the System (3 minutes)
-1. Click **"Send Test Email"** to verify your email configuration
-2. Click **"Run Full Daily Sync"** to process the sample data
-3. Check your email for test notifications
-4. Review the **Clients** sheet to see sample clients created
-
-### 4. Connect Your Payment System (10 minutes)
-1. Set up a Zapier integration:
-   - Trigger: New payment in Stripe/your payment processor
-   - Action: Add row to Google Sheets (your Payments sheet)
-   - Map: Date, Client Email, Amount, Payment Method
-2. Test with a real payment
-3. Run **"Sync Payments & Clients"** to process it
-
-### 5. Start Using (Ongoing)
-1. Set **Test Mode** to "FALSE" when ready for production
-2. Delete sample data and add your real clients
-3. The system will automatically:
-   - Create client records from payments
-   - Track balances and send low balance alerts
-   - Notify clients when service resumes
-
----
-
 ## 🛠️ Developer Documentation
 
 ### Project Structure
@@ -185,3 +148,15 @@ The **Blawby** menu provides easy access to all system features:
 ├── EmailTemplates.gs    # Professional HTML email templates with caching
 └── UtilityFunctions.gs  # Helper functions, logging, and sheet access
 ```
+
+---
+
+## 🧪 Testing Features
+
+| Feature | How to Test | Expected Result |
+|---------|-------------|-----------------|
+| **System Validation** | Click "Send Test Email" in menu | Test email sent to verify configuration |
+| **Client Creation** | Run "Run Full Daily Sync" with sample payments | Clients sheet populated with client1@example.com and client2@example.com |
+| **Low Balance Warnings** | Add time logs to reduce balance below threshold | Professional HTML email notifications sent to clients |
+| **Matter Tracking** | Time logs are linked to matters by Matter ID | Matter breakdown shown in client records |
+| **Email Notifications** | Set Email Notifications to TRUE and run sync | Low balance, service resumed, and digest emails sent to firm/clients |

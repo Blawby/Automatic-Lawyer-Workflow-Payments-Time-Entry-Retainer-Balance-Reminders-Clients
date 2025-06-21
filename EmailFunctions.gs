@@ -9,54 +9,63 @@
  */
 function renderTemplate(type, subtype, ...params) {
   try {
-    // Simple fallback templates
+    // Try to use the new template system first
+    if (typeof getTemplateLoader === 'function') {
+      const loader = getTemplateLoader();
+      return loader.render(type, subtype, ...params);
+    }
+    
+    // Fallback to simple templates if new system not available
     const templates = {
       'LOW_BALANCE': {
-        'CLIENT_SUBJECT': 'Low Balance Alert - Blawby',
+        'CLIENT_SUBJECT': (clientName) => `Your retainer needs a quick top-up, ${clientName}`,
         'CLIENT_BODY': (clientName, balance, targetBalance, paymentLink) => 
-          `Dear ${clientName},\n\nYour account balance is currently $${balance.toFixed(2)}. Your target balance is $${targetBalance.toFixed(2)}.\n\nPlease top up your balance at: ${paymentLink}`,
+          `Hi ${clientName}! 👋\n\nWe wanted to give you a friendly heads up about your retainer balance.\n\nYour Current Balance:\n- Available: $${balance.toFixed(2)}\n- Recommended: $${targetBalance.toFixed(2)}\n- To add: $${(targetBalance - balance).toFixed(2)}\n\nTo keep your legal services running smoothly, we recommend topping up your retainer. This helps us continue working on your matters without any interruptions.\n\nAdd funds here: ${paymentLink}\n\nNo rush—you can add funds whenever it's convenient for you. If you have any questions, just reply to this email or give us a call.\n\nThanks for choosing us!\n\nBest regards,\nYour Legal Team`,
         'OWNER_SUBJECT': (clientName) => `Low Balance Alert - ${clientName}`,
         'OWNER_BODY': (clientName, balance, targetBalance, lastActivity) => 
           `Client ${clientName} has a low balance of $${balance.toFixed(2)}. Target balance is $${targetBalance.toFixed(2)}. Last activity: ${lastActivity || 'No recent activity'}`
       },
       'DAILY_DIGEST': {
-        'SUBJECT': 'Daily Low Balance Digest - Blawby',
-        'BODY': (lowBalanceClients) => {
-          let body = 'The following clients have low balances:\n\n';
-          lowBalanceClients.forEach(client => {
-            body += `${client.name}: $${client.balance.toFixed(2)} (needs $${client.topUp.toFixed(2)})\n`;
-          });
+        'SUBJECT': 'Your Blawby Daily Summary',
+        'BODY': (lowBalanceClients, paymentSummary) => {
+          let body = '📬 Your Daily Blawby Summary\n\n';
+          body += 'Here\'s a snapshot of client retainer activity and balances today.\n\n';
+          
+          if (paymentSummary) {
+            body += `💰 Total Payments Received: $${paymentSummary.total.toFixed(2)}\n`;
+            body += `👥 Clients Paid Today: ${paymentSummary.count}\n\n`;
+          }
+          
+          if (lowBalanceClients.length === 0) {
+            body += '🎉 All client balances are in good standing. Great work!\n';
+          } else {
+            body += `🔔 Clients Needing Attention (${lowBalanceClients.length}):\n\n`;
+            lowBalanceClients.forEach(client => {
+              body += `${client.name}:\n`;
+              body += `  Balance: $${client.balance.toFixed(2)}\n`;
+              body += `  Target: $${client.targetBalance.toFixed(2)}\n`;
+              body += `  Last Activity: ${client.lastActivity || 'N/A'}\n`;
+              body += `  Email Sent: ${client.emailSent ? '✅ Yes' : '❌ No'}\n`;
+              if (client.balance <= 0) {
+                body += `  Status: 🚫 Services Paused\n`;
+              } else {
+                body += `  Status: ⚠️ Low Balance\n`;
+              }
+              body += '\n';
+            });
+            body += '📝 Action recommended: Follow up with clients who haven\'t responded or whose services are paused.\n';
+          }
+          
+          body += '\nThis summary was generated automatically by Blawby.';
           return body;
         }
       },
       'SERVICE_RESUMED': {
-        'CLIENT_SUBJECT': 'Service Resumed - Blawby',
-        'CLIENT_BODY': (clientName) => `Dear ${clientName},\n\nYour Blawby services have been resumed. Thank you for maintaining your balance.`,
+        'CLIENT_SUBJECT': 'Great news! Your services are back up and running',
+        'CLIENT_BODY': (clientName) => `Welcome back, ${clientName}! 🎉\n\nGreat news—your retainer has been topped up and your legal services are now fully active again!\n\n✅ All systems are go! We're ready to continue working on your matters.\n\nThanks for keeping your retainer current. This helps us provide you with the best possible service without any interruptions.\n\nIf you need anything or have questions about your case, don't hesitate to reach out. We're here to help!\n\nBest regards,\nYour Legal Team`,
         'OWNER_SUBJECT': (clientName) => `Service Resumed - ${clientName}`,
         'OWNER_BODY': (clientName) => `Services have been resumed for client ${clientName}.`
       },
-      'RECEIPT': {
-        'SUBJECT': (receiptId) => `Payment Receipt #${receiptId} - Blawby`,
-        'BODY': (clientName, receiptId, date, amount, currency, newBalance, hoursUsed, averageRate) => 
-          `Dear ${clientName},\n\nThank you for your payment. Here is your receipt:\n\n` +
-          `Receipt #: ${receiptId}\n` +
-          `Date: ${date}\n` +
-          `Amount: ${currency} ${amount}\n` +
-          `New Balance: ${currency} ${newBalance.toFixed(2)}\n\n` +
-          `${hoursUsed > 0 ? `Monthly Summary:\nHours Used This Month: ${hoursUsed.toFixed(2)}\nAverage Rate: ${currency} ${averageRate.toFixed(2)}/hour\nEstimated Monthly Usage: ${currency} ${(hoursUsed * averageRate).toFixed(2)}\n\n` : ''}` +
-          `Thank you for your business.`
-      },
-      'MONTHLY_SUMMARY': {
-        'SUBJECT': (month) => `Monthly Summary - ${month} - Blawby`,
-        'BODY': (clientName, month, hoursUsed, averageRate, estimatedUsage, balance) => 
-          `Dear ${clientName},\n\nHere is your monthly summary for ${month}:\n\n` +
-          `Hours Used: ${hoursUsed.toFixed(2)}\n` +
-          `Average Rate: $${averageRate.toFixed(2)}/hour\n` +
-          `Estimated Usage: $${estimatedUsage.toFixed(2)}\n` +
-          `Current Balance: $${balance.toFixed(2)}\n\n` +
-          `${balance < estimatedUsage ? `Note: Your current balance is below the estimated monthly usage. Consider topping up your retainer to ensure uninterrupted service.\n\n` : ''}` +
-          `Thank you for your business.`
-      }
     };
     
     if (!templates[type] || !templates[type][subtype]) {
@@ -79,7 +88,7 @@ function renderTemplate(type, subtype, ...params) {
  * Log email to EmailLog sheet for tracking
  * @param {string} recipient - Email recipient
  * @param {string} subject - Email subject
- * @param {string} type - Email type (e.g., 'receipt', 'digest')
+ * @param {string} type - Email type (e.g., 'digest', 'low_balance')
  */
 function logEmail(recipient, subject, type = 'general') {
   try {
@@ -206,8 +215,8 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
   }
   
   // Send to client using template
-  const clientSubject = renderTemplate('LOW_BALANCE', 'SUBJECT', clientName);
-  const clientBody = renderTemplate('LOW_BALANCE', 'BODY', clientName, balance, targetBalance, paymentLink);
+  const clientSubject = renderTemplate('LOW_BALANCE', 'CLIENT_SUBJECT', clientName);
+  const clientBody = renderTemplate('LOW_BALANCE', 'CLIENT_BODY', clientName, balance, targetBalance, paymentLink);
   
   log(`📧 Sending low balance email to client: ${email}`);
   sendEmail(email, clientSubject, clientBody, { isHtml: true, emailType: 'low_balance_client' });
@@ -244,7 +253,26 @@ function sendDailyBalanceDigest() {
     const lawyerData = buildLawyerMaps(data.lawyers);
     const clientsById = buildClientMap(data.clientData);
     
-    // Get low balance clients
+    // Calculate payment summary for today
+    const today = new Date();
+    const todayStr = today.toDateString();
+    const props = PropertiesService.getScriptProperties();
+    
+    const paymentsToday = data.paymentData
+      .filter(p => {
+        if (!p || !Array.isArray(p) || p.length < 3) return false;
+        const paymentDate = parseZapierTimestamp(p[0]);
+        return paymentDate && paymentDate.toDateString() === todayStr;
+      });
+    
+    const paymentSummary = {
+      total: paymentsToday.reduce((sum, p) => sum + (parseFloat(p[2]) || 0), 0),
+      count: new Set(paymentsToday.map(p => p[1])).size
+    };
+    
+    log(`💰 Today's payments: $${paymentSummary.total.toFixed(2)} from ${paymentSummary.count} clients`);
+    
+    // Get low balance clients with email sent tracking
     const lowBalanceClients = [];
     log(`📋 Checking ${Object.keys(clientsById).length} clients for low balances...`);
     
@@ -258,22 +286,21 @@ function sendDailyBalanceDigest() {
       const topUp = Math.max(0, targetBalance - balance);
       
       if (topUp > 0) {
+        // Check if low balance email was sent today
+        const emailKey = `low_balance_${clientID}_${todayStr}`;
+        const emailSent = !isTestMode() && props.getProperty(emailKey) === "1";
+        
         lowBalanceClients.push({
           name: clientName,
           email: email,
           balance: balance,
           targetBalance: targetBalance,
           topUp: topUp,
-          lastActivity: lawyerData.emails[balanceInfo.lastLawyerID] || 'Unknown'
+          lastActivity: lawyerData.emails[balanceInfo.lastLawyerID] || 'Unknown',
+          emailSent: emailSent
         });
-        log(`⚠️ Low balance detected for ${clientName}: $${balance.toFixed(2)} (needs $${topUp.toFixed(2)})`);
+        log(`⚠️ Low balance detected for ${clientName}: $${balance.toFixed(2)} (needs $${topUp.toFixed(2)}, email sent: ${emailSent})`);
       }
-    }
-    
-    if (lowBalanceClients.length === 0) {
-      log("📧 No low balance clients to report");
-      logEnd('sendDailyBalanceDigest');
-      return;
     }
     
     // Sort by top-up amount (highest first)
@@ -281,13 +308,13 @@ function sendDailyBalanceDigest() {
     
     log(`📧 Sending digest for ${lowBalanceClients.length} low balance clients...`);
     
-    // Send digest using template
+    // Send digest using template with both parameters
     const subject = renderTemplate('DAILY_DIGEST', 'SUBJECT');
-    const body = renderTemplate('DAILY_DIGEST', 'BODY', lowBalanceClients);
+    const body = renderTemplate('DAILY_DIGEST', 'BODY', lowBalanceClients, paymentSummary);
     
     sendEmailToFirm(subject, body, { isHtml: true, emailType: 'daily_digest' });
     
-    log(`✅ Daily balance digest sent with ${lowBalanceClients.length} clients`);
+    log(`✅ Daily balance digest sent with ${lowBalanceClients.length} clients and payment summary`);
   } catch (error) {
     logError('sendDailyBalanceDigest', error);
     throw error;
@@ -317,8 +344,8 @@ function notifyServiceResumed(clientID, email, clientName, balance, today) {
   }
   
   // Send to client using template
-  const clientSubject = renderTemplate('SERVICE_RESUMED', 'SUBJECT', clientName);
-  const clientBody = renderTemplate('SERVICE_RESUMED', 'BODY', clientName, balance);
+  const clientSubject = renderTemplate('SERVICE_RESUMED', 'CLIENT_SUBJECT', clientName);
+  const clientBody = renderTemplate('SERVICE_RESUMED', 'CLIENT_BODY', clientName);
   
   sendEmail(email, clientSubject, clientBody, { isHtml: true, emailType: 'service_resumed_client' });
   
@@ -367,16 +394,17 @@ function sendWelcomeEmail() {
         <h3>🚀 Next Steps</h3>
         <ol>
           <li><strong>Test the System:</strong> Click "Run Full Daily Sync" in the Blawby menu</li>
-          <li><strong>Check Your Email:</strong> You'll receive test receipts and notifications</li>
-          <li><strong>Review Results:</strong> Check the Clients sheet to see sample clients created</li>
-          <li><strong>Customize Settings:</strong> Update the Welcome sheet with your preferences</li>
+          <li><strong>Check Your Email:</strong> You'll receive test notifications</li>
+          <li>Low balance warnings for sample clients</li>
+          <li>Daily digest emails</li>
+          <li>Service resumed notifications</li>
         </ol>
         
         <h3>📧 What You'll Receive</h3>
         <ul>
-          <li>Payment receipts for sample clients</li>
-          <li>Daily balance digest (if low balances detected)</li>
           <li>Low balance warnings (when applicable)</li>
+          <li>Daily balance digest (if low balances detected)</li>
+          <li>Service resumed notifications</li>
         </ul>
         
         <div style="background-color: #fff3cd; color: #856404; padding: 15px; border-radius: 5px; margin: 15px 0;">

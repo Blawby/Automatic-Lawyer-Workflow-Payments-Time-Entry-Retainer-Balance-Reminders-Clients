@@ -297,9 +297,9 @@ function manualDailySync() {
       `✅ The daily sync process has completed successfully!\n\n` +
       `📧 Test emails have been sent to: ${firmEmail}\n\n` +
       `🔍 Check your inbox for:\n` +
-      `• Payment receipts for sample clients\n` +
+      `• Low balance warnings for sample clients\n` +
       `• Daily balance digest\n` +
-      `• Any low balance warnings\n\n` +
+      `• Service resumed notifications\n\n` +
       `💡 If you don't see emails, check your spam folder or verify your email address in the Welcome sheet.`,
       ui.ButtonSet.OK
     );
@@ -347,9 +347,10 @@ function viewEmailLog() {
       'Email Log Opened',
       'The EmailLog sheet has been opened showing all emails sent by the system.\n\n' +
       'This includes:\n' +
-      '• Receipt emails\n' +
-      '• Low balance alerts\n' +
-      '• Daily digests\n' +
+      `• Low balance warnings for sample clients\n` +
+      `• Daily digest emails\n` +
+      `• Service resumed notifications\n` +
+      `• Test mode email redirection\n` +
       '• Welcome emails\n\n' +
       'All emails are logged with timestamps and types for easy tracking.',
       ui.ButtonSet.OK
@@ -465,192 +466,4 @@ function setupSystem() {
       ui.ButtonSet.OK
     );
   }
-}
-
-/**
- * Deletes all triggers for a specific function
- * @param {string} functionName - Name of the function to delete triggers for
- */
-function deleteTriggersByFunction(functionName) {
-  const triggers = ScriptApp.getProjectTriggers();
-  let deletedCount = 0;
-  
-  for (const trigger of triggers) {
-    if (trigger.getHandlerFunction() === functionName) {
-      ScriptApp.deleteTrigger(trigger);
-      deletedCount++;
-    }
-  }
-  
-  if (deletedCount > 0) {
-    console.log(`🗑️ Deleted ${deletedCount} existing trigger(s) for ${functionName}`);
-  }
-}
-
-/**
- * Validates all email templates and shows results
- */
-function validateTemplates() {
-  logStart('validateTemplates');
-  
-  try {
-    const isValid = validateEmailTemplates();
-    
-    if (isValid) {
-      const ui = SpreadsheetApp.getUi();
-      ui.alert(
-        'Template Validation',
-        '✅ All email templates are valid and ready to use!',
-        ui.ButtonSet.OK
-      );
-    } else {
-      const ui = SpreadsheetApp.getUi();
-      ui.alert(
-        'Template Validation',
-        '❌ Some email templates are missing or invalid. Please check the logs.',
-        ui.ButtonSet.OK
-      );
-    }
-  } catch (error) {
-    logError('validateTemplates', error);
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      'Template Validation Error',
-      `Template validation failed: ${error.message}`,
-      ui.ButtonSet.OK
-    );
-  }
-  
-  logEnd('validateTemplates');
-}
-
-/**
- * Clears the template cache and shows confirmation
- */
-function clearTemplateCache() {
-  logStart('clearTemplateCache');
-  
-  try {
-    const templateLoader = getTemplateLoader();
-    templateLoader.clearCache();
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      'Template Cache Cleared',
-      '✅ Template cache has been cleared successfully!\n\nThis is useful when you update email templates.',
-      ui.ButtonSet.OK
-    );
-  } catch (error) {
-    logError('clearTemplateCache', error);
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      'Template Cache Error',
-      `Failed to clear template cache: ${error.message}`,
-      ui.ButtonSet.OK
-    );
-  }
-  
-  logEnd('clearTemplateCache');
-}
-
-/**
- * Sends a test email to validate the email system is working
- */
-function sendTestEmail() {
-  logStart('sendTestEmail');
-  
-  try {
-    const testRecipient = "test@example.com";
-    const testSubject = "Blawby System Test";
-    const testBody = `
-      Hello from your Blawby legal automation system!
-      
-      This is a test email to confirm that:
-      ✅ Email system is working
-      ✅ Test mode is properly configured
-      ✅ Templates are loading correctly
-      
-      System Status: Operational
-      Test Time: ${new Date().toISOString()}
-      
-      Best regards,
-      The Blawby Team
-    `;
-    
-    sendEmail(testRecipient, testSubject, testBody, { emailType: 'test' });
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      'Test Email Sent',
-      '✅ Test email has been sent successfully!\n\n' +
-      'Check your email (or firm email if in test mode) to confirm the system is working.',
-      ui.ButtonSet.OK
-    );
-  } catch (error) {
-    logError('sendTestEmail', error);
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      'Test Email Failed',
-      `❌ Test email failed: ${error.message}\n\nPlease check your email configuration.`,
-      ui.ButtonSet.OK
-    );
-  }
-  
-  logEnd('sendTestEmail');
-}
-
-/**
- * Clears email sent flags for testing purposes
- * This allows you to test email sending multiple times in test mode
- */
-function clearEmailFlags() {
-  logStart('clearEmailFlags');
-  
-  try {
-    if (!isTestMode()) {
-      const ui = SpreadsheetApp.getUi();
-      ui.alert(
-        'Test Mode Required',
-        'This function is only available in Test Mode.\n\nPlease enable Test Mode in the Welcome sheet first.',
-        ui.ButtonSet.OK
-      );
-      return;
-    }
-    
-    const props = PropertiesService.getScriptProperties();
-    const allProps = props.getProperties();
-    
-    // Find and delete email sent flags
-    let deletedCount = 0;
-    for (const [key, value] of Object.entries(allProps)) {
-      if (key.startsWith('low_balance_') || key.startsWith('service_resumed_')) {
-        props.deleteProperty(key);
-        deletedCount++;
-      }
-    }
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      'Email Flags Cleared',
-      `✅ Cleared ${deletedCount} email sent flags.\n\n` +
-      'You can now test email sending again without the "already sent today" restriction.',
-      ui.ButtonSet.OK
-    );
-    
-    log(`🗑️ Cleared ${deletedCount} email sent flags`);
-  } catch (error) {
-    logError('clearEmailFlags', error);
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      'Clear Email Flags Error',
-      `Failed to clear email flags: ${error.message}`,
-      ui.ButtonSet.OK
-    );
-  }
-  
-  logEnd('clearEmailFlags');
 }

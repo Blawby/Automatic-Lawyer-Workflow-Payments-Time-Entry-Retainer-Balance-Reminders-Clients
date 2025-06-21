@@ -304,12 +304,7 @@ function calculateClientBalance(clientID, email, data, lawyerRates) {
     }
   }
 
-  // Calculate average monthly usage
-  const monthsSinceFirstActivity = lastActivityDate ? 
-    (new Date() - lastActivityDate) / (1000 * 60 * 60 * 24 * 30) : 0;
-  const averageMonthlyUsage = monthsSinceFirstActivity > 0 ? 
-    totalUsed / monthsSinceFirstActivity : 0;
-
+  // Only return the needed fields
   return {
     totalPaid,
     totalHours,
@@ -317,7 +312,6 @@ function calculateClientBalance(clientID, email, data, lawyerRates) {
     lastLawyerID,
     lastActivityDate,
     matterBreakdown,
-    averageMonthlyUsage,
     currentBalance: totalPaid - totalUsed
   };
 }

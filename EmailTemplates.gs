@@ -9,37 +9,36 @@ const EMAIL_STYLES = {
   SUCCESS: "background-color: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin: 10px 0;",
   FOOTER: "color: #7f8c8d; font-size: 14px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;",
   ALERT_BOX: "background-color: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #f5c6cb;",
-  BUTTON_CONTAINER: "text-align: center; margin-top: 20px;"
+  BUTTON_CONTAINER: "text-align: center; margin-top: 20px;",
+  SIGNATURE: "color: #7f8c8d; font-size: 14px; margin-top: 20px; font-style: italic;"
 };
 
 // Rename EMAIL_TEMPLATES to TEMPLATES
 const TEMPLATES = {
   LOW_BALANCE: {
-    SUBJECT: (clientName) => `Low Balance Alert - ${clientName}`,
-    BODY: (clientName, balance, targetBalance, paymentLink) => `
+    CLIENT_SUBJECT: (clientName) => `Your retainer needs a quick top-up, ${clientName}`,
+    CLIENT_BODY: (clientName, balance, targetBalance, paymentLink) => `
       <div style="${EMAIL_STYLES.CONTAINER}">
-        <h1 style="${EMAIL_STYLES.HEADER}">Low Balance Alert</h1>
+        <h1 style="${EMAIL_STYLES.HEADER}">Hi ${clientName}! 👋</h1>
         
-        <p style="${EMAIL_STYLES.PARAGRAPH}">Dear ${clientName},</p>
-        
-        <p style="${EMAIL_STYLES.PARAGRAPH}">Your retainer balance is currently low and needs to be topped up to continue receiving our services.</p>
+        <p style="${EMAIL_STYLES.PARAGRAPH}">We wanted to give you a friendly heads up about your retainer balance.</p>
         
         <div style="${EMAIL_STYLES.ALERT_BOX}">
-          <h2 style="${EMAIL_STYLES.SUBHEADER}">Current Balance Status</h2>
-          <p><strong>Current Balance:</strong> $${balance.toFixed(2)}</p>
-          <p><strong>Target Balance:</strong> $${targetBalance.toFixed(2)}</p>
-          <p><strong>Top-up Needed:</strong> $${(targetBalance - balance).toFixed(2)}</p>
+          <h2 style="${EMAIL_STYLES.SUBHEADER}">Your Current Balance</h2>
+          <p><strong>Available:</strong> $${balance.toFixed(2)}</p>
+          <p><strong>Recommended:</strong> $${targetBalance.toFixed(2)}</p>
+          <p><strong>To add:</strong> $${(targetBalance - balance).toFixed(2)}</p>
         </div>
         
-        <p style="${EMAIL_STYLES.PARAGRAPH}">To continue receiving our services without interruption, please top up your retainer using the link below:</p>
+        <p style="${EMAIL_STYLES.PARAGRAPH}">To keep your legal services running smoothly, we recommend topping up your retainer. This helps us continue working on your matters without any interruptions.</p>
         
         <div style="${EMAIL_STYLES.BUTTON_CONTAINER}">
-          <a href="${paymentLink}" style="${EMAIL_STYLES.BUTTON}">Top Up Retainer</a>
+          <a href="${paymentLink}" style="${EMAIL_STYLES.BUTTON}">Add Funds to Retainer</a>
         </div>
         
-        <p style="${EMAIL_STYLES.PARAGRAPH}">If you have any questions about your retainer or our services, please don't hesitate to contact us.</p>
+        <p style="${EMAIL_STYLES.PARAGRAPH}">No rush—you can add funds whenever it's convenient for you. If you have any questions about your retainer or our services, just reply to this email or give us a call.</p>
         
-        <p style="${EMAIL_STYLES.PARAGRAPH}">Thank you for your business.</p>
+        <p style="${EMAIL_STYLES.PARAGRAPH}">Thanks for choosing us!</p>
         
         <p style="${EMAIL_STYLES.SIGNATURE}">
           Best regards,<br>
@@ -70,16 +69,22 @@ const TEMPLATES = {
     `
   },
   SERVICE_RESUMED: {
-    CLIENT_SUBJECT: "Service Resumed - Blawby",
+    CLIENT_SUBJECT: "Great news! Your services are back up and running",
     CLIENT_BODY: (clientName) => `
       <div style="${EMAIL_STYLES.CONTAINER}">
-        <h1 style="${EMAIL_STYLES.HEADER}">Service Resumed</h1>
-        <p style="${EMAIL_STYLES.PARAGRAPH}">Dear ${clientName},</p>
+        <h1 style="${EMAIL_STYLES.HEADER}">Welcome back, ${clientName}! 🎉</h1>
+        
+        <p style="${EMAIL_STYLES.PARAGRAPH}">Great news—your retainer has been topped up and your legal services are now fully active again!</p>
+        
         <div style="${EMAIL_STYLES.SUCCESS}">
-          <p>Your Blawby services have been resumed.</p>
+          <p><strong>✅ All systems are go!</strong> We're ready to continue working on your matters.</p>
         </div>
-        <p style="${EMAIL_STYLES.PARAGRAPH}">Thank you for maintaining your balance. We're happy to continue providing our services.</p>
-        <p style="${EMAIL_STYLES.FOOTER}">If you have any questions, please don't hesitate to contact us.</p>
+        
+        <p style="${EMAIL_STYLES.PARAGRAPH}">Thanks for keeping your retainer current. This helps us provide you with the best possible service without any interruptions.</p>
+        
+        <p style="${EMAIL_STYLES.PARAGRAPH}">If you need anything or have questions about your case, don't hesitate to reach out. We're here to help!</p>
+        
+        <p style="${EMAIL_STYLES.PARAGRAPH}">Best regards,<br>Your Legal Team</p>
       </div>
     `,
     OWNER_SUBJECT: (clientName) => `Service Resumed - ${clientName}`,
@@ -94,75 +99,49 @@ const TEMPLATES = {
     `
   },
   DAILY_DIGEST: {
-    SUBJECT: "Daily Low Balance Digest - Blawby",
-    BODY: (lowBalanceClients) => `
+    SUBJECT: "Your Blawby Daily Summary",
+    BODY: (lowBalanceClients, paymentSummary) => `
       <div style="${EMAIL_STYLES.CONTAINER}">
-        <h1 style="${EMAIL_STYLES.HEADER}">Daily Low Balance Digest</h1>
-        <p style="${EMAIL_STYLES.PARAGRAPH}">The following clients have low balances:</p>
-        ${lowBalanceClients.map(client => `
-          <div style="${EMAIL_STYLES.ALERT}">
-            <h2 style="${EMAIL_STYLES.SUBHEADER}">${client.name}</h2>
-            <p><strong>Current Balance:</strong> $${client.balance.toFixed(2)}</p>
-            <p><strong>Target Balance:</strong> $${client.targetBalance.toFixed(2)}</p>
-            <p><strong>Last Activity:</strong> ${client.lastActivity || 'No recent activity'}</p>
-            ${client.balance <= 0 ? '<p><strong>Status:</strong> Services Paused</p>' : ''}
-          </div>
-        `).join('')}
-        <p style="${EMAIL_STYLES.PARAGRAPH}">Please follow up with these clients to ensure their balances are topped up.</p>
+        <h1 style="${EMAIL_STYLES.HEADER}">📬 Your Daily Blawby Summary</h1>
+
+        <p style="${EMAIL_STYLES.PARAGRAPH}">
+          Here's a snapshot of client retainer activity and balances today.
+        </p>
+
+        <div style="${EMAIL_STYLES.SUCCESS}">
+          <p><strong>Total Payments Received:</strong> $${paymentSummary.total.toFixed(2)}<br>
+          <strong>Clients Paid Today:</strong> ${paymentSummary.count}</p>
+        </div>
+
+        ${lowBalanceClients.length === 0
+          ? `<p style="${EMAIL_STYLES.PARAGRAPH}">🎉 All client balances are in good standing. Great work!</p>`
+          : `
+          <h2 style="${EMAIL_STYLES.SUBHEADER}">🔔 Clients Needing Attention (${lowBalanceClients.length})</h2>
+          ${lowBalanceClients.map(client => `
+            <div style="${EMAIL_STYLES.ALERT}">
+              <h3>${client.name}</h3>
+              <p>
+                <strong>Balance:</strong> $${client.balance.toFixed(2)}<br>
+                <strong>Target:</strong> $${client.targetBalance.toFixed(2)}<br>
+                <strong>Last Activity:</strong> ${client.lastActivity || 'N/A'}<br>
+                <strong>Email Sent:</strong> ${client.emailSent ? '✅ Yes' : '❌ No'}
+              </p>
+              ${client.balance <= 0
+                ? '<p><strong>Status:</strong> 🚫 Services Paused</p>'
+                : '<p><strong>Status:</strong> ⚠️ Low Balance</p>'}
+            </div>
+          `).join('')}
+          <p style="${EMAIL_STYLES.PARAGRAPH}">
+            📝 Action recommended: Follow up with clients who haven't responded or whose services are paused.
+          </p>
+        `}
+        
+        <p style="${EMAIL_STYLES.FOOTER}">
+          This summary was generated automatically by Blawby. Let us know if you'd like to tweak what you see here.
+        </p>
       </div>
     `
   },
-  RECEIPT: {
-    SUBJECT: (receiptId) => `Payment Receipt #${receiptId} - Blawby`,
-    BODY: (clientName, receiptId, date, amount, currency, newBalance, hoursUsed, averageRate) => `
-      <div style="${EMAIL_STYLES.CONTAINER}">
-        <h1 style="${EMAIL_STYLES.HEADER}">Payment Receipt</h1>
-        <p style="${EMAIL_STYLES.PARAGRAPH}">Dear ${clientName},</p>
-        <p style="${EMAIL_STYLES.PARAGRAPH}">Thank you for your payment. Here is your receipt:</p>
-        
-        <div style="${EMAIL_STYLES.SUCCESS}">
-          <p><strong>Receipt #:</strong> ${receiptId}</p>
-          <p><strong>Date:</strong> ${date}</p>
-          <p><strong>Amount:</strong> ${currency} ${amount}</p>
-          <p><strong>New Balance:</strong> ${currency} ${newBalance.toFixed(2)}</p>
-        </div>
-        
-        ${hoursUsed > 0 ? `
-          <h2 style="${EMAIL_STYLES.SUBHEADER}">Monthly Summary</h2>
-          <p><strong>Hours Used This Month:</strong> ${hoursUsed.toFixed(2)}</p>
-          <p><strong>Average Rate:</strong> ${currency} ${averageRate.toFixed(2)}/hour</p>
-          <p><strong>Estimated Monthly Usage:</strong> ${currency} ${(hoursUsed * averageRate).toFixed(2)}</p>
-        ` : ''}
-        
-        <p style="${EMAIL_STYLES.FOOTER}">Thank you for your business.</p>
-      </div>
-    `
-  },
-  MONTHLY_SUMMARY: {
-    SUBJECT: (month) => `Monthly Summary - ${month} - Blawby`,
-    BODY: (clientName, month, hoursUsed, averageRate, estimatedUsage, balance) => `
-      <div style="${EMAIL_STYLES.CONTAINER}">
-        <h1 style="${EMAIL_STYLES.HEADER}">Monthly Summary</h1>
-        <p style="${EMAIL_STYLES.PARAGRAPH}">Dear ${clientName},</p>
-        <p style="${EMAIL_STYLES.PARAGRAPH}">Here is your monthly summary for ${month}:</p>
-        
-        <div style="${EMAIL_STYLES.SUCCESS}">
-          <p><strong>Hours Used:</strong> ${hoursUsed.toFixed(2)}</p>
-          <p><strong>Average Rate:</strong> $${averageRate.toFixed(2)}/hour</p>
-          <p><strong>Estimated Usage:</strong> $${estimatedUsage.toFixed(2)}</p>
-          <p><strong>Current Balance:</strong> $${balance.toFixed(2)}</p>
-        </div>
-        
-        ${balance < estimatedUsage ? `
-          <div style="${EMAIL_STYLES.ALERT}">
-            <p><strong>Note:</strong> Your current balance is below the estimated monthly usage. Consider topping up your retainer to ensure uninterrupted service.</p>
-          </div>
-        ` : ''}
-        
-        <p style="${EMAIL_STYLES.FOOTER}">Thank you for your business.</p>
-      </div>
-    `
-  }
 };
 
 // ========== TEMPLATE LOADER SYSTEM ==========
@@ -249,14 +228,16 @@ class TemplateLoader {
    */
   validateTemplates() {
     const requiredTemplates = [
-      ['LOW_BALANCE', 'SUBJECT'],
-      ['LOW_BALANCE', 'BODY'],
-      ['SERVICE_RESUMED', 'SUBJECT'],
-      ['SERVICE_RESUMED', 'BODY'],
+      ['LOW_BALANCE', 'CLIENT_SUBJECT'],
+      ['LOW_BALANCE', 'CLIENT_BODY'],
+      ['LOW_BALANCE', 'OWNER_SUBJECT'],
+      ['LOW_BALANCE', 'OWNER_BODY'],
+      ['SERVICE_RESUMED', 'CLIENT_SUBJECT'],
+      ['SERVICE_RESUMED', 'CLIENT_BODY'],
+      ['SERVICE_RESUMED', 'OWNER_SUBJECT'],
+      ['SERVICE_RESUMED', 'OWNER_BODY'],
       ['DAILY_DIGEST', 'SUBJECT'],
       ['DAILY_DIGEST', 'BODY'],
-      ['MONTHLY_SUMMARY', 'SUBJECT'],
-      ['MONTHLY_SUMMARY', 'BODY']
     ];
 
     for (const [type, subtype] of requiredTemplates) {

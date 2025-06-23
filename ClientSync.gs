@@ -10,9 +10,9 @@ function syncPaymentsAndClients() {
     const lawyerData = buildLawyerMaps(data.lawyers);
     const clientsById = buildClientMap(data.clientData);
     
-    // Process new payments and create clients if needed
+    // Process new payments and create clients/matters if needed
     log("💳 Processing payments...");
-    processPayments(sheets.paymentsSheet, clientsById);
+    processPayments(sheets.paymentsSheet, clientsById, sheets.mattersSheet);
     
     // Update matters sheet with client names
     log("📋 Updating matters with client names...");
@@ -42,7 +42,7 @@ function syncPaymentsAndClients() {
   logEnd('syncPaymentsAndClients');
 }
 
-function processPayments(paymentsSheet, clientsById) {
+function processPayments(paymentsSheet, clientsById, mattersSheet) {
   const payments = paymentsSheet.getDataRange().getValues();
   const headerRow = payments[0];
   
@@ -84,11 +84,13 @@ function processPayments(paymentsSheet, clientsById) {
     // Parse the timestamp properly
     const paymentDate = parseZapierTimestamp(row[0]);
     
-    // Create new client if not exists
+    // Create new client and matter if not exists
     if (!clientsById[clientEmail]) {
       const newClient = createNewClient(clientEmail);
       clientsById[clientEmail] = newClient;
       console.log(`👤 Created new client: ${clientEmail}`);
+      // Also create a default matter for the new client
+      createMatterForNewClient(mattersSheet, clientEmail, newClient[9]);
     }
     
     // Note: Receipt generation removed - app.blawby.com handles receipts and sends payment data via webhook
@@ -130,37 +132,26 @@ function processClientBalances(clientsById, data, lawyerData, today) {
   const lowBalanceRows = [];
   const props = PropertiesService.getScriptProperties();
   let emailsSent = 0;
-  
+
+  // Get the default target balance from the Welcome sheet
+  const defaultTargetBalance = getSetting('Low Balance Threshold', 500);
+
   // Process all clients (both existing and newly created)
   for (const [clientID, row] of Object.entries(clientsById)) {
     const email = row[0];
     const clientName = row[1] || "Client";
     let targetBalance = parseFloat(row[2]) || 0;
-    
-    // Calculate target balance based on different factors
+
+    // Always use the Welcome sheet value if not set manually
     if (!targetBalance) {
-      // 1. Check if client has any matters with case values
-      const clientMatters = data.matters.filter(m => m[1] === email);
-      const totalCaseValue = clientMatters.reduce((sum, m) => {
-        const caseValue = parseFloat(m[6]) || 0; // Assuming case value is in column 7
-        return sum + caseValue;
-      }, 0);
-      
-      if (totalCaseValue > 0) {
-        // Set target as 10% of total case value, minimum $500
-        targetBalance = Math.max(500, Math.round(totalCaseValue * 0.1));
-      } else {
-        // 2. Default to 5x highest lawyer rate
-        const maxRate = Math.max(...Object.values(lawyerData.rates));
-        targetBalance = Math.round(maxRate * 5);
-      }
+      targetBalance = defaultTargetBalance;
     }
-    
+
     const balanceInfo = calculateClientBalance(clientID, email, data, lawyerData.rates);
     const balance = balanceInfo.totalPaid - balanceInfo.totalUsed;
     const topUp = Math.max(0, targetBalance - balance);
     const paymentLink = topUp > 0 ? `${getSetting(SETTINGS_KEYS.BASE_PAYMENT_URL)}?amount=${Math.round(topUp * 100)}` : "";
-    
+
     const updatedRow = [
       email,
       clientName,
@@ -174,7 +165,7 @@ function processClientBalances(clientsById, data, lawyerData, today) {
       clientID
     ];
     updatedClientRows.push(updatedRow);
-    
+
     // Handle low balance warnings
     if (topUp > 0) {
       log(`⚠️ LOW BALANCE DETECTED for ${clientName}:`);
@@ -182,14 +173,14 @@ function processClientBalances(clientsById, data, lawyerData, today) {
       log(`   - Target balance: $${targetBalance.toFixed(2)}`);
       log(`   - Top-up needed: $${topUp.toFixed(2)}`);
       log(`   - Payment link: ${paymentLink}`);
-      
+
       lowBalanceRows.push([
         email,
         clientName,
         `$${balance.toFixed(2)}`,
         `Needs top-up of $${topUp.toFixed(2)}`
       ]);
-      
+
       // Send email if not already sent today
       log(`📧 Attempting to send low balance email for ${clientName}...`);
       const emailSent = sendLowBalanceEmail(
@@ -203,7 +194,7 @@ function processClientBalances(clientsById, data, lawyerData, today) {
         lawyerData.emails, 
         today
       );
-      
+
       if (emailSent) {
         emailsSent++;
         log(`✅ Low balance email sent successfully for ${clientName}`);
@@ -213,13 +204,13 @@ function processClientBalances(clientsById, data, lawyerData, today) {
     } else {
       log(`✅ Balance OK for ${clientName}: $${balance.toFixed(2)} (target: $${targetBalance.toFixed(2)})`);
     }
-    
+
     // Check for service resumption
     if (balance > 0 && topUp === 0) {
       notifyServiceResumed(clientID, email, clientName, balance, today);
     }
   }
-  
+
   return { updatedClientRows, lowBalanceRows, emailsSent };
 }
 

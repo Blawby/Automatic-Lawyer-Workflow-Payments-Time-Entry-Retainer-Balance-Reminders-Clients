@@ -348,16 +348,12 @@ function onOpen(e) {
   }
   
   ui.createMenu('Blawby')
-    .addItem('Run Full Daily Sync', 'manualDailySync')
+    .addItem('🔄 Daily Sync', 'executeSyncOperations')
+    .addItem('📧 Check Gmail Payments', 'processGmailPayments')
+    .addItem('📊 Check Gmail API Quota', 'checkEmailQuotaStatus')
     .addSeparator()
-    .addItem('Sync Payments & Clients', 'manualSyncClients')
-    .addItem('Process Gmail Payments', 'processGmailPayments')
-    .addItem('Test Gmail Detection', 'testGmailPaymentDetection')
-    .addSeparator()
-    .addItem('Send Test Email', 'sendTestEmail')
-    .addItem('Fix Firm Email', 'fixFirmEmailField')
-    .addItem('Setup System', 'setupSystem')
-    .addItem('Enable Gmail Trigger', 'createBlawbyPaymentTrigger')
+    .addItem('🧪 Test Gmail API Email', 'testGmailAPIEmail')
+    .addItem('🔍 Debug Gmail Search', 'debugGmailSearch')
     .addToUi();
 }
 
@@ -544,557 +540,6 @@ function setupSystem() {
       ui.ButtonSet.OK
     );
   }
-}
-
-/**
- * Test function to see what emails are found in Gmail
- * This helps debug the Gmail integration
- */
-function testGmailSearch() {
-  logStart('testGmailSearch');
-  
-  try {
-    // Test different queries to see what's available
-    const queries = [
-      'from:notifications@blawby.com subject:"Payment of" is:unread newer_than:1d',
-      'from:notifications@blawby.com is:unread newer_than:7d',
-      'subject:"Payment" is:unread newer_than:7d',
-      'from:paulchrisluke@gmail.com is:unread newer_than:7d',
-      'is:unread newer_than:7d'
-    ];
-    
-    for (const query of queries) {
-      log(`🔍 Testing query: "${query}"`);
-      const threads = GmailApp.search(query);
-      log(`📧 Found ${threads.length} threads`);
-      
-      if (threads.length > 0) {
-        for (let i = 0; i < Math.min(threads.length, 3); i++) {
-          const message = threads[i].getMessages()[0];
-          log(`   ${i + 1}. From: ${message.getFrom()} | Subject: ${message.getSubject()}`);
-        }
-      }
-      log('---');
-    }
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      'Gmail Search Test Complete',
-      '✅ Gmail search test completed successfully!\n\n' +
-      'Check the execution logs in the Apps Script editor to see what emails were found.\n\n' +
-      'If no payment emails were found, we may need to adjust the search queries.',
-      ui.ButtonSet.OK
-    );
-    
-  } catch (error) {
-    logError('testGmailSearch', error);
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      'Gmail Authorization Error',
-      '❌ Gmail API access is not authorized.\n\n' +
-      'Please run "Check Gmail Authorization" from the Blawby menu first.\n\n' +
-      'Error: ' + error.message,
-      ui.ButtonSet.OK
-    );
-  }
-  
-  logEnd('testGmailSearch');
-}
-
-/**
- * Check and request Gmail API authorization
- * This function ensures the script has permission to access Gmail
- */
-function checkGmailAuthorization() {
-  logStart('checkGmailAuthorization');
-  
-  try {
-    // Try to access Gmail to trigger authorization
-    const threads = GmailApp.search('is:unread newer_than:1d', 0, 1);
-    log(`✅ Gmail API access confirmed - found ${threads.length} recent unread threads`);
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      'Gmail Authorization Success',
-      '✅ Gmail API access is working correctly!\n\n' +
-      'You can now use the Gmail payment integration features:\n' +
-      '• "Check Gmail for Payments"\n' +
-      '• "Test Gmail Search"\n' +
-      '• "Enable Gmail Trigger"',
-      ui.ButtonSet.OK
-    );
-    
-  } catch (error) {
-    logError('checkGmailAuthorization', error);
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      'Gmail Authorization Required',
-      '❌ Gmail API access is not authorized.\n\n' +
-      'To fix this:\n\n' +
-      '1. Go to the Apps Script editor\n' +
-      '2. Click "Run" on any function\n' +
-      '3. When prompted, click "Review Permissions"\n' +
-      '4. Grant access to Gmail\n' +
-      '5. Run this function again\n\n' +
-      'Error: ' + error.message,
-      ui.ButtonSet.OK
-    );
-  }
-  
-  logEnd('checkGmailAuthorization');
-}
-
-/**
- * Simple test function to check Gmail integration
- * This helps debug what emails are available
- */
-function testGmailIntegration() {
-  logStart('testGmailIntegration');
-  
-  try {
-    log('🔍 Testing Gmail integration...');
-    
-    // Test basic Gmail access
-    const basicQuery = 'is:unread newer_than:7d';
-    const basicThreads = GmailApp.search(basicQuery);
-    log(`📧 Basic Gmail access: Found ${basicThreads.length} unread threads in last 7 days`);
-    
-    // Test for Blawby payment emails
-    const blawbyQuery = 'from:notifications@blawby.com subject:"Payment of" is:unread newer_than:7d';
-    const blawbyThreads = GmailApp.search(blawbyQuery);
-    log(`📧 Blawby payment emails: Found ${blawbyThreads.length} payment notifications`);
-    
-    // Test for any payment-related emails
-    const paymentQuery = 'subject:"Payment" is:unread newer_than:7d';
-    const paymentThreads = GmailApp.search(paymentQuery);
-    log(`📧 Any payment emails: Found ${paymentThreads.length} payment-related emails`);
-    
-    // Show sample emails if found
-    if (basicThreads.length > 0) {
-      log('📋 Sample emails found:');
-      for (let i = 0; i < Math.min(basicThreads.length, 3); i++) {
-        const message = basicThreads[i].getMessages()[0];
-        log(`   ${i + 1}. From: ${message.getFrom()} | Subject: ${message.getSubject()}`);
-      }
-    }
-    
-    // Test specific to your email
-    const yourEmailQuery = `from:paulchrisluke@gmail.com is:unread newer_than:7d`;
-    const yourEmailThreads = GmailApp.search(yourEmailQuery);
-    log(`📧 Your email threads: Found ${yourEmailThreads.length} unread threads from your email`);
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      'Gmail Integration Test Complete',
-      `✅ Gmail integration test completed!\n\n` +
-      `📧 Results:\n` +
-      `• Total unread emails (7 days): ${basicThreads.length}\n` +
-      `• Blawby payment emails: ${blawbyThreads.length}\n` +
-      `• Any payment emails: ${paymentThreads.length}\n` +
-      `• Your email threads: ${yourEmailThreads.length}\n\n` +
-      `Check the execution logs for detailed information about found emails.\n\n` +
-      `💡 If no Blawby payment emails are found, you may need to:\n` +
-      `1. Send a test payment through Blawby\n` +
-      `2. Check if payment emails come from a different address\n` +
-      `3. Adjust the search query in the code`,
-      ui.ButtonSet.OK
-    );
-    
-  } catch (error) {
-    logError('testGmailIntegration', error);
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      'Gmail Test Failed',
-      `❌ Gmail integration test failed:\n\n${error.message}\n\n` +
-      `This might indicate an authorization issue. Try running "Check Gmail Authorization" first.`,
-      ui.ButtonSet.OK
-    );
-  }
-  
-  logEnd('testGmailIntegration');
-}
-
-/**
- * Force reauthorization of the script with all required scopes
- * This function will trigger a new authorization prompt
- */
-function forceReauthorization() {
-  logStart('forceReauthorization');
-  
-  try {
-    // Test each service to trigger authorization
-    log('🔐 Testing spreadsheet access...');
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    log(`✅ Spreadsheet access: ${ss.getName()}`);
-    
-    log('📧 Testing Gmail access...');
-    const threads = GmailApp.search('is:unread newer_than:1d', 0, 1);
-    log(`✅ Gmail access: Found ${threads.length} recent unread threads`);
-    
-    log('📧 Testing email sending...');
-    const testEmail = getFirmEmail();
-    MailApp.sendEmail({
-      to: testEmail,
-      subject: '[TEST] Authorization Test',
-      body: 'This is a test email to verify all permissions are working correctly.'
-    });
-    log(`✅ Email sending: Test email sent to ${testEmail}`);
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      'Authorization Test Complete',
-      '✅ All permissions are working correctly!\n\n' +
-      '📧 Gmail API access confirmed\n' +
-      '📧 Email sending confirmed\n' +
-      '📊 Spreadsheet access confirmed\n\n' +
-      'You can now use all Gmail integration features.',
-      ui.ButtonSet.OK
-    );
-    
-  } catch (error) {
-    logError('forceReauthorization', error);
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      'Authorization Required',
-      '❌ Some permissions are missing.\n\n' +
-      'To fix this:\n\n' +
-      '1. Go to the Apps Script editor\n' +
-      '2. Click "Run" on this function\n' +
-      '3. When prompted, click "Review Permissions"\n' +
-      '4. Grant ALL requested permissions\n' +
-      '5. Run this function again\n\n' +
-      'Error: ' + error.message,
-      ui.ButtonSet.OK
-    );
-  }
-  
-  logEnd('forceReauthorization');
-}
-
-/**
- * Detailed debugging function to understand Blawby email search issues
- * This will help us figure out why Blawby payment emails aren't being found
- */
-function debugBlawbyEmailSearch() {
-  logStart('debugBlawbyEmailSearch');
-  
-  try {
-    log('🔍 Starting detailed Blawby email search debugging...');
-    
-    // Test 1: Search for any emails from Blawby domain
-    const blawbyDomainQuery = 'from:*@blawby.com newer_than:30d';
-    const blawbyDomainThreads = GmailApp.search(blawbyDomainQuery);
-    log(`📧 Emails from any @blawby.com address (30 days): ${blawbyDomainThreads.length}`);
-    
-    if (blawbyDomainThreads.length > 0) {
-      log('📋 Found emails from Blawby domain:');
-      for (let i = 0; i < Math.min(blawbyDomainThreads.length, 5); i++) {
-        const message = blawbyDomainThreads[i].getMessages()[0];
-        log(`   ${i + 1}. From: ${message.getFrom()} | Subject: ${message.getSubject()} | Date: ${message.getDate()}`);
-      }
-    }
-    
-    // Test 2: Search for specific Blawby email addresses
-    const specificEmails = [
-      'notifications@blawby.com',
-      'noreply@blawby.com',
-      'support@blawby.com',
-      'admin@blawby.com',
-      'payments@blawby.com'
-    ];
-    
-    for (const email of specificEmails) {
-      const query = `from:${email} newer_than:30d`;
-      const threads = GmailApp.search(query);
-      log(`📧 Emails from ${email}: ${threads.length}`);
-      
-      if (threads.length > 0) {
-        for (let i = 0; i < Math.min(threads.length, 3); i++) {
-          const message = threads[i].getMessages()[0];
-          log(`   ${i + 1}. Subject: ${message.getSubject()} | Date: ${message.getDate()}`);
-        }
-      }
-    }
-    
-    // Test 3: Search for payment-related subjects from any sender
-    const paymentSubjects = [
-      'subject:"Payment of"',
-      'subject:"Payment received"',
-      'subject:"Payment confirmation"',
-      'subject:"Payment"',
-      'subject:"Blawby"'
-    ];
-    
-    for (const subject of paymentSubjects) {
-      const query = `${subject} newer_than:30d`;
-      const threads = GmailApp.search(query);
-      log(`📧 Emails with ${subject}: ${threads.length}`);
-      
-      if (threads.length > 0) {
-        for (let i = 0; i < Math.min(threads.length, 2); i++) {
-          const message = threads[i].getMessages()[0];
-          log(`   ${i + 1}. From: ${message.getFrom()} | Subject: ${message.getSubject()}`);
-        }
-      }
-    }
-    
-    // Test 4: Search for any emails containing "blawby" in the body or subject
-    const blawbyContentQuery = 'blawby newer_than:30d';
-    const blawbyContentThreads = GmailApp.search(blawbyContentQuery);
-    log(`📧 Emails containing "blawby": ${blawbyContentThreads.length}`);
-    
-    if (blawbyContentThreads.length > 0) {
-      log('📋 Found emails containing "blawby":');
-      for (let i = 0; i < Math.min(blawbyContentThreads.length, 5); i++) {
-        const message = blawbyContentThreads[i].getMessages()[0];
-        log(`   ${i + 1}. From: ${message.getFrom()} | Subject: ${message.getSubject()}`);
-      }
-    }
-    
-    // Test 5: Check if emails are marked as read/unread
-    const unreadBlawbyQuery = 'from:*@blawby.com is:unread newer_than:30d';
-    const unreadBlawbyThreads = GmailApp.search(unreadBlawbyQuery);
-    log(`📧 Unread emails from Blawby: ${unreadBlawbyThreads.length}`);
-    
-    const readBlawbyQuery = 'from:*@blawby.com is:read newer_than:30d';
-    const readBlawbyThreads = GmailApp.search(readBlawbyQuery);
-    log(`📧 Read emails from Blawby: ${readBlawbyThreads.length}`);
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      'Blawby Email Debug Complete',
-      `✅ Detailed Blawby email search completed!\n\n` +
-      `📧 Results:\n` +
-      `• Any @blawby.com emails: ${blawbyDomainThreads.length}\n` +
-      `• Emails containing "blawby": ${blawbyContentThreads.length}\n` +
-      `• Unread Blawby emails: ${unreadBlawbyThreads.length}\n` +
-      `• Read Blawby emails: ${readBlawbyThreads.length}\n\n` +
-      `Check the execution logs for detailed breakdown of found emails.\n\n` +
-      `💡 If Blawby emails are found but not payment emails, we may need to:\n` +
-      `1. Adjust the search query\n` +
-      `2. Check the actual email format\n` +
-      `3. Update the parsing logic`,
-      ui.ButtonSet.OK
-    );
-    
-  } catch (error) {
-    logError('debugBlawbyEmailSearch', error);
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      'Debug Failed',
-      `❌ Blawby email debug failed:\n\n${error.message}`,
-      ui.ButtonSet.OK
-    );
-  }
-  
-  logEnd('debugBlawbyEmailSearch');
-}
-
-/**
- * Manual test function to process existing Blawby payment emails
- * This helps test the parsing and processing logic
- */
-function testProcessExistingBlawbyEmails() {
-  logStart('testProcessExistingBlawbyEmails');
-  
-  try {
-    const paymentsSheet = getSheet(SHEET_NAMES.PAYMENTS);
-    let processedCount = 0;
-    let newPayments = 0;
-    
-    // Search for existing Blawby payment emails (read or unread)
-    const query = 'from:notifications@blawby.com subject:"Payment of" newer_than:30d';
-    const threads = GmailApp.search(query);
-    
-    log(`📧 Found ${threads.length} existing Blawby payment emails`);
-    
-    for (const thread of threads) {
-      const message = thread.getMessages()[0];
-      const subject = message.getSubject();
-      const paymentId = extractPaymentIdFromSubject(subject);
-      
-      log(`📧 Testing email: "${subject}"`);
-      
-      // Check if this payment already exists
-      if (paymentExists(paymentsSheet, message.getId(), paymentId)) {
-        log(`🔄 Payment ${paymentId} already exists, skipping`);
-        processedCount++;
-        continue;
-      }
-      
-      const htmlBody = message.getBody();
-      const parsed = parseBlawbyPaymentEmail(htmlBody);
-      
-      if (parsed && parsed.paymentId) {
-        log(`✅ Successfully parsed payment: $${parsed.amount} from ${parsed.clientEmail} (ID: ${parsed.paymentId})`);
-        
-        // Ask user if they want to add this payment
-        const ui = SpreadsheetApp.getUi();
-        const response = ui.alert(
-          'Add Payment to Sheet?',
-          `Found payment: $${parsed.amount} from ${parsed.clientEmail}\n\n` +
-          `Subject: ${subject}\n` +
-          `Payment ID: ${parsed.paymentId}\n\n` +
-          `Add this payment to the Payments sheet?`,
-          ui.ButtonSet.YES_NO
-        );
-        
-        if (response === ui.Button.YES) {
-          // Add payment to sheet
-          paymentsSheet.appendRow([
-            new Date(),                    // Date
-            parsed.clientEmail || '',     // Client Email
-            parsed.amount || 0,           // Amount
-            parsed.method || 'card',      // Payment Method
-            parsed.paymentId              // Payment ID
-          ]);
-          
-          log(`💵 Added payment: ${parsed.paymentId} - $${parsed.amount} from ${parsed.clientEmail}`);
-          newPayments++;
-        } else {
-          log(`⏭️ User chose not to add payment ${parsed.paymentId}`);
-        }
-      } else {
-        log(`⚠️ Could not parse payment from email: "${subject}"`);
-      }
-      
-      processedCount++;
-    }
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      'Test Complete',
-      `✅ Processed ${processedCount} Blawby payment emails\n\n` +
-      `📊 Results:\n` +
-      `• Total emails found: ${threads.length}\n` +
-      `• Already in sheet: ${processedCount - newPayments}\n` +
-      `• New payments added: ${newPayments}\n\n` +
-      `Check the execution logs for detailed parsing information.`,
-      ui.ButtonSet.OK
-    );
-    
-  } catch (error) {
-    logError('testProcessExistingBlawbyEmails', error);
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      'Test Failed',
-      `❌ Test failed: ${error.message}`,
-      ui.ButtonSet.OK
-    );
-  }
-  
-  logEnd('testProcessExistingBlawbyEmails');
-}
-
-/**
- * Extract payment ID from email subject for quick checking
- * @param {string} subject - Email subject line
- * @return {string} - Extracted payment ID or null
- */
-function extractPaymentIdFromSubject(subject) {
-  // Look for payment ID in subject (if it's included)
-  const idMatch = subject.match(/ID[:\s]*([a-zA-Z0-9_-]+)/i);
-  return idMatch ? idMatch[1] : null;
-}
-
-/**
- * Quick test to see what's happening with payment parsing
- */
-function quickPaymentTest() {
-  logStart('quickPaymentTest');
-  
-  try {
-    // Search for one Blawby payment email
-    const query = 'from:notifications@blawby.com subject:"Payment of" newer_than:30d';
-    const threads = GmailApp.search(query, 0, 1); // Get just one email
-    
-    if (threads.length === 0) {
-      log('❌ No Blawby payment emails found');
-      return;
-    }
-    
-    const message = threads[0].getMessages()[0];
-    const subject = message.getSubject();
-    const htmlBody = message.getBody();
-    
-    log(`📧 Testing email: "${subject}"`);
-    log(`📧 Email length: ${htmlBody.length} characters`);
-    
-    // Test the parsing
-    const parsed = parseBlawbyPaymentEmail(htmlBody);
-    
-    if (parsed) {
-      log(`✅ Parsing successful:`);
-      log(`   Amount: $${parsed.amount}`);
-      log(`   Client Email: ${parsed.clientEmail}`);
-      log(`   Client Name: ${parsed.clientName}`);
-      log(`   Payment Method: ${parsed.method}`);
-      log(`   Payment ID: ${parsed.paymentId}`);
-      
-      // Test if it would be added to sheet
-      const paymentsSheet = getSheet(SHEET_NAMES.PAYMENTS);
-      const exists = paymentExists(paymentsSheet, message.getId(), parsed.paymentId);
-      log(`📊 Payment already exists in sheet: ${exists}`);
-      
-      if (!exists) {
-        log(`💡 This payment would be automatically added to the sheet`);
-      } else {
-        log(`💡 This payment already exists and would be skipped`);
-      }
-    } else {
-      log(`❌ Parsing failed - could not extract payment data`);
-    }
-    
-  } catch (error) {
-    logError('quickPaymentTest', error);
-  }
-  
-  logEnd('quickPaymentTest');
-}
-
-/**
- * Test automatic payment processing without user confirmation
- * This simulates what the automatic trigger would do
- */
-function testAutomaticPaymentProcessing() {
-  logStart('testAutomaticPaymentProcessing');
-  
-  try {
-    log('🧪 Testing automatic payment processing (no user confirmation)...');
-    
-    // Run the automatic payment check
-    processGmailPayments();
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      'Automatic Processing Test Complete',
-      '✅ Automatic payment processing test completed!\n\n' +
-      'Check the execution logs to see:\n' +
-      '• How many payment emails were found\n' +
-      '• Which payments were processed\n' +
-      '• Whether payments were added to the sheet\n\n' +
-      '💡 This simulates what happens when the automatic trigger runs.',
-      ui.ButtonSet.OK
-    );
-    
-  } catch (error) {
-    logError('testAutomaticPaymentProcessing', error);
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      'Test Failed',
-      `❌ Automatic processing test failed:\n\n${error.message}`,
-      ui.ButtonSet.OK
-    );
-  }
-  
-  logEnd('testAutomaticPaymentProcessing');
 }
 
 /**
@@ -1396,4 +841,141 @@ function ensurePaymentsSheetHeader() {
     paymentsSheet.getRange(1, 1, 1, 6).setValues([expectedHeaders]);
     log('✅ Payments sheet header updated');
   }
+}
+
+function checkEmailQuotaStatus() {
+  try {
+    const quota = checkEmailQuota();
+    const ui = SpreadsheetApp.getUi();
+    
+    let message = `📧 Gmail API Email Quota Status:\n\n`;
+    message += `Remaining emails: ${quota.remaining}/${quota.total}\n`;
+    message += `Used today: ${quota.used}/${quota.total} (${quota.percentageUsed.toFixed(1)}%)\n\n`;
+    
+    if (quota.canSend) {
+      if (quota.isNearLimit) {
+        message += `⚠️ WARNING: You're near the daily limit!\n`;
+        message += `Consider reducing email frequency or contact support.`;
+      } else {
+        message += `✅ You can still send emails today.\n`;
+        message += `🚀 Gmail API allows up to 1M emails/day!`;
+      }
+    } else {
+      message += `❌ Daily quota exceeded!\n`;
+      message += `No more emails can be sent until tomorrow.`;
+    }
+    
+    message += `\n\n💡 Gmail API vs MailApp:\n`;
+    message += `• Gmail API: 1,000,000 emails/day\n`;
+    message += `• MailApp: 100 emails/day\n`;
+    message += `• You're using Gmail API (much better!)`;
+    
+    ui.alert('Gmail API Email Quota Status', message, ui.ButtonSet.OK);
+  } catch (error) {
+    logError('checkEmailQuotaStatus', error);
+    const ui = SpreadsheetApp.getUi();
+    ui.alert('Error', `Failed to check email quota: ${error.message}`, ui.ButtonSet.OK);
+  }
+}
+
+function testGmailAPIEmail() {
+  try {
+    logStart('testGmailAPIEmail');
+    
+    const firmEmail = getFirmEmail();
+    const testSubject = '[TEST] Gmail API Email Test';
+    const testBody = `This is a test email sent via Gmail API to verify the new email system is working correctly.
+
+🚀 Benefits of Gmail API:
+• 1,000,000 emails/day limit (vs 100 with MailApp)
+• Better reliability and performance
+• No more quota issues for multi-user systems
+
+✅ If you receive this email, the Gmail API integration is working perfectly!
+
+Sent at: ${new Date().toISOString()}`;
+
+    log(`📧 Testing Gmail API email to: ${firmEmail}`);
+    sendEmail(firmEmail, testSubject, testBody, { isHtml: false });
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Gmail API Test Complete',
+      `✅ Test email sent successfully!\n\n` +
+      `📧 Sent to: ${firmEmail}\n` +
+      `📧 Subject: ${testSubject}\n\n` +
+      `🚀 Gmail API is working correctly!\n` +
+      `💡 Check your inbox for the test email.`,
+      ui.ButtonSet.OK
+    );
+    
+    logEnd('testGmailAPIEmail');
+  } catch (error) {
+    logError('testGmailAPIEmail', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Gmail API Test Failed',
+      `❌ Test email failed:\n\n${error.message}\n\n` +
+      `This might indicate a Gmail API authorization issue.`,
+      ui.ButtonSet.OK
+    );
+  }
+}
+
+function debugGmailSearch() {
+  logStart('debugGmailSearch');
+  
+  try {
+    log('🔍 Testing Gmail search functionality...');
+    
+    // Test basic Gmail access
+    const basicQuery = 'is:unread newer_than:7d';
+    const basicThreads = GmailApp.search(basicQuery);
+    log(`📧 Basic Gmail access: Found ${basicThreads.length} unread threads in last 7 days`);
+    
+    // Test for Blawby payment emails
+    const blawbyQuery = 'from:notifications@blawby.com subject:"Payment of" newer_than:30d';
+    const blawbyThreads = GmailApp.search(blawbyQuery);
+    log(`📧 Blawby payment emails: Found ${blawbyThreads.length} payment notifications`);
+    
+    // Test for any payment-related emails
+    const paymentQuery = 'subject:"Payment" newer_than:30d';
+    const paymentThreads = GmailApp.search(paymentQuery);
+    log(`📧 Any payment emails: Found ${paymentThreads.length} payment-related emails`);
+    
+    // Show sample emails if found
+    if (basicThreads.length > 0) {
+      log('📋 Sample emails found:');
+      for (let i = 0; i < Math.min(basicThreads.length, 3); i++) {
+        const message = basicThreads[i].getMessages()[0];
+        log(`   ${i + 1}. From: ${message.getFrom()} | Subject: ${message.getSubject()}`);
+      }
+    }
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Gmail Search Debug Complete',
+      `✅ Gmail search debug completed!\n\n` +
+      `📧 Results:\n` +
+      `• Total unread emails (7 days): ${basicThreads.length}\n` +
+      `• Blawby payment emails: ${blawbyThreads.length}\n` +
+      `• Any payment emails: ${paymentThreads.length}\n\n` +
+      `Check the execution logs for detailed information.`,
+      ui.ButtonSet.OK
+    );
+    
+  } catch (error) {
+    logError('debugGmailSearch', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Gmail Search Debug Failed',
+      `❌ Gmail search debug failed:\n\n${error.message}\n\n` +
+      `This might indicate a Gmail API authorization issue.`,
+      ui.ButtonSet.OK
+    );
+  }
+  
+  logEnd('debugGmailSearch');
 }

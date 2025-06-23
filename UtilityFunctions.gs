@@ -647,18 +647,18 @@ function setupWelcomeSheet(ss) {
   // Clear existing content completely
   welcomeSheet.clear();
   
-  // Set up the content (ensure every row has exactly 4 columns)
+  // Set up the content - clean and focused on configuration only
   const content = [
-    ["Welcome to Blawby Retainer Management v2.0", "", "", ""],
+    ["Welcome to Blawby Retainer Management", "", "", ""],
     ["", "", "", ""],
     ["⚙️ System Settings", "", "", ""],
     ["Setting", "Value", "Description", ""],
-    ["Blawby Payment URL", preservedValues[0] || "https://app.blawby.com/pay", "Your Blawby payment page URL (e.g. https://app.blawby.com/...)", ""],
-    ["Default Currency", preservedValues[1] || "USD", "Default currency for all payments (USD, EUR, etc.)", ""],
-    ["Low Balance Threshold", preservedValues[2] || "1000", "Amount in default currency that triggers low balance alerts", ""],
-    ["Email Notifications", preservedValues[3] || "TRUE", "Send email notifications (true/false)", ""],
+    ["Blawby Payment URL", preservedValues[0] || "https://app.blawby.com/pay", "Your Blawby payment page URL", ""],
+    ["Default Currency", preservedValues[1] || "USD", "Default currency for all payments", ""],
+    ["Low Balance Threshold", preservedValues[2] || "500", "Target balance amount for all clients", ""],
+    ["Email Notifications", preservedValues[3] || "TRUE", "Send email notifications", ""],
     ["Firm Email", preservedValues[4] || ownerEmail, "Email address for system notifications", ""],
-    ["Test Mode", preservedValues[5] || "TRUE", "Enable test mode to try the system safely (true/false)", ""],
+    ["Test Mode", preservedValues[5] || "TRUE", "Enable test mode for safe testing", ""],
     ["", "", "", ""],
     ["👩‍⚖️ Lawyers", "", "", ""],
     ["Email", "Name", "Rate", "Lawyer ID"],
@@ -668,75 +668,7 @@ function setupWelcomeSheet(ss) {
     ["", "", "", ""],
     ["", "", "", ""],
     ["", "", "", ""],
-    ["", "", "", ""],
-    ["", "", "", ""],
-    ["", "", "", ""],
-    ["✅ Quick Start Guide", "", "", ""],
-    ["Step", "Action", "Details", ""],
-    ["1", "Test the System", "Click 'Run Full Daily Sync' in the Blawby menu to process sample data", ""],
-    ["2", "Send Test Email", "Use 'Send Test Email' to validate your email configuration", ""],
-    ["3", "Connect Blawby", "Enter your Blawby payment page URL in the settings above", ""],
-    ["4", "Add Your Team", "Add your lawyers in the section above", ""],
-    ["5", "Set Up Zapier", "Create a Zap that triggers on new Stripe payments → sends payment info to this sheet", ""],
-    ["5a", "OR Use Gmail Integration", "Enable Gmail trigger in Blawby menu - automatically checks for payment emails", ""],
-    ["6", "Replace Sample Data", "Delete sample rows and add your real data", ""],
-    ["", "", "", ""],
-    ["🎯 Menu Features", "", "", ""],
-    ["Feature", "Purpose", "When to Use", ""],
-    ["Run Full Daily Sync", "Complete system synchronization", "Daily automation or manual testing", ""],
-    ["Sync Payments & Clients", "Process payments and update clients", "After new payments arrive", ""],
-    ["Check Gmail for Payments", "Manually check for payment emails", "Testing or immediate processing", ""],
-    ["Send Test Email", "Validate email configuration", "After setup or troubleshooting", ""],
-    ["Fix Firm Email", "Auto-detect and fix firm email setting", "If email is not set or invalid", ""],
-    ["Setup System", "Initial setup and triggers", "First-time setup only", ""],
-    ["Enable Gmail Trigger", "Set up automatic Gmail checking", "Alternative to Zapier integration", ""],
-    ["", "", "", ""],
-    ["🆕 Gmail Payment Integration (Optional)", "", "", ""],
-    ["Feature", "Benefit", "How to Use", ""],
-    ["Automatic Detection", "No Zapier needed — payment emails from Blawby are automatically detected and processed", "Enable Gmail trigger in Blawby menu", ""],
-    ["Payment Email Parsing", "Extracts payment data automatically", "Sends from notifications@blawby.com", ""],
-    ["Duplicate Prevention", "Payment ID tracking prevents duplicates", "Built-in deduplication system", ""],
-    ["Real-time Processing", "15-minute check intervals", "Automatic trigger setup", ""],
-    ["", "", "", ""],
-    ["🧪 Testing Features", "", "", ""],
-    ["Feature", "How to Test", "Expected Result", ""],
-    ["System Validation", "Click 'Send Test Email' in menu", "Test email sent to verify configuration", ""],
-    ["Client Creation", "Run 'Run Full Daily Sync' with sample payments", "Clients sheet populated with client1@example.com and client2@example.com", ""],
-    ["Low Balance Warnings", "Add time logs to reduce balance below threshold", "Professional HTML email notifications sent to clients", ""],
-    ["Matter Tracking", "Time logs are linked to matters by Matter ID", "Matter breakdown shown in client records", ""],
-    ["", "", "", ""],
-    ["📊 Sheet Overview", "", "", ""],
-    ["Sheet", "Purpose", "Editable?", ""],
-    ["Lawyers (in Welcome)", "Manage your legal team and their rates", "Yes", ""],
-    ["Clients", "Track client balances and payment links", "Auto-updated", ""],
-    ["TimeLogs", "Record billable hours and activities", "Yes", ""],
-    ["Payments", "Track client payments", "Auto-updated", ""],
-    ["Matters", "Track client matters and case values", "Yes", ""],
-    ["", "", "", ""],
-    ["💡 How Retainers Work", "", "", ""],
-    ["•", "Clients are automatically created when they make their first payment", "", ""],
-    ["•", "Time is logged against the retainer balance with lawyer rates", "", ""],
-    ["•", "Low balance warnings are sent automatically with payment links", "", ""],
-    ["•", "Payment links are auto-generated for easy client top-ups", "", ""],
-    ["", "", "", ""],
-    ["✨ What's New in v2.0", "", "", ""],
-    ["Feature", "Benefit", "Impact", ""],
-    ["Professional Email System", "Beautiful HTML emails with templates", "Better client communication", ""],
-    ["Comprehensive Logging", "Detailed monitoring and debugging", "Easier troubleshooting", ""],
-    ["Error Resilience", "Graceful error handling throughout", "More reliable operation", ""],
-    ["Testing Utilities", "Built-in validation and testing tools", "Confidence in system setup", ""],
-    ["Menu Integration", "Easy access to all features", "Better user experience", ""],
-    ["Template Caching", "Fast template loading with validation", "Improved performance", ""],
-    ["Gmail Payment Integration", "No Zapier needed - direct Gmail monitoring", "Simplified payment processing", ""],
-    ["", "", "", ""],
-    ["❓ Need Help?", "", "", ""],
-    ["•", "Email: support@blawby.com", "", ""],
-    ["•", "Docs: blawby.com/docs", "", ""],
-    ["•", "GitHub Issues: Report bugs or request features", "", ""],
-    ["📧 What You'll Receive", "", "", ""],
-    ["•", "Daily balance digest (if low balances detected)", "", ""],
-    ["•", "Low balance warnings (when applicable)", "", ""],
-    ["•", "Service resumed notifications (when balance is topped up)", "", ""]
+    ["", "", "", ""]
   ];
   
   // Write content to sheet with exact column count
@@ -788,7 +720,7 @@ function setupWelcomeSheet(ss) {
              .merge();
   
   // Format section headers
-  const sectionHeaders = [3, 11, 22, 30, 38, 46, 55, 63, 71, 79, 87];
+  const sectionHeaders = [3, 11];
   sectionHeaders.forEach(row => {
     welcomeSheet.getRange(row, 1, 1, 4)
                 .setFontWeight("bold")
@@ -807,29 +739,6 @@ function setupWelcomeSheet(ss) {
   lawyersRange.setBorder(true, true, true, true, true, true)
                .setHorizontalAlignment("left");
   
-  // Format quick start guide
-  const guideRange = welcomeSheet.getRange(23, 1, 6, 4);
-  guideRange.setBorder(true, true, true, true, true, true)
-            .setHorizontalAlignment("left");
-  
-  // Format sheet overview
-  const overviewRange = welcomeSheet.getRange(31, 1, 7, 4);
-  overviewRange.setBorder(true, true, true, true, true, true)
-               .setHorizontalAlignment("left");
-
-  // Format testing features
-  const testingRange = welcomeSheet.getRange(39, 1, 5, 4);
-  testingRange.setBorder(true, true, true, true, true, true)
-               .setHorizontalAlignment("left");
-  
-  // Format how retainers work
-  const retainersRange = welcomeSheet.getRange(47, 1, 6, 4);
-  retainersRange.setHorizontalAlignment("left");
-  
-  // Format need help
-  const helpRange = welcomeSheet.getRange(55, 1, 2, 4);
-  helpRange.setHorizontalAlignment("left");
-  
   // Auto-resize columns
   welcomeSheet.autoResizeColumns(1, 4);
   
@@ -839,7 +748,7 @@ function setupWelcomeSheet(ss) {
   // Set column widths
   welcomeSheet.setColumnWidth(1, 200);
   welcomeSheet.setColumnWidth(2, 200);
-  welcomeSheet.setColumnWidth(3, 200);
+  welcomeSheet.setColumnWidth(3, 300);
   welcomeSheet.setColumnWidth(4, 150);
 }
 

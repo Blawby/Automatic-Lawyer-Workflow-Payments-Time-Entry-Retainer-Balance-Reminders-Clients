@@ -1,4 +1,190 @@
-// ========== EMAIL FUNCTIONS ==========
+// ========== EMAIL FUNCTIONS (Gmail API) ==========
+
+/**
+ * Send email using Gmail API (replaces MailApp)
+ * @param {string} recipient - Email recipient
+ * @param {string} subject - Email subject
+ * @param {string} body - Email body
+ * @param {Object} options - Additional options
+ */
+function sendEmailViaGmailAPI(recipient, subject, body, options = {}) {
+  const isTest = isTestMode();
+  const firmEmail = getFirmEmail();
+  
+  const finalRecipient = isTest ? firmEmail : recipient;
+  const finalSubject = isTest ? `[TEST] ${subject}` : subject;
+  
+  // Validate email address
+  if (!finalRecipient || !finalRecipient.includes('@') || finalRecipient === 'your-email@example.com') {
+    const errorMsg = `Invalid email recipient: "${finalRecipient}". Please set your email address in the Welcome sheet under 'Firm Email' setting.`;
+    logError('sendEmailViaGmailAPI', new Error(errorMsg));
+    throw new Error(errorMsg);
+  }
+  
+  // Enhanced logging for test mode
+  if (isTest) {
+    log(`🧪 TEST MODE: Redirecting email from ${recipient} → ${finalRecipient}`);
+    log(`📧 Sending [TEST] email to: ${finalRecipient} | Subject: ${finalSubject}`);
+  } else {
+    log(`📧 Sending email to: ${finalRecipient} | Subject: ${finalSubject}`);
+  }
+  
+  try {
+    // Create email message using Gmail API
+    const message = createGmailMessage(finalRecipient, finalSubject, body, options);
+    
+    // Log email format
+    if (options.isHtml) {
+      log("📧 Using HTML email format");
+    } else {
+      log("📧 Using plain text email format");
+    }
+    
+    // Send via Gmail API
+    Gmail.Users.Messages.send(message, 'me');
+    
+    if (isTest) {
+      log(`✅ [TEST] Email sent successfully to ${finalRecipient} (originally intended for ${recipient})`);
+    } else {
+      log(`✅ Email sent successfully to ${finalRecipient}`);
+    }
+  } catch (error) {
+    logError('sendEmailViaGmailAPI', error);
+    throw error;
+  }
+}
+
+/**
+ * Create a Gmail API message object
+ * @param {string} to - Recipient email
+ * @param {string} subject - Email subject
+ * @param {string} body - Email body
+ * @param {Object} options - Additional options
+ * @return {Object} - Gmail API message object
+ */
+function createGmailMessage(to, subject, body, options = {}) {
+  // Create the email content
+  let emailContent = '';
+  
+  if (options.isHtml) {
+    // HTML email
+    emailContent = [
+      'Content-Type: text/html; charset=utf-8',
+      'MIME-Version: 1.0',
+      `To: ${to}`,
+      `Subject: ${subject}`,
+      '',
+      body
+    ].join('\n');
+  } else {
+    // Plain text email
+    emailContent = [
+      'Content-Type: text/plain; charset=utf-8',
+      'MIME-Version: 1.0',
+      `To: ${to}`,
+      `Subject: ${subject}`,
+      '',
+      body
+    ].join('\n');
+  }
+  
+  // Encode the email content
+  const encodedEmail = Utilities.base64Encode(emailContent).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  
+  return {
+    raw: encodedEmail
+  };
+}
+
+/**
+ * Universal email sending function that uses Gmail API
+ * @param {string} recipient - Email recipient
+ * @param {string} subject - Email subject
+ * @param {string} body - Email body
+ * @param {Object} options - Additional options
+ */
+function sendEmail(recipient, subject, body, options = {}) {
+  return sendEmailViaGmailAPI(recipient, subject, body, options);
+}
+
+/**
+ * Send email to firm (bypasses test mode)
+ * @param {string} subject - Email subject
+ * @param {string} body - Email body
+ * @param {Object} options - Additional options
+ */
+function sendEmailToFirm(subject, body, options = {}) {
+  const firmEmail = getFirmEmail();
+  sendEmail(firmEmail, subject, body, options);
+}
+
+/**
+ * Check Gmail API quota (much higher than MailApp)
+ * @return {Object} - Object with quota info
+ */
+function checkEmailQuota() {
+  try {
+    // Gmail API has much higher limits - 1M emails/day for most users
+    // We'll use a conservative estimate and track our own usage
+    const props = PropertiesService.getScriptProperties();
+    const today = new Date().toISOString().split('T')[0];
+    const emailCountKey = `gmail_api_emails_${today}`;
+    const emailCount = parseInt(props.getProperty(emailCountKey) || '0');
+    
+    // Conservative daily limit (can be increased)
+    const dailyLimit = 10000; // 10K emails per day
+    const remaining = Math.max(0, dailyLimit - emailCount);
+    const percentageUsed = (emailCount / dailyLimit) * 100;
+    
+    return {
+      remaining: remaining,
+      used: emailCount,
+      total: dailyLimit,
+      percentageUsed: percentageUsed,
+      canSend: remaining > 0,
+      isNearLimit: percentageUsed >= 90
+    };
+  } catch (error) {
+    logError('checkEmailQuota', error);
+    return {
+      remaining: 10000,
+      used: 0,
+      total: 10000,
+      percentageUsed: 0,
+      canSend: true,
+      isNearLimit: false
+    };
+  }
+}
+
+/**
+ * Track email usage for quota management
+ */
+function trackEmailUsage() {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const today = new Date().toISOString().split('T')[0];
+    const emailCountKey = `gmail_api_emails_${today}`;
+    const currentCount = parseInt(props.getProperty(emailCountKey) || '0');
+    props.setProperty(emailCountKey, (currentCount + 1).toString());
+  } catch (error) {
+    logError('trackEmailUsage', error);
+  }
+}
+
+/**
+ * Log current email quota status
+ */
+function logEmailQuotaStatus() {
+  const quota = checkEmailQuota();
+  log(`📧 Gmail API Email Quota Status:`);
+  log(`   - Remaining: ${quota.remaining}/${quota.total}`);
+  log(`   - Used: ${quota.used}/${quota.total} (${quota.percentageUsed.toFixed(1)}%)`);
+  log(`   - Can send: ${quota.canSend ? '✅ Yes' : '❌ No'}`);
+  if (quota.isNearLimit) {
+    log(`   - ⚠️ WARNING: Near daily limit!`);
+  }
+}
 
 /**
  * Simple fallback renderTemplate function for when the main one is not accessible
@@ -84,76 +270,6 @@ function renderTemplate(type, subtype, ...params) {
   }
 }
 
-/**
- * Universal email sending function that handles test mode automatically
- * @param {string} recipient - Email recipient
- * @param {string} subject - Email subject
- * @param {string} body - Email body
- * @param {Object} options - Additional options for MailApp.sendEmail
- */
-function sendEmail(recipient, subject, body, options = {}) {
-  const isTest = isTestMode();
-  const firmEmail = getFirmEmail();
-  
-  const finalRecipient = isTest ? firmEmail : recipient;
-  const finalSubject = isTest ? `[TEST] ${subject}` : subject;
-  
-  // Validate email address
-  if (!finalRecipient || !finalRecipient.includes('@') || finalRecipient === 'your-email@example.com') {
-    const errorMsg = `Invalid email recipient: "${finalRecipient}". Please set your email address in the Welcome sheet under 'Firm Email' setting.`;
-    logError('sendEmail', new Error(errorMsg));
-    throw new Error(errorMsg);
-  }
-  
-  // Enhanced logging for test mode
-  if (isTest) {
-    log(`🧪 TEST MODE: Redirecting email from ${recipient} → ${finalRecipient}`);
-    log(`📧 Sending [TEST] email to: ${finalRecipient} | Subject: ${finalSubject}`);
-  } else {
-    log(`📧 Sending email to: ${finalRecipient} | Subject: ${finalSubject}`);
-  }
-  
-  try {
-    const emailOptions = {
-      to: finalRecipient,
-      subject: finalSubject,
-      ...options
-    };
-    
-    // Handle HTML content properly
-    if (options.isHtml) {
-      emailOptions.htmlBody = body;
-      delete emailOptions.isHtml; // Remove our custom option
-      log("📧 Using HTML email format");
-    } else {
-      emailOptions.body = body;
-      log("📧 Using plain text email format");
-    }
-    
-    MailApp.sendEmail(emailOptions);
-    
-    if (isTest) {
-      log(`✅ [TEST] Email sent successfully to ${finalRecipient} (originally intended for ${recipient})`);
-    } else {
-      log(`✅ Email sent successfully to ${finalRecipient}`);
-    }
-  } catch (error) {
-    logError('sendEmail', error);
-    throw error;
-  }
-}
-
-/**
- * Send email to firm (bypasses test mode)
- * @param {string} subject - Email subject
- * @param {string} body - Email body
- * @param {Object} options - Additional options
- */
-function sendEmailToFirm(subject, body, options = {}) {
-  const firmEmail = getFirmEmail();
-  sendEmail(firmEmail, subject, body, options);
-}
-
 function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance, paymentLink, lastLawyerID, lawyerEmails, today) {
   logStart('sendLowBalanceEmail');
   
@@ -176,6 +292,14 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
     return false;
   }
   
+  // Check email quota before sending
+  const quota = checkEmailQuota();
+  if (!quota.canSend) {
+    log(`❌ Cannot send low balance email to ${clientName}: Email quota exceeded (${quota.used}/${quota.total} emails used)`);
+    logEnd('sendLowBalanceEmail');
+    return false;
+  }
+  
   // Log test mode behavior
   if (isTestMode()) {
     log(`🧪 Test mode active — allowing low balance email resend for ${clientName}`);
@@ -183,27 +307,43 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
     log(`🧪 Current flag value: ${props.getProperty(emailKey) || 'not set'}`);
   }
   
-  // Send to client using template
-  const clientSubject = renderTemplate('LOW_BALANCE', 'CLIENT_SUBJECT', clientName);
-  const clientBody = renderTemplate('LOW_BALANCE', 'CLIENT_BODY', clientName, balance, targetBalance, paymentLink);
-  
-  log(`📧 Sending low balance email to client: ${email}`);
-  sendEmail(email, clientSubject, clientBody, { isHtml: true, emailType: 'low_balance_client' });
-  
-  // Send to firm using template (always send in test mode, optional in production)
-  const lastActivity = lawyerEmails[lastLawyerID] || 'Unknown';
-  const ownerSubject = renderTemplate('LOW_BALANCE', 'OWNER_SUBJECT', clientName);
-  const ownerBody = renderTemplate('LOW_BALANCE', 'OWNER_BODY', clientName, balance, targetBalance, lastActivity);
-  
-  log(`📧 Sending low balance notification to firm`);
-  sendEmailToFirm(ownerSubject, ownerBody, { isHtml: true, emailType: 'low_balance_firm' });
-  
-  // Mark as sent (only in production mode)
-  if (!isTestMode()) {
-    props.setProperty(emailKey, "1");
+  try {
+    // Send to client using template
+    const clientSubject = renderTemplate('LOW_BALANCE', 'CLIENT_SUBJECT', clientName);
+    const clientBody = renderTemplate('LOW_BALANCE', 'CLIENT_BODY', clientName, balance, targetBalance, paymentLink);
+    
+    log(`📧 Sending low balance email to client: ${email}`);
+    sendEmail(email, clientSubject, clientBody, { isHtml: true, emailType: 'low_balance_client' });
+    trackEmailUsage();
+    
+    // Send to firm using template (always send in test mode, optional in production)
+    const lastActivity = lawyerEmails[lastLawyerID] || 'Unknown';
+    const ownerSubject = renderTemplate('LOW_BALANCE', 'OWNER_SUBJECT', clientName);
+    const ownerBody = renderTemplate('LOW_BALANCE', 'OWNER_BODY', clientName, balance, targetBalance, lastActivity);
+    
+    log(`📧 Sending low balance notification to firm`);
+    sendEmailToFirm(ownerSubject, ownerBody, { isHtml: true, emailType: 'low_balance_firm' });
+    trackEmailUsage();
+    
+    // Mark as sent (only in production mode)
+    if (!isTestMode()) {
+      props.setProperty(emailKey, "1");
+    }
+    
+    logEnd('sendLowBalanceEmail');
+    return true;
+  } catch (error) {
+    // Handle quota errors gracefully
+    if (error.message && error.message.includes('quota exceeded')) {
+      log(`❌ Low balance email not sent to ${clientName}: ${error.message}`);
+      logEnd('sendLowBalanceEmail');
+      return false;
+    }
+    
+    logError('sendLowBalanceEmail', error);
+    logEnd('sendLowBalanceEmail');
+    return false;
   }
-  logEnd('sendLowBalanceEmail');
-  return true;
 }
 
 /**
@@ -212,6 +352,17 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
 function sendDailyBalanceDigest() {
   logStart('sendDailyBalanceDigest');
   try {
+    // Check email quota first
+    const quota = checkEmailQuota();
+    if (!quota.canSend) {
+      log(`❌ Cannot send daily digest: Email quota exceeded (${quota.used}/${quota.total} emails used)`);
+      logEnd('sendDailyBalanceDigest');
+      return;
+    }
+    
+    // Log quota status
+    logEmailQuotaStatus();
+    
     // Load all relevant data
     const sheets = getSheets();
     const data = loadSheetData(sheets);
@@ -268,10 +419,81 @@ function sendDailyBalanceDigest() {
     
     // Send to firm
     sendEmailToFirm(subject, body, { isHtml: true, emailType: 'daily_digest' });
+    trackEmailUsage();
     log('✅ Daily balance digest email sent to firm');
   } catch (error) {
-    logError('sendDailyBalanceDigest', error);
-    throw error;
+    // Handle quota errors gracefully
+    if (error.message && error.message.includes('quota exceeded')) {
+      log(`❌ Daily digest not sent: ${error.message}`);
+    } else {
+      logError('sendDailyBalanceDigest', error);
+      throw error;
+    }
   }
   logEnd('sendDailyBalanceDigest');
+}
+
+/**
+ * Notifies when a client's service has been resumed after topping up their balance
+ * @param {string} clientID - The client ID
+ * @param {string} email - The client's email address
+ * @param {string} clientName - The client's name
+ * @param {number} balance - The current balance
+ * @param {string} today - Today's date in YYYY-MM-DD format
+ */
+function notifyServiceResumed(clientID, email, clientName, balance, today) {
+  logStart('notifyServiceResumed');
+  
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const emailKey = `service_resumed_${clientID}_${today}`;
+    
+    // Check if notification already sent today (skip this check in test mode)
+    if (!isTestMode() && props.getProperty(emailKey)) {
+      log(`📧 Service resumed notification already sent today for ${clientName}`);
+      logEnd('notifyServiceResumed');
+      return;
+    }
+    
+    // Check email quota before sending
+    const quota = checkEmailQuota();
+    if (!quota.canSend) {
+      log(`❌ Cannot send service resumed notification to ${clientName}: Email quota exceeded (${quota.used}/${quota.total} emails used)`);
+      logEnd('notifyServiceResumed');
+      return;
+    }
+    
+    // Send to client using template
+    const clientSubject = renderTemplate('SERVICE_RESUMED', 'CLIENT_SUBJECT');
+    const clientBody = renderTemplate('SERVICE_RESUMED', 'CLIENT_BODY', clientName);
+    
+    log(`📧 Sending service resumed notification to client: ${email}`);
+    sendEmail(email, clientSubject, clientBody, { isHtml: true, emailType: 'service_resumed_client' });
+    trackEmailUsage();
+    
+    // Send to firm using template
+    const ownerSubject = renderTemplate('SERVICE_RESUMED', 'OWNER_SUBJECT', clientName);
+    const ownerBody = renderTemplate('SERVICE_RESUMED', 'OWNER_BODY', clientName);
+    
+    log(`📧 Sending service resumed notification to firm`);
+    sendEmailToFirm(ownerSubject, ownerBody, { isHtml: true, emailType: 'service_resumed_firm' });
+    trackEmailUsage();
+    
+    // Mark as sent (only in production mode)
+    if (!isTestMode()) {
+      props.setProperty(emailKey, "1");
+    }
+    
+    log(`✅ Service resumed notifications sent for ${clientName}`);
+  } catch (error) {
+    // Handle quota errors gracefully
+    if (error.message && error.message.includes('quota exceeded')) {
+      log(`❌ Service resumed notification not sent to ${clientName}: ${error.message}`);
+    } else {
+      logError('notifyServiceResumed', error);
+    }
+    // Don't throw error - this is a non-critical notification
+  }
+  
+  logEnd('notifyServiceResumed');
 }

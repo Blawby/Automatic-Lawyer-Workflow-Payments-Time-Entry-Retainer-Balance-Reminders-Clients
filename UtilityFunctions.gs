@@ -909,26 +909,4 @@ function deleteTriggersByFunction(functionName) {
       log(`🗑️ Deleted trigger: ${functionName}`);
     }
   }
-}
-
-/**
- * Check if a payment already exists in the payments sheet
- * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet - The payments sheet
- * @param {string} paymentId - The payment ID to check
- * @return {boolean} - True if payment exists, false otherwise
- */
-function paymentExists(sheet, paymentId) {
-  if (!paymentId) return false;
-  
-  try {
-    const lastRow = sheet.getLastRow();
-    if (lastRow <= 1) return false; // Only header row exists
-    
-    // Check if Payment ID column exists (column E, index 4)
-    const values = sheet.getRange(2, 5, lastRow - 1, 1).getValues(); // Column E: Payment ID
-    return values.some(row => row[0] === paymentId);
-  } catch (error) {
-    logError('paymentExists', error);
-    return false;
-  }
 } 

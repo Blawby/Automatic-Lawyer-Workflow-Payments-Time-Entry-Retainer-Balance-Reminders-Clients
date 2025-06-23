@@ -197,6 +197,8 @@ function checkForBlawbyPayments() {
     let totalThreads = 0;
     let processedEmails = new Set(); // Track processed emails to avoid duplicates
     
+    log('🔍 Starting automatic Gmail payment detection...');
+    
     // Start with unread emails first (most likely to be new)
     const queries = [
       'from:notifications@blawby.com subject:"Payment of" is:unread newer_than:1d',  // Unread emails first
@@ -226,36 +228,40 @@ function checkForBlawbyPayments() {
         const htmlBody = message.getBody();
         const parsed = parseBlawbyPaymentEmail(htmlBody);
         
-        if (parsed && parsed.paymentId && !paymentExists(paymentsSheet, parsed.paymentId)) {
-          // Add payment to sheet
-          paymentsSheet.appendRow([
-            new Date(),                    // Date
-            parsed.clientEmail || '',     // Client Email (primary identifier)
-            parsed.amount || 0,           // Amount
-            parsed.method || 'card',      // Payment Method
-            parsed.paymentId              // Payment ID (for deduplication)
-          ]);
-          
-          log(`💵 New payment recorded: ${parsed.paymentId} - $${parsed.amount} from ${parsed.clientEmail}`);
-          newPayments++;
-          
-          // Mark as read and archive
-          if (thread.isUnread()) {
-            thread.markRead();
-            log(`📧 Marked email as read`);
+        if (parsed && parsed.paymentId) {
+          // Check if payment already exists
+          if (paymentExists(paymentsSheet, messageId, parsed.paymentId)) {
+            log(`🔄 Payment ${parsed.paymentId} already exists in sheet, skipping`);
+            // Still mark as read and archive to avoid reprocessing
+            if (thread.isUnread()) {
+              thread.markRead();
+              log(`📧 Marked duplicate email as read`);
+            }
+            thread.moveToArchive();
+            log(`📧 Archived duplicate email thread`);
+          } else {
+            // Add payment to sheet automatically (no user confirmation needed)
+            log(`💵 Adding new payment to sheet: ${parsed.paymentId} - $${parsed.amount} from ${parsed.clientEmail}`);
+            
+            paymentsSheet.appendRow([
+              new Date(),                    // Date
+              parsed.clientEmail || '',     // Client Email (primary identifier)
+              parsed.amount || 0,           // Amount
+              parsed.method || 'card',      // Payment Method
+              parsed.paymentId              // Payment ID (for deduplication)
+            ]);
+            
+            log(`✅ Payment successfully added to sheet: ${parsed.paymentId}`);
+            newPayments++;
+            
+            // Mark as read and archive
+            if (thread.isUnread()) {
+              thread.markRead();
+              log(`📧 Marked email as read`);
+            }
+            thread.moveToArchive();
+            log(`📧 Archived email thread`);
           }
-          thread.moveToArchive();
-          log(`📧 Archived email thread`);
-          
-        } else if (parsed && parsed.paymentId) {
-          log(`🔄 Payment ${parsed.paymentId} already exists in sheet, skipping`);
-          // Still mark as read and archive to avoid reprocessing
-          if (thread.isUnread()) {
-            thread.markRead();
-            log(`📧 Marked duplicate email as read`);
-          }
-          thread.moveToArchive();
-          log(`📧 Archived duplicate email thread`);
         } else {
           log(`⚠️ Could not parse payment from email: "${subject}"`);
           // Don't archive emails we can't parse - leave them for manual review
@@ -440,14 +446,8 @@ function onOpen(e) {
     .addItem('Run Full Daily Sync', 'manualDailySync')
     .addSeparator()
     .addItem('Sync Payments & Clients', 'manualSyncClients')
-    .addItem('Check Gmail for Payments', 'manualCheckGmailPayments')
-    .addItem('Test Process Existing Emails', 'testProcessExistingBlawbyEmails')
-    .addItem('Quick Payment Test', 'quickPaymentTest')
-    .addItem('Test Gmail Search', 'testGmailSearch')
-    .addItem('Test Gmail Integration', 'testGmailIntegration')
-    .addItem('Debug Blawby Emails', 'debugBlawbyEmailSearch')
-    .addItem('Check Gmail Authorization', 'checkGmailAuthorization')
-    .addItem('Force Reauthorization', 'forceReauthorization')
+    .addItem('Process Gmail Payments', 'processGmailPayments')
+    .addItem('Test Gmail Detection', 'testGmailPaymentDetection')
     .addSeparator()
     .addItem('Send Test Email', 'sendTestEmail')
     .addItem('Fix Firm Email', 'fixFirmEmailField')
@@ -1049,7 +1049,7 @@ function testProcessExistingBlawbyEmails() {
       log(`📧 Testing email: "${subject}"`);
       
       // Check if this payment already exists
-      if (paymentExists(paymentsSheet, paymentId)) {
+      if (paymentExists(paymentsSheet, message.getId(), paymentId)) {
         log(`🔄 Payment ${paymentId} already exists, skipping`);
         processedCount++;
         continue;
@@ -1167,15 +1167,16 @@ function quickPaymentTest() {
       
       // Test if it would be added to sheet
       const paymentsSheet = getSheet(SHEET_NAMES.PAYMENTS);
-      const exists = paymentExists(paymentsSheet, parsed.paymentId);
+      const exists = paymentExists(paymentsSheet, message.getId(), parsed.paymentId);
       log(`📊 Payment already exists in sheet: ${exists}`);
       
+      if (!exists) {
+        log(`💡 This payment would be automatically added to the sheet`);
+      } else {
+        log(`💡 This payment already exists and would be skipped`);
+      }
     } else {
-      log(`❌ Parsing failed`);
-      
-      // Let's look at the HTML structure
-      log(`🔍 HTML preview (first 500 chars):`);
-      log(htmlBody.substring(0, 500));
+      log(`❌ Parsing failed - could not extract payment data`);
     }
     
   } catch (error) {
@@ -1183,4 +1184,337 @@ function quickPaymentTest() {
   }
   
   logEnd('quickPaymentTest');
+}
+
+/**
+ * Test automatic payment processing without user confirmation
+ * This simulates what the automatic trigger would do
+ */
+function testAutomaticPaymentProcessing() {
+  logStart('testAutomaticPaymentProcessing');
+  
+  try {
+    log('🧪 Testing automatic payment processing (no user confirmation)...');
+    
+    // Run the automatic payment check
+    checkForBlawbyPayments();
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Automatic Processing Test Complete',
+      '✅ Automatic payment processing test completed!\n\n' +
+      'Check the execution logs to see:\n' +
+      '• How many payment emails were found\n' +
+      '• Which payments were processed\n' +
+      '• Whether payments were added to the sheet\n\n' +
+      '💡 This simulates what happens when the automatic trigger runs.',
+      ui.ButtonSet.OK
+    );
+    
+  } catch (error) {
+    logError('testAutomaticPaymentProcessing', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Test Failed',
+      `❌ Automatic processing test failed:\n\n${error.message}`,
+      ui.ButtonSet.OK
+    );
+  }
+  
+  logEnd('testAutomaticPaymentProcessing');
+}
+
+/**
+ * Check current triggers and their status
+ */
+function checkCurrentTriggers() {
+  logStart('checkCurrentTriggers');
+  
+  try {
+    const triggers = ScriptApp.getProjectTriggers();
+    log(`📋 Found ${triggers.length} total triggers`);
+    
+    let gmailTriggerFound = false;
+    
+    for (const trigger of triggers) {
+      const handler = trigger.getHandlerFunction();
+      const eventType = trigger.getEventType();
+      
+      log(`🔧 Trigger: ${handler} (${eventType})`);
+      
+      if (handler === 'checkForBlawbyPayments') {
+        gmailTriggerFound = true;
+        log(`✅ Gmail payment trigger is active`);
+        
+        // Get more details about time-based triggers
+        if (eventType === ScriptApp.EventType.CLOCK) {
+          const everyMinutes = trigger.getEveryMinutes();
+          const everyHours = trigger.getEveryHours();
+          const everyDays = trigger.getEveryDays();
+          
+          if (everyMinutes) {
+            log(`⏰ Runs every ${everyMinutes} minutes`);
+          } else if (everyHours) {
+            log(`⏰ Runs every ${everyHours} hours`);
+          } else if (everyDays) {
+            log(`⏰ Runs every ${everyDays} days`);
+          } else {
+            log(`⏰ Runs on a schedule`);
+          }
+        }
+      }
+    }
+    
+    if (!gmailTriggerFound) {
+      log(`⚠️ No Gmail payment trigger found - automatic processing is not enabled`);
+    }
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Trigger Status',
+      `📋 Found ${triggers.length} total triggers\n\n` +
+      `${gmailTriggerFound ? '✅ Gmail payment trigger is active' : '⚠️ No Gmail payment trigger found'}\n\n` +
+      'Check the execution logs for detailed trigger information.\n\n' +
+      '💡 If no Gmail trigger is found, run "Enable Gmail Trigger" to set up automatic processing.',
+      ui.ButtonSet.OK
+    );
+    
+  } catch (error) {
+    logError('checkCurrentTriggers', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Trigger Check Failed',
+      `❌ Could not check triggers:\n\n${error.message}`,
+      ui.ButtonSet.OK
+    );
+  }
+  
+  logEnd('checkCurrentTriggers');
+}
+
+/**
+ * Simple test to check Gmail payment detection
+ */
+function testGmailPaymentDetection() {
+  logStart('testGmailPaymentDetection');
+  
+  try {
+    log('🔍 Testing Gmail payment detection...');
+    
+    // Search for Blawby payment emails
+    const query = 'from:notifications@blawby.com subject:"Payment of" newer_than:30d';
+    const threads = GmailApp.search(query);
+    
+    log(`📧 Found ${threads.length} Blawby payment emails`);
+    
+    if (threads.length === 0) {
+      log('❌ No Blawby payment emails found');
+    } else {
+      log('📋 Found payment emails:');
+      for (let i = 0; i < Math.min(threads.length, 3); i++) {
+        const message = threads[i].getMessages()[0];
+        const subject = message.getSubject();
+        log(`   ${i + 1}. Subject: ${subject}`);
+        
+        // Test parsing on each email
+        log(`🔍 Testing parsing on email ${i + 1}...`);
+        const htmlBody = message.getBody();
+        const parsed = parseBlawbyPaymentEmail(htmlBody);
+        
+        if (parsed) {
+          log(`✅ Parsing successful:`);
+          log(`   Amount: $${parsed.amount}`);
+          log(`   Client Email: ${parsed.clientEmail}`);
+          log(`   Payment ID: ${parsed.paymentId}`);
+          
+          // Check if it would be added to sheet
+          const paymentsSheet = getSheet(SHEET_NAMES.PAYMENTS);
+          const exists = paymentExists(paymentsSheet, message.getId(), parsed.paymentId);
+          log(`📊 Payment already exists in sheet: ${exists}`);
+          
+          if (!exists) {
+            log(`💡 This payment would be automatically added to the sheet`);
+          } else {
+            log(`💡 This payment already exists and would be skipped`);
+          }
+        } else {
+          log(`❌ Parsing failed for this email`);
+        }
+      }
+    }
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Gmail Payment Detection Test',
+      `📧 Found ${threads.length} Blawby payment emails\n\n` +
+      'Check the execution logs for detailed information about:\n' +
+      '• How many payment emails were found\n' +
+      '• Whether parsing was successful\n' +
+      '• If payments would be added to the sheet\n\n' +
+      '💡 If no emails are found, the search query may need adjustment.',
+      ui.ButtonSet.OK
+    );
+    
+  } catch (error) {
+    logError('testGmailPaymentDetection', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Test Failed',
+      `❌ Gmail payment detection test failed:\n\n${error.message}`,
+      ui.ButtonSet.OK
+    );
+  }
+  
+  logEnd('testGmailPaymentDetection');
+}
+
+/**
+ * Process and add payments from Gmail to the Payments sheet
+ * This is the core function that should work automatically
+ */
+function processGmailPayments() {
+  logStart('processGmailPayments');
+  
+  try {
+    const paymentsSheet = getSheet(SHEET_NAMES.PAYMENTS);
+    let newPayments = 0;
+    
+    // Ensure the Payments sheet has the correct header structure
+    ensurePaymentsSheetHeader();
+    
+    log('🔍 Searching for Blawby payment emails...');
+    
+    // Search for payment emails
+    const query = 'from:notifications@blawby.com subject:"Payment of" newer_than:30d';
+    const threads = GmailApp.search(query);
+    
+    log(`📧 Found ${threads.length} payment emails`);
+    
+    for (const thread of threads) {
+      const message = thread.getMessages()[0];
+      const subject = message.getSubject();
+      const messageDate = message.getDate(); // Get the email date
+      const messageId = message.getId(); // Get the unique Message-ID
+      
+      log(`📧 Processing: ${subject} (Message-ID: ${messageId})`);
+      
+      const htmlBody = message.getBody();
+      const parsed = parseBlawbyPaymentEmail(htmlBody);
+      
+      if (parsed && parsed.paymentId) {
+        // Check if payment already exists using Message-ID (which is always unique)
+        if (paymentExists(paymentsSheet, messageId, parsed.paymentId)) {
+          log(`🔄 Payment with Message-ID ${messageId} already exists, skipping`);
+        } else {
+          // Add payment to sheet
+          log(`💵 Adding payment: $${parsed.amount} from ${parsed.clientEmail} (Payment ID: ${parsed.paymentId}, Message-ID: ${messageId})`);
+          
+          paymentsSheet.appendRow([
+            messageDate,                   // Date from email
+            parsed.clientEmail || '',     // Client Email
+            parsed.amount || 0,           // Amount
+            parsed.method || 'card',      // Payment Method
+            parsed.paymentId,             // Payment ID (may be reused by Blawby)
+            messageId                     // Message-ID (always unique)
+          ]);
+          
+          log(`✅ Payment added to sheet successfully`);
+          newPayments++;
+        }
+        
+        // Mark as read and archive
+        if (thread.isUnread()) {
+          thread.markRead();
+        }
+        thread.moveToArchive();
+        log(`📧 Email marked as read and archived`);
+      } else {
+        log(`⚠️ Could not parse payment from: ${subject}`);
+      }
+    }
+    
+    if (newPayments > 0) {
+      log(`🔄 Processing ${newPayments} new payment(s) with full sync...`);
+      syncPaymentsAndClients();
+      log(`✅ Synced ${newPayments} new payment(s)`);
+    } else {
+      log(`📭 No new payments to process`);
+    }
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Payment Processing Complete',
+      `📧 Processed ${threads.length} payment emails\n` +
+      `💵 Added ${newPayments} new payments to sheet\n\n` +
+      'Check the execution logs for detailed information.',
+      ui.ButtonSet.OK
+    );
+    
+  } catch (error) {
+    logError('processGmailPayments', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Processing Failed',
+      `❌ Payment processing failed:\n\n${error.message}`,
+      ui.ButtonSet.OK
+    );
+  }
+  
+  logEnd('processGmailPayments');
+}
+
+/**
+ * Check if a payment already exists in the payments sheet
+ * Uses Message-ID as primary deduplication key since Payment IDs are being reused by Blawby
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet - The payments sheet
+ * @param {string} messageId - The email Message-ID (unique identifier)
+ * @param {string} paymentId - The payment ID (for reference)
+ * @return {boolean} - True if payment exists, false otherwise
+ */
+function paymentExists(sheet, messageId, paymentId = null) {
+  if (!messageId) return false;
+  
+  try {
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return false; // Only header row exists
+    
+    // Check if we have a Message-ID column (we'll add this as column F)
+    const values = sheet.getRange(2, 1, lastRow - 1, 6).getValues(); // Columns A-F
+    
+    // Check if Message-ID already exists (column F, index 5)
+    return values.some(row => row[5] === messageId);
+  } catch (error) {
+    logError('paymentExists', error);
+    return false;
+  }
+}
+
+/**
+ * Ensure the Payments sheet has the correct header structure
+ */
+function ensurePaymentsSheetHeader() {
+  const paymentsSheet = getSheet(SHEET_NAMES.PAYMENTS);
+  
+  // Check if header exists and has the right columns
+  const headerRow = paymentsSheet.getRange(1, 1, 1, 6).getValues()[0];
+  const expectedHeaders = ["Date", "Client Email", "Amount", "Payment Method", "Payment ID", "Message-ID"];
+  
+  let needsUpdate = false;
+  
+  // Check if we need to add Message-ID column
+  if (headerRow.length < 6) {
+    needsUpdate = true;
+  } else if (headerRow[5] !== "Message-ID") {
+    needsUpdate = true;
+  }
+  
+  if (needsUpdate) {
+    log('📝 Updating Payments sheet header to include Message-ID column');
+    paymentsSheet.getRange(1, 1, 1, 6).setValues([expectedHeaders]);
+    log('✅ Payments sheet header updated');
+  }
 }

@@ -348,13 +348,75 @@ function onOpen(e) {
   }
   
   ui.createMenu('Blawby')
-    .addItem('🔄 Daily Sync', 'executeSyncOperations')
-    .addItem('📧 Check Gmail Payments', 'processGmailPayments')
-    .addItem('📊 Check Gmail API Quota', 'checkEmailQuotaStatus')
+    .addItem('🔧 Setup System', 'setupSystem')
+    .addItem('📧 Send Test Email', 'sendTestEmail')
     .addSeparator()
-    .addItem('🧪 Test Gmail API Email', 'testGmailAPIEmail')
-    .addItem('🔍 Debug Gmail Search', 'debugGmailSearch')
+    .addItem('🔄 Daily Sync', 'executeSyncOperations')
+    .addItem('📧 Process Gmail Payments', 'processGmailPayments')
+    .addSeparator()
+    .addItem('⚙️ Enable Gmail Trigger', 'createBlawbyPaymentTrigger')
     .addToUi();
+}
+
+/**
+ * Send a test email to validate email configuration
+ */
+function sendTestEmail() {
+  logStart('sendTestEmail');
+  
+  try {
+    const firmEmail = getFirmEmail();
+    
+    if (!firmEmail || !firmEmail.includes('@') || firmEmail === 'your-email@example.com') {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert(
+        '⚠️ Email Configuration Required',
+        'Your firm email is not properly configured.\n\n' +
+        'Please go to the Welcome sheet and update the "Firm Email" setting with your actual email address.',
+        ui.ButtonSet.OK
+      );
+      return;
+    }
+    
+    // Send a simple test email
+    const subject = 'Welcome to Blawby';
+    const body = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #4285f4;">🎉 Welcome to Blawby!</h2>
+        <p>This is a test email to confirm your email configuration is working correctly.</p>
+        <p><strong>Firm Email:</strong> ${firmEmail}</p>
+        <p><strong>Test Date:</strong> ${new Date().toLocaleDateString()}</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="color: #666; font-size: 12px;">
+          If you received this email, your Blawby system is properly configured and ready to use!
+        </p>
+      </div>
+    `;
+    
+    sendEmailViaGmailAPI(firmEmail, subject, body, { isHtml: true });
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      '✅ Test Email Sent',
+      `A test email has been sent to:\n\n${firmEmail}\n\n` +
+      'Please check your inbox (and spam folder) to confirm the email was received.',
+      ui.ButtonSet.OK
+    );
+    
+    log(`✅ Test email sent successfully to ${firmEmail}`);
+  } catch (error) {
+    logError('sendTestEmail', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      '❌ Test Email Failed',
+      `Failed to send test email:\n\n${error.message}\n\n` +
+      'Please check your email configuration in the Welcome sheet.',
+      ui.ButtonSet.OK
+    );
+  }
+  
+  logEnd('sendTestEmail');
 }
 
 /**

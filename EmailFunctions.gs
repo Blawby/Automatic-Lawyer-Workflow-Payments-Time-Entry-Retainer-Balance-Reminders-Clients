@@ -85,33 +85,6 @@ function renderTemplate(type, subtype, ...params) {
 }
 
 /**
- * Log email to EmailLog sheet for tracking
- * @param {string} recipient - Email recipient
- * @param {string} subject - Email subject
- * @param {string} type - Email type (e.g., 'digest', 'low_balance')
- */
-function logEmail(recipient, subject, type = 'general') {
-  try {
-    const sheet = getOrCreateSheet("EmailLog");
-    
-    // Add headers if sheet is empty
-    const data = sheet.getDataRange().getValues();
-    if (data.length === 0) {
-      sheet.getRange(1, 1, 1, 4).setValues([["Timestamp", "Recipient", "Subject", "Type"]]);
-      sheet.getRange(1, 1, 1, 4).setFontWeight("bold").setBackground("#f3f3f3");
-    }
-    
-    // Append email log entry
-    sheet.appendRow([new Date(), recipient, subject, type]);
-    
-    // Auto-resize columns
-    sheet.autoResizeColumns(1, 4);
-  } catch (error) {
-    logError('logEmail', error);
-  }
-}
-
-/**
  * Universal email sending function that handles test mode automatically
  * @param {string} recipient - Email recipient
  * @param {string} subject - Email subject
@@ -158,10 +131,6 @@ function sendEmail(recipient, subject, body, options = {}) {
     }
     
     MailApp.sendEmail(emailOptions);
-    
-    // Log the email
-    const emailType = options.emailType || 'general';
-    logEmail(finalRecipient, finalSubject, emailType);
     
     if (isTest) {
       log(`✅ [TEST] Email sent successfully to ${finalRecipient} (originally intended for ${recipient})`);
@@ -232,206 +201,77 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
   // Mark as sent (only in production mode)
   if (!isTestMode()) {
     props.setProperty(emailKey, "1");
-    log(`📧 Marked low balance email as sent for ${clientName}`);
-  } else {
-    log(`🧪 Test mode: Not setting email flag for ${clientName}`);
   }
-  
-  log(`✅ Low balance email process completed for ${clientName}`);
   logEnd('sendLowBalanceEmail');
   return true;
 }
 
+/**
+ * Sends a daily balance digest email to the firm summarizing low balance clients
+ */
 function sendDailyBalanceDigest() {
   logStart('sendDailyBalanceDigest');
-  
   try {
+    // Load all relevant data
     const sheets = getSheets();
     const data = loadSheetData(sheets);
-    
-    log("📊 Analyzing client balances...");
     const lawyerData = buildLawyerMaps(data.lawyers);
     const clientsById = buildClientMap(data.clientData);
     
-    // Calculate payment summary for today
-    const today = new Date();
-    const todayStr = today.toDateString();
-    const props = PropertiesService.getScriptProperties();
-    
-    const paymentsToday = data.paymentData
-      .filter(p => {
-        if (!p || !Array.isArray(p) || p.length < 3) return false;
-        const paymentDate = parseZapierTimestamp(p[0]);
-        return paymentDate && paymentDate.toDateString() === todayStr;
-      });
-    
-    const paymentSummary = {
-      total: paymentsToday.reduce((sum, p) => sum + (parseFloat(p[2]) || 0), 0),
-      count: new Set(paymentsToday.map(p => p[1])).size
-    };
-    
-    log(`💰 Today's payments: $${paymentSummary.total.toFixed(2)} from ${paymentSummary.count} clients`);
-    
-    // Get low balance clients with email sent tracking
+    // Gather low balance clients
     const lowBalanceClients = [];
-    log(`📋 Checking ${Object.keys(clientsById).length} clients for low balances...`);
+    let paymentTotal = 0;
+    let paymentCount = 0;
     
     for (const [clientID, row] of Object.entries(clientsById)) {
       const email = row[0];
       const clientName = row[1] || "Client";
       const targetBalance = parseFloat(row[2]) || 0;
-      
       const balanceInfo = calculateClientBalance(clientID, email, data, lawyerData.rates);
       const balance = balanceInfo.totalPaid - balanceInfo.totalUsed;
-      const topUp = Math.max(0, targetBalance - balance);
+      const lastActivity = balanceInfo.lastActivityDate ? balanceInfo.lastActivityDate.toISOString().split('T')[0] : null;
       
-      if (topUp > 0) {
-        // Check if low balance email was sent today
-        const emailKey = `low_balance_${clientID}_${todayStr}`;
-        const emailSent = !isTestMode() && props.getProperty(emailKey) === "1";
-        
+      // Payment summary
+      if (balanceInfo.totalPaid > 0) {
+        paymentTotal += balanceInfo.totalPaid;
+        paymentCount++;
+      }
+      
+      // Low balance detection
+      if (balance < targetBalance) {
         lowBalanceClients.push({
           name: clientName,
-          email: email,
-          balance: balance,
-          targetBalance: targetBalance,
-          topUp: topUp,
-          lastActivity: lawyerData.emails[balanceInfo.lastLawyerID] || 'Unknown',
-          emailSent: emailSent
+          balance,
+          targetBalance,
+          lastActivity,
+          emailSent: false // Not tracked here
         });
-        log(`⚠️ Low balance detected for ${clientName}: $${balance.toFixed(2)} (needs $${topUp.toFixed(2)}, email sent: ${emailSent})`);
       }
     }
     
-    // Sort by top-up amount (highest first)
-    lowBalanceClients.sort((a, b) => b.topUp - a.topUp);
+    // Only send if there are low balances or in test mode
+    if (lowBalanceClients.length === 0 && !isTestMode()) {
+      log('✅ No low balance clients, skipping daily digest email');
+      logEnd('sendDailyBalanceDigest');
+      return;
+    }
     
-    log(`📧 Sending digest for ${lowBalanceClients.length} low balance clients...`);
+    // Prepare payment summary
+    const paymentSummary = {
+      total: paymentTotal,
+      count: paymentCount
+    };
     
-    // Send digest using template with both parameters
+    // Render email content
     const subject = renderTemplate('DAILY_DIGEST', 'SUBJECT');
     const body = renderTemplate('DAILY_DIGEST', 'BODY', lowBalanceClients, paymentSummary);
     
+    // Send to firm
     sendEmailToFirm(subject, body, { isHtml: true, emailType: 'daily_digest' });
-    
-    log(`✅ Daily balance digest sent with ${lowBalanceClients.length} clients and payment summary`);
+    log('✅ Daily balance digest email sent to firm');
   } catch (error) {
     logError('sendDailyBalanceDigest', error);
     throw error;
   }
-  
   logEnd('sendDailyBalanceDigest');
-}
-
-function notifyServiceResumed(clientID, email, clientName, balance, today) {
-  logStart('notifyServiceResumed');
-  
-  const props = PropertiesService.getScriptProperties();
-  const emailKey = `service_resumed_${clientID}_${today}`;
-  
-  // Check if notification already sent today (skip this check in test mode)
-  if (!isTestMode() && props.getProperty(emailKey)) {
-    log(`📧 Service resumed notification already sent today for ${clientName}`);
-    logEnd('notifyServiceResumed');
-    return;
-  }
-  
-  // Log test mode behavior
-  if (isTestMode()) {
-    log(`🧪 Test mode active — allowing service resumed email resend for ${clientName}`);
-    log(`🧪 Email key: ${emailKey}`);
-    log(`🧪 Current flag value: ${props.getProperty(emailKey) || 'not set'}`);
-  }
-  
-  // Send to client using template
-  const clientSubject = renderTemplate('SERVICE_RESUMED', 'CLIENT_SUBJECT', clientName);
-  const clientBody = renderTemplate('SERVICE_RESUMED', 'CLIENT_BODY', clientName);
-  
-  sendEmail(email, clientSubject, clientBody, { isHtml: true, emailType: 'service_resumed_client' });
-  
-  // Send to firm using template
-  const ownerSubject = renderTemplate('SERVICE_RESUMED', 'OWNER_SUBJECT', clientName);
-  const ownerBody = renderTemplate('SERVICE_RESUMED', 'OWNER_BODY', clientName);
-  
-  sendEmailToFirm(ownerSubject, ownerBody, { isHtml: true, emailType: 'service_resumed_firm' });
-  
-  // Mark as sent (only in production mode)
-  if (!isTestMode()) {
-    props.setProperty(emailKey, "1");
-    log(`📧 Marked service resumed email as sent for ${clientName}`);
-  } else {
-    log(`🧪 Test mode: Not setting email flag for ${clientName}`);
-  }
-  
-  logEnd('notifyServiceResumed');
-}
-
-/**
- * Sends a welcome email to the firm when the system is first set up
- */
-function sendWelcomeEmail() {
-  logStart('sendWelcomeEmail');
-  
-  try {
-    const firmEmail = getFirmEmail();
-    const subject = "🎉 Welcome to Blawby Legal Retainer Management";
-    const body = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #2c3e50;">🎉 Welcome to Blawby!</h1>
-        
-        <p>Your legal retainer management system is now set up and ready to use!</p>
-        
-        <div style="background-color: #d4edda; color: #155724; padding: 15px; border-radius: 5px; margin: 15px 0;">
-          <h3>✅ System Status</h3>
-          <ul>
-            <li><strong>Test Mode:</strong> ON (safe for testing)</li>
-            <li><strong>Firm Email:</strong> ${firmEmail}</li>
-            <li><strong>Email Templates:</strong> Loaded and validated</li>
-            <li><strong>Sample Data:</strong> Ready for testing</li>
-          </ul>
-        </div>
-        
-        <h3>🚀 Next Steps</h3>
-        <ol>
-          <li><strong>Test the System:</strong> Click "Run Full Daily Sync" in the Blawby menu</li>
-          <li><strong>Check Your Email:</strong> You'll receive test notifications</li>
-          <li>Low balance warnings for sample clients</li>
-          <li>Daily digest emails</li>
-          <li>Service resumed notifications</li>
-        </ol>
-        
-        <h3>📧 What You'll Receive</h3>
-        <ul>
-          <li>Low balance warnings (when applicable)</li>
-          <li>Daily balance digest (if low balances detected)</li>
-          <li>Service resumed notifications</li>
-        </ul>
-        
-        <div style="background-color: #fff3cd; color: #856404; padding: 15px; border-radius: 5px; margin: 15px 0;">
-          <h3>💡 Pro Tips</h3>
-          <ul>
-            <li>All emails will be marked with [TEST] until you disable Test Mode</li>
-            <li>Use "Send Test Email" to verify your configuration anytime</li>
-            <li>Check the Welcome sheet for detailed setup instructions</li>
-          </ul>
-        </div>
-        
-        <p>If you have any questions, check the Welcome sheet or contact support@blawby.com</p>
-        
-        <p style="color: #7f8c8d; font-size: 14px; margin-top: 20px;">
-          Best regards,<br>
-          The Blawby Team
-        </p>
-      </div>
-    `;
-    
-    sendEmail(firmEmail, subject, body, { isHtml: true, emailType: 'welcome' });
-    
-    log(`✅ Welcome email sent to ${firmEmail}`);
-  } catch (error) {
-    logError('sendWelcomeEmail', error);
-    throw error;
-  }
-  
-  logEnd('sendWelcomeEmail');
 }

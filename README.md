@@ -29,19 +29,20 @@ A professional, IOLTA-compliant Google Sheets solution for law firms to manage r
 4. Review the **Clients** sheet to see sample clients created
 
 ### 4. Connect Your Payment System (10 minutes)
-1. **Option A: Zapier Integration**
+1. **Option A: Gmail Integration (Recommended)**
+   - Click **"Enable Gmail Trigger"** in the Blawby menu
+   - System automatically checks Gmail every 15 minutes for payment notifications
+   - **Daily sync automatically processes Gmail payments** - no manual intervention needed
+   - No Zapier setup required - payment emails from Blawby are automatically detected and processed
+   - Test with **"Process Gmail Payments"** menu item
+
+2. **Option B: Zapier Integration (Alternative)**
    - Set up a Zapier integration:
    - Trigger: New payment in Stripe/your payment processor
    - Action: Add row to Google Sheets (your Payments sheet)
    - Map: Date, Client Email, Amount, Payment Method, Payment ID
    - Test with a real payment
    - Run **"Sync Payments & Clients"** to process it
-
-2. **Option B: Gmail Integration (Recommended)**
-   - Click **"Enable Gmail Trigger"** in the Blawby menu
-   - System automatically checks Gmail every 15 minutes for payment notifications
-   - No Zapier setup required - payment emails from Blawby are automatically detected and processed
-   - Test with **"Check Gmail for Payments"** menu item
 
 ### 5. Start Using (Ongoing)
 1. Set **Test Mode** to "FALSE" when ready for production
@@ -69,30 +70,34 @@ A professional, IOLTA-compliant Google Sheets solution for law firms to manage r
 
 ## 🆕 Gmail Payment Integration
 
-Blawby now includes **built-in Gmail payment detection** as an alternative to Zapier integration. This feature automatically monitors your Gmail for payment notification emails from Blawby and processes them seamlessly.
+Blawby includes **built-in Gmail payment detection** as the **primary recommended approach** for payment processing. This feature automatically monitors your Gmail for payment notification emails from Blawby and processes them seamlessly as part of the daily sync workflow.
 
 ### **How Gmail Integration Works**
 
 1. **Automatic Monitoring** - Checks Gmail every 15 minutes for payment notifications
-2. **Smart Parsing** - Extracts payment amount, client email, payment method, and unique payment ID
-3. **Duplicate Prevention** - Uses payment ID to prevent processing the same payment twice
-4. **Seamless Processing** - Automatically triggers full client sync and balance calculations
-5. **Email Management** - Marks processed emails as read and archives them
+2. **Daily Sync Integration** - Payment processing is automatically included in daily sync operations
+3. **Smart Parsing** - Extracts payment amount, client email, payment method, and unique payment ID
+4. **Duplicate Prevention** - Uses Message-ID to prevent processing the same payment twice
+5. **Seamless Processing** - Automatically triggers full client sync and balance calculations
+6. **Email Management** - Marks processed emails as read and archives them
 
 ### **Setup Gmail Integration**
 
 1. Click **"Enable Gmail Trigger"** in the Blawby menu
 2. System automatically sets up 15-minute monitoring
-3. Test with **"Check Gmail for Payments"** menu item
-4. Monitor logs for payment processing status
+3. **Daily sync will automatically process Gmail payments** - no manual intervention needed
+4. Test with **"Process Gmail Payments"** menu item
+5. Monitor logs for payment processing status
 
 ### **Benefits Over Zapier**
 
 - ✅ **No external dependencies** - Everything runs within Google Workspace
+- ✅ **Fully integrated** - Works automatically with daily sync operations
 - ✅ **Real-time processing** - 15-minute check intervals vs Zapier delays
 - ✅ **Simplified setup** - One-click enable vs complex Zapier configuration
 - ✅ **Cost effective** - No Zapier subscription required
 - ✅ **Reliable** - Direct Gmail API integration
+- ✅ **Automatic** - No manual payment processing required
 
 ### **Email Format Expected**
 
@@ -208,4 +213,5 @@ Blawby includes a professional email system with HTML templates. All emails are 
 | **Low Balance Warnings** | Add time logs to reduce balance below threshold | Professional HTML email notifications sent to clients |
 | **Matter Tracking** | Time logs are linked to matters by Matter ID | Matter breakdown shown in client records |
 | **Email Notifications** | Set Email Notifications to TRUE and run sync | Low balance, service resumed, and digest emails sent to firm/clients |
-| **Gmail Integration** | Click "Check Gmail for Payments" in menu | System checks Gmail for payment notifications and processes them |
+| **Gmail Integration** | Click "Process Gmail Payments" in menu | System checks Gmail for payment notifications and processes them automatically |
+| **Daily Sync with Gmail** | Run "Run Full Daily Sync" with Gmail payments present | Gmail payments automatically processed as part of daily sync workflow |

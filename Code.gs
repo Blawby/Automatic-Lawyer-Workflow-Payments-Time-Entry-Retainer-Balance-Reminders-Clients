@@ -192,40 +192,81 @@ function checkForBlawbyPayments() {
   logStart('checkForBlawbyPayments');
   
   try {
-    const query = 'from:notifications@blawby.com subject:"Payment of" is:unread newer_than:1d';
-    const threads = GmailApp.search(query);
     const paymentsSheet = getSheet(SHEET_NAMES.PAYMENTS);
     let newPayments = 0;
+    let totalThreads = 0;
+    let processedEmails = new Set(); // Track processed emails to avoid duplicates
     
-    log(`📧 Found ${threads.length} unread payment notification(s) in Gmail`);
+    // Start with unread emails first (most likely to be new)
+    const queries = [
+      'from:notifications@blawby.com subject:"Payment of" is:unread newer_than:1d',  // Unread emails first
+      'from:notifications@blawby.com subject:"Payment of" is:read newer_than:7d',   // Then read emails from last 7 days
+      'from:notifications@blawby.com subject:"Payment" is:read newer_than:7d'       // Broader payment search
+    ];
     
-    for (const thread of threads) {
-      const message = thread.getMessages()[0];
-      const htmlBody = message.getBody();
-      const parsed = parseBlawbyPaymentEmail(htmlBody);
+    for (const query of queries) {
+      log(`🔍 Searching with query: "${query}"`);
+      const threads = GmailApp.search(query);
+      totalThreads += threads.length;
+      log(`📧 Found ${threads.length} threads with this query`);
       
-      if (parsed && parsed.paymentId && !paymentExists(paymentsSheet, parsed.paymentId)) {
-        // Add payment to sheet
-        paymentsSheet.appendRow([
-          new Date(),                    // Date
-          parsed.clientEmail || '',     // Client Email (primary identifier)
-          parsed.amount || 0,           // Amount
-          parsed.method || 'card',      // Payment Method
-          parsed.paymentId              // Payment ID (for deduplication)
-        ]);
+      for (const thread of threads) {
+        const message = thread.getMessages()[0];
+        const messageId = message.getId();
+        const subject = message.getSubject();
         
-        log(`💵 New payment recorded: ${parsed.paymentId} - $${parsed.amount} from ${parsed.clientEmail}`);
-        newPayments++;
-      } else if (parsed && parsed.paymentId) {
-        log(`🔄 Payment ${parsed.paymentId} already exists, skipping`);
-      } else {
-        log(`⚠️ Could not parse payment from email: ${message.getSubject()}`);
+        // Skip if we've already processed this email
+        if (processedEmails.has(messageId)) {
+          log(`🔄 Skipping already processed email: "${subject}"`);
+          continue;
+        }
+        
+        log(`📧 Processing email: "${subject}" from ${message.getFrom()}`);
+        
+        const htmlBody = message.getBody();
+        const parsed = parseBlawbyPaymentEmail(htmlBody);
+        
+        if (parsed && parsed.paymentId && !paymentExists(paymentsSheet, parsed.paymentId)) {
+          // Add payment to sheet
+          paymentsSheet.appendRow([
+            new Date(),                    // Date
+            parsed.clientEmail || '',     // Client Email (primary identifier)
+            parsed.amount || 0,           // Amount
+            parsed.method || 'card',      // Payment Method
+            parsed.paymentId              // Payment ID (for deduplication)
+          ]);
+          
+          log(`💵 New payment recorded: ${parsed.paymentId} - $${parsed.amount} from ${parsed.clientEmail}`);
+          newPayments++;
+          
+          // Mark as read and archive
+          if (thread.isUnread()) {
+            thread.markRead();
+            log(`📧 Marked email as read`);
+          }
+          thread.moveToArchive();
+          log(`📧 Archived email thread`);
+          
+        } else if (parsed && parsed.paymentId) {
+          log(`🔄 Payment ${parsed.paymentId} already exists in sheet, skipping`);
+          // Still mark as read and archive to avoid reprocessing
+          if (thread.isUnread()) {
+            thread.markRead();
+            log(`📧 Marked duplicate email as read`);
+          }
+          thread.moveToArchive();
+          log(`📧 Archived duplicate email thread`);
+        } else {
+          log(`⚠️ Could not parse payment from email: "${subject}"`);
+          // Don't archive emails we can't parse - leave them for manual review
+        }
+        
+        // Mark this email as processed
+        processedEmails.add(messageId);
       }
-      
-      // Mark as read and archive
-      thread.markRead();
-      thread.moveToArchive();
     }
+    
+    log(`📊 Total threads found: ${totalThreads}, processed: ${processedEmails.size}`);
     
     if (newPayments > 0) {
       log(`🔄 Processing ${newPayments} new payment(s) with full sync...`);
@@ -249,23 +290,22 @@ function checkForBlawbyPayments() {
  */
 function parseBlawbyPaymentEmail(html) {
   try {
-    // Extract payment amount
-    const amountMatch = html.match(/<td[^>]*>\s*\$([0-9,]+\.?[0-9]*)\s*<\/td>/);
+    log('🔍 Parsing Blawby payment email...');
     
-    // Extract client email (primary identifier)
-    const emailMatch = html.match(/CLIENT EMAIL<\/td>[\s\S]*?<td[^>]*>([^<]+)<\/td>/i) ||
-                      html.match(/from:\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+    // Extract payment amount - look for the amount in the payment section
+    const amountMatch = html.match(/\$([0-9,]+\.?[0-9]*)/);
     
-    // Extract client name (secondary, for display)
+    // Extract client email - look for CLIENT EMAIL section
+    const emailMatch = html.match(/CLIENT EMAIL<\/td>[\s\S]*?<td[^>]*>([^<]+)<\/td>/i);
+    
+    // Extract client name - look for CLIENT NAME section
     const nameMatch = html.match(/CLIENT NAME<\/td>[\s\S]*?<td[^>]*>([^<]+)<\/td>/i);
     
-    // Extract payment method
-    const methodMatch = html.match(/PAYMENT METHOD<\/td>[\s\S]*?<td[^>]*>([^<]+)<\/td>/i) ||
-                       html.match(/card|bank transfer|ach|check/i);
+    // Extract payment method - look for PAYMENT METHOD section
+    const methodMatch = html.match(/PAYMENT METHOD<\/td>[\s\S]*?<td[^>]*>([^<]+)<\/td>/i);
     
-    // Extract payment ID
-    const idMatch = html.match(/PAYMENT ID<\/td>[\s\S]*?<td[^>]*>([^<]+)<\/td>/i) ||
-                   html.match(/ID[:\s]*([a-zA-Z0-9_-]+)/i);
+    // Extract payment ID - look for PAYMENT ID section
+    const idMatch = html.match(/PAYMENT ID<\/td>[\s\S]*?<td[^>]*>([^<]+)<\/td>/i);
     
     const amount = amountMatch ? parseFloat(amountMatch[1].replace(/,/g, '')) : null;
     const clientEmail = emailMatch ? emailMatch[1].trim() : null;
@@ -273,21 +313,29 @@ function parseBlawbyPaymentEmail(html) {
     const method = methodMatch ? methodMatch[1].trim().toLowerCase() : 'card';
     const paymentId = idMatch ? idMatch[1].trim() : null;
     
+    log(`📊 Parsed data: amount=${amount}, email=${clientEmail}, name=${clientName}, method=${method}, id=${paymentId}`);
+    
     // Validate required fields
-    if (!amount || !clientEmail || !paymentId) {
-      log(`⚠️ Missing required payment data: amount=${amount}, email=${clientEmail}, id=${paymentId}`);
+    if (!amount || !paymentId) {
+      log(`⚠️ Missing required payment data: amount=${amount}, id=${paymentId}`);
       return null;
     }
     
-    // Validate email format
-    if (!isValidEmail(clientEmail)) {
-      log(`⚠️ Invalid email format in payment: ${clientEmail}`);
+    // For client email, if it's "Not provided", we'll use the client name as identifier
+    const finalClientEmail = (clientEmail && clientEmail !== 'Not provided') ? clientEmail : 
+                            (clientName ? `${clientName.toLowerCase().replace(/\s+/g, '.')}@client.blawby.com` : null);
+    
+    // Validate email format (if we have one)
+    if (finalClientEmail && !isValidEmail(finalClientEmail)) {
+      log(`⚠️ Invalid email format in payment: ${finalClientEmail}`);
       return null;
     }
+    
+    log(`✅ Successfully parsed payment: $${amount} from ${finalClientEmail} (ID: ${paymentId})`);
     
     return {
       amount: amount,
-      clientEmail: clientEmail,
+      clientEmail: finalClientEmail,
       clientName: clientName,
       method: method,
       paymentId: paymentId
@@ -393,8 +441,10 @@ function onOpen(e) {
     .addSeparator()
     .addItem('Sync Payments & Clients', 'manualSyncClients')
     .addItem('Check Gmail for Payments', 'manualCheckGmailPayments')
+    .addItem('Test Process Existing Emails', 'testProcessExistingBlawbyEmails')
     .addItem('Test Gmail Search', 'testGmailSearch')
     .addItem('Test Gmail Integration', 'testGmailIntegration')
+    .addItem('Debug Blawby Emails', 'debugBlawbyEmailSearch')
     .addItem('Check Gmail Authorization', 'checkGmailAuthorization')
     .addItem('Force Reauthorization', 'forceReauthorization')
     .addSeparator()
@@ -850,4 +900,232 @@ function forceReauthorization() {
   }
   
   logEnd('forceReauthorization');
+}
+
+/**
+ * Detailed debugging function to understand Blawby email search issues
+ * This will help us figure out why Blawby payment emails aren't being found
+ */
+function debugBlawbyEmailSearch() {
+  logStart('debugBlawbyEmailSearch');
+  
+  try {
+    log('🔍 Starting detailed Blawby email search debugging...');
+    
+    // Test 1: Search for any emails from Blawby domain
+    const blawbyDomainQuery = 'from:*@blawby.com newer_than:30d';
+    const blawbyDomainThreads = GmailApp.search(blawbyDomainQuery);
+    log(`📧 Emails from any @blawby.com address (30 days): ${blawbyDomainThreads.length}`);
+    
+    if (blawbyDomainThreads.length > 0) {
+      log('📋 Found emails from Blawby domain:');
+      for (let i = 0; i < Math.min(blawbyDomainThreads.length, 5); i++) {
+        const message = blawbyDomainThreads[i].getMessages()[0];
+        log(`   ${i + 1}. From: ${message.getFrom()} | Subject: ${message.getSubject()} | Date: ${message.getDate()}`);
+      }
+    }
+    
+    // Test 2: Search for specific Blawby email addresses
+    const specificEmails = [
+      'notifications@blawby.com',
+      'noreply@blawby.com',
+      'support@blawby.com',
+      'admin@blawby.com',
+      'payments@blawby.com'
+    ];
+    
+    for (const email of specificEmails) {
+      const query = `from:${email} newer_than:30d`;
+      const threads = GmailApp.search(query);
+      log(`📧 Emails from ${email}: ${threads.length}`);
+      
+      if (threads.length > 0) {
+        for (let i = 0; i < Math.min(threads.length, 3); i++) {
+          const message = threads[i].getMessages()[0];
+          log(`   ${i + 1}. Subject: ${message.getSubject()} | Date: ${message.getDate()}`);
+        }
+      }
+    }
+    
+    // Test 3: Search for payment-related subjects from any sender
+    const paymentSubjects = [
+      'subject:"Payment of"',
+      'subject:"Payment received"',
+      'subject:"Payment confirmation"',
+      'subject:"Payment"',
+      'subject:"Blawby"'
+    ];
+    
+    for (const subject of paymentSubjects) {
+      const query = `${subject} newer_than:30d`;
+      const threads = GmailApp.search(query);
+      log(`📧 Emails with ${subject}: ${threads.length}`);
+      
+      if (threads.length > 0) {
+        for (let i = 0; i < Math.min(threads.length, 2); i++) {
+          const message = threads[i].getMessages()[0];
+          log(`   ${i + 1}. From: ${message.getFrom()} | Subject: ${message.getSubject()}`);
+        }
+      }
+    }
+    
+    // Test 4: Search for any emails containing "blawby" in the body or subject
+    const blawbyContentQuery = 'blawby newer_than:30d';
+    const blawbyContentThreads = GmailApp.search(blawbyContentQuery);
+    log(`📧 Emails containing "blawby": ${blawbyContentThreads.length}`);
+    
+    if (blawbyContentThreads.length > 0) {
+      log('📋 Found emails containing "blawby":');
+      for (let i = 0; i < Math.min(blawbyContentThreads.length, 5); i++) {
+        const message = blawbyContentThreads[i].getMessages()[0];
+        log(`   ${i + 1}. From: ${message.getFrom()} | Subject: ${message.getSubject()}`);
+      }
+    }
+    
+    // Test 5: Check if emails are marked as read/unread
+    const unreadBlawbyQuery = 'from:*@blawby.com is:unread newer_than:30d';
+    const unreadBlawbyThreads = GmailApp.search(unreadBlawbyQuery);
+    log(`📧 Unread emails from Blawby: ${unreadBlawbyThreads.length}`);
+    
+    const readBlawbyQuery = 'from:*@blawby.com is:read newer_than:30d';
+    const readBlawbyThreads = GmailApp.search(readBlawbyQuery);
+    log(`📧 Read emails from Blawby: ${readBlawbyThreads.length}`);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Blawby Email Debug Complete',
+      `✅ Detailed Blawby email search completed!\n\n` +
+      `📧 Results:\n` +
+      `• Any @blawby.com emails: ${blawbyDomainThreads.length}\n` +
+      `• Emails containing "blawby": ${blawbyContentThreads.length}\n` +
+      `• Unread Blawby emails: ${unreadBlawbyThreads.length}\n` +
+      `• Read Blawby emails: ${readBlawbyThreads.length}\n\n` +
+      `Check the execution logs for detailed breakdown of found emails.\n\n` +
+      `💡 If Blawby emails are found but not payment emails, we may need to:\n` +
+      `1. Adjust the search query\n` +
+      `2. Check the actual email format\n` +
+      `3. Update the parsing logic`,
+      ui.ButtonSet.OK
+    );
+    
+  } catch (error) {
+    logError('debugBlawbyEmailSearch', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Debug Failed',
+      `❌ Blawby email debug failed:\n\n${error.message}`,
+      ui.ButtonSet.OK
+    );
+  }
+  
+  logEnd('debugBlawbyEmailSearch');
+}
+
+/**
+ * Manual test function to process existing Blawby payment emails
+ * This helps test the parsing and processing logic
+ */
+function testProcessExistingBlawbyEmails() {
+  logStart('testProcessExistingBlawbyEmails');
+  
+  try {
+    const paymentsSheet = getSheet(SHEET_NAMES.PAYMENTS);
+    let processedCount = 0;
+    let newPayments = 0;
+    
+    // Search for existing Blawby payment emails (read or unread)
+    const query = 'from:notifications@blawby.com subject:"Payment of" newer_than:30d';
+    const threads = GmailApp.search(query);
+    
+    log(`📧 Found ${threads.length} existing Blawby payment emails`);
+    
+    for (const thread of threads) {
+      const message = thread.getMessages()[0];
+      const subject = message.getSubject();
+      const paymentId = extractPaymentIdFromSubject(subject);
+      
+      log(`📧 Testing email: "${subject}"`);
+      
+      // Check if this payment already exists
+      if (paymentExists(paymentsSheet, paymentId)) {
+        log(`🔄 Payment ${paymentId} already exists, skipping`);
+        processedCount++;
+        continue;
+      }
+      
+      const htmlBody = message.getBody();
+      const parsed = parseBlawbyPaymentEmail(htmlBody);
+      
+      if (parsed && parsed.paymentId) {
+        log(`✅ Successfully parsed payment: $${parsed.amount} from ${parsed.clientEmail} (ID: ${parsed.paymentId})`);
+        
+        // Ask user if they want to add this payment
+        const ui = SpreadsheetApp.getUi();
+        const response = ui.alert(
+          'Add Payment to Sheet?',
+          `Found payment: $${parsed.amount} from ${parsed.clientEmail}\n\n` +
+          `Subject: ${subject}\n` +
+          `Payment ID: ${parsed.paymentId}\n\n` +
+          `Add this payment to the Payments sheet?`,
+          ui.ButtonSet.YES_NO
+        );
+        
+        if (response === ui.Button.YES) {
+          // Add payment to sheet
+          paymentsSheet.appendRow([
+            new Date(),                    // Date
+            parsed.clientEmail || '',     // Client Email
+            parsed.amount || 0,           // Amount
+            parsed.method || 'card',      // Payment Method
+            parsed.paymentId              // Payment ID
+          ]);
+          
+          log(`💵 Added payment: ${parsed.paymentId} - $${parsed.amount} from ${parsed.clientEmail}`);
+          newPayments++;
+        } else {
+          log(`⏭️ User chose not to add payment ${parsed.paymentId}`);
+        }
+      } else {
+        log(`⚠️ Could not parse payment from email: "${subject}"`);
+      }
+      
+      processedCount++;
+    }
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Test Complete',
+      `✅ Processed ${processedCount} Blawby payment emails\n\n` +
+      `📊 Results:\n` +
+      `• Total emails found: ${threads.length}\n` +
+      `• Already in sheet: ${processedCount - newPayments}\n` +
+      `• New payments added: ${newPayments}\n\n` +
+      `Check the execution logs for detailed parsing information.`,
+      ui.ButtonSet.OK
+    );
+    
+  } catch (error) {
+    logError('testProcessExistingBlawbyEmails', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Test Failed',
+      `❌ Test failed: ${error.message}`,
+      ui.ButtonSet.OK
+    );
+  }
+  
+  logEnd('testProcessExistingBlawbyEmails');
+}
+
+/**
+ * Extract payment ID from email subject for quick checking
+ * @param {string} subject - Email subject line
+ * @return {string} - Extracted payment ID or null
+ */
+function extractPaymentIdFromSubject(subject) {
+  // Look for payment ID in subject (if it's included)
+  const idMatch = subject.match(/ID[:\s]*([a-zA-Z0-9_-]+)/i);
+  return idMatch ? idMatch[1] : null;
 }

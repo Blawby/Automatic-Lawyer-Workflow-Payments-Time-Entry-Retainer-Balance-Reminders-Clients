@@ -644,7 +644,7 @@ function setupWelcomeSheet(ss) {
     preservedLawyers = [];
   }
   
-  // Clear existing content
+  // Clear existing content completely
   welcomeSheet.clear();
   
   // Set up the content (ensure every row has exactly 4 columns)
@@ -739,7 +739,7 @@ function setupWelcomeSheet(ss) {
     ["•", "Service resumed notifications (when balance is topped up)", "", ""]
   ];
   
-  // Write content to sheet
+  // Write content to sheet with exact column count
   welcomeSheet.getRange(1, 1, content.length, 4).setValues(content);
 
   // --- Restore preserved values into the Value column ---

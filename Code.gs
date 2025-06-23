@@ -442,6 +442,7 @@ function onOpen(e) {
     .addItem('Sync Payments & Clients', 'manualSyncClients')
     .addItem('Check Gmail for Payments', 'manualCheckGmailPayments')
     .addItem('Test Process Existing Emails', 'testProcessExistingBlawbyEmails')
+    .addItem('Quick Payment Test', 'quickPaymentTest')
     .addItem('Test Gmail Search', 'testGmailSearch')
     .addItem('Test Gmail Integration', 'testGmailIntegration')
     .addItem('Debug Blawby Emails', 'debugBlawbyEmailSearch')
@@ -1128,4 +1129,58 @@ function extractPaymentIdFromSubject(subject) {
   // Look for payment ID in subject (if it's included)
   const idMatch = subject.match(/ID[:\s]*([a-zA-Z0-9_-]+)/i);
   return idMatch ? idMatch[1] : null;
+}
+
+/**
+ * Quick test to see what's happening with payment parsing
+ */
+function quickPaymentTest() {
+  logStart('quickPaymentTest');
+  
+  try {
+    // Search for one Blawby payment email
+    const query = 'from:notifications@blawby.com subject:"Payment of" newer_than:30d';
+    const threads = GmailApp.search(query, 0, 1); // Get just one email
+    
+    if (threads.length === 0) {
+      log('❌ No Blawby payment emails found');
+      return;
+    }
+    
+    const message = threads[0].getMessages()[0];
+    const subject = message.getSubject();
+    const htmlBody = message.getBody();
+    
+    log(`📧 Testing email: "${subject}"`);
+    log(`📧 Email length: ${htmlBody.length} characters`);
+    
+    // Test the parsing
+    const parsed = parseBlawbyPaymentEmail(htmlBody);
+    
+    if (parsed) {
+      log(`✅ Parsing successful:`);
+      log(`   Amount: $${parsed.amount}`);
+      log(`   Client Email: ${parsed.clientEmail}`);
+      log(`   Client Name: ${parsed.clientName}`);
+      log(`   Payment Method: ${parsed.method}`);
+      log(`   Payment ID: ${parsed.paymentId}`);
+      
+      // Test if it would be added to sheet
+      const paymentsSheet = getSheet(SHEET_NAMES.PAYMENTS);
+      const exists = paymentExists(paymentsSheet, parsed.paymentId);
+      log(`📊 Payment already exists in sheet: ${exists}`);
+      
+    } else {
+      log(`❌ Parsing failed`);
+      
+      // Let's look at the HTML structure
+      log(`🔍 HTML preview (first 500 chars):`);
+      log(htmlBody.substring(0, 500));
+    }
+    
+  } catch (error) {
+    logError('quickPaymentTest', error);
+  }
+  
+  logEnd('quickPaymentTest');
 }

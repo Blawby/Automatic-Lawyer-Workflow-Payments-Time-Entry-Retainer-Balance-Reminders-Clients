@@ -1,274 +1,122 @@
-# 📊 Blawby - Free Open-Source Legal Retainer Management System
+## 📊 [Blawby Sheets](https://blawby.com) - Free, Open-Source Legal Software for Lawyers
 
-A professional, IOLTA-compliant Google Sheets solution for law firms to manage retainers, track time, and handle client payments. **No coding required!**
+A professional, [IOLTA-compliant](https://blawby.com/docs) retainer management system for law firms—built in Google Sheets. Designed to track retainers, billable hours, and automate payment workflows.
+**✅ 100% Free** | **✅ Open Source** | **✅ No Coding Needed**
 
 ---
 
-## 🚀 Quick Start for Lawyers
+## 🚀 Quick Start – Free Legal Software Setup (No Coding!)
 
-### 1. Get Your Copy (2 minutes)
-1. [Click here to make your copy](https://docs.google.com/spreadsheets/d/1DO0IOXluqBD6QZ7cIteS1clIz6dymNy4ODbcS4cxKjY/copy)
-2. Name it something like "Your Law Firm - Retainer Management"
+### 1. Get Your Copy
+
+1. 👉 [Click here to copy the template](https://docs.google.com/spreadsheets/d/1DO0IOXluqBD6QZ7cIteS1clIz6dymNy4ODbcS4cxKjY/copy)
+2. Rename for your firm: e.g., "Smith Law - Retainer System"
 3. Click "Make a copy"
 
-### 2. Initial Setup (5 minutes)
-1. Open the **Welcome** sheet in your copy
-2. Update the **System Settings** section:
-   - Enter your **Blawby Payment URL** (get this from your Blawby account)
-   - Set your **Default Currency** (USD, EUR, etc.)
-   - Set your **Low Balance Threshold** (default $500 - this is the target balance for all clients)
-   - Enter your **Firm Email** address
-   - Keep **Test Mode** as "TRUE" for now
-3. Add your lawyers in the **Lawyers** section:
-   - Enter their email, name, hourly rate, and a unique Lawyer ID
-4. Click **"Setup System"** in the Blawby menu
-
-### 3. Test the System (3 minutes)
-1. Click **"Send Test Email"** to verify your email configuration
-2. Click **"Run Full Daily Sync"** to test the system with your configuration
-3. Check your email for test notifications
-4. Review the **Clients** sheet to see how the system processes data
-
-### 4. Connect Your Payment System (5 minutes)
-**Gmail Integration (Recommended & Automatic)**
-1. Click **"Enable Gmail Trigger"** in the Blawby menu
-2. System automatically checks Gmail every 15 minutes for payment notifications
-3. **Daily sync automatically processes Gmail payments** - no manual intervention needed
-4. No Zapier setup required - payment emails from Blawby are automatically detected and processed
-5. Test with **"Process Gmail Payments"** menu item
-
-### 5. Start Using (Ongoing)
-1. Set **Test Mode** to "FALSE" when ready for production
-2. Add your real data to the sheets
-3. The system will automatically:
-   - Create client records from payments
-   - Create default matters for new clients
-   - Track balances and send low balance alerts
-   - Notify clients when service resumes
+> Uses only Google Sheets. No paid apps, subscriptions, or plugins required.
 
 ---
 
-## 📊 Sheet Overview
+## 💼 What is Blawby Sheets?
 
-| Sheet     | Purpose                                   | Editable?      |
-|-----------|-------------------------------------------|----------------|
-| Lawyers (in Welcome) | Manage your legal team and their rates | Yes            |
-| Clients   | Track client balances and payment links   | Auto-updated   |
-| TimeLogs  | Record billable hours and activities      | Yes            |
-| Payments  | Track client payments (Date, Email, Amount, Payment Method, Payment ID, Message-ID) | Auto-updated   |
-| Matters   | Track client matters and case values      | Auto-updated   |
+Blawby Sheets is a **free and open-source legal software platform** for lawyers. Built using Google Sheets and Apps Script, it automates:
 
-> **Note:** All sheets start with clean headers only. Add your real data to begin using the system.
+* Retainer tracking & trust accounting (IOLTA-compliant)
+* Time logging & matter management
+* Automated email reminders
+* Payment intake & low balance alerts
 
----
-
-## 🚀 **Gmail API Email System**
-
-Blawby uses **Gmail API** for all email operations, providing:
-
-### **📧 Massive Email Capacity**
-- **Gmail API**: 1,000,000 emails/day (vs 100 with MailApp)
-- **Perfect for multi-user systems** - no more quota issues
-- **Automatic quota tracking** - monitors daily usage
-- **Graceful error handling** - continues working even if limits are hit
-
-### **🔧 How It Works**
-1. **Gmail API Integration** - Uses Google's advanced email API
-2. **Automatic Quota Management** - Tracks usage and warns before limits
-3. **Seamless Migration** - All existing email functions work the same
-4. **Better Reliability** - More stable than MailApp
-
-### **📊 Email Quota Status**
-- Click **"📊 Check Gmail API Quota"** in the Blawby menu
-- Shows remaining emails, usage percentage, and limits
-- Warns when approaching daily limits
-- Displays comparison with old MailApp limits
-
-### **🧪 Testing Gmail API**
-- Click **"🧪 Test Gmail API Email"** to verify the new system
-- Sends a test email using Gmail API
-- Confirms the upgrade is working correctly
+Great for solo lawyers, boutique firms, and legal clinics.
 
 ---
 
-## 💡 How Retainers Work
+## 💸 Payment Automation with [Blawby Payments](https://blawby.com)
 
-- **Automatic Client Creation** - Clients are created when they make their first payment
-- **Automatic Matter Creation** - Default matters are created for new clients
-- **Simplified Target Balance** - All clients use the same target balance from Welcome sheet ($500 default)
-- **Time Tracking** - Time is logged against the retainer balance with lawyer rates
-- **Smart Notifications** - Low balance warnings sent automatically with payment links
-- **Service Resumed Alerts** - Clients are notified when their balance is topped up and service resumes
-- **Payment Links** - Auto-generated payment links for easy client top-ups
+### ✅ Using [Blawby Payments](https://blawby.com):
 
----
+* Client payments are **auto-detected** via Gmail
+* System **auto-generates payment links** for low balances
+* Clients get notified when services resume
+* **No manual input** needed
 
-## 📧 Email System Overview
+> For details, see [Blawby Payments pricing](https://blawby.com/pricing)
 
-Blawby includes a professional email system with HTML templates. All emails are automatically handled. In test mode, emails are redirected to your firm email with a [TEST] label.
+### ❗ Using Other Payment Methods?
 
-### **Active Email Types & Triggers**
+* You must **manually enter payments** into the Payments sheet
+* Payment links will **not** be generated
+* Notifications will still be triggered daily as usual
 
-| Email Type | Trigger | Recipients | Template | Subject | Purpose |
-|------------|---------|------------|----------|---------|---------|
-| **Low Balance Warnings** | Balance below target | Client + Firm | `LOW_BALANCE` | `Your retainer needs a quick top-up, [ClientName]` | Alert client to top up retainer |
-| **Daily Balance Digest** | Daily sync runs | Firm only | `DAILY_DIGEST` | `Your Blawby Daily Summary` | Summary of all low balance clients |
-| **Service Resumed** | Balance goes positive | Client + Firm | `SERVICE_RESUMED` | `Great news! Your services are back up and running` | Notify when services can resume |
-| **Test Email** | Manual trigger | Firm only | Custom | `Welcome to Blawby` | Validate email configuration |
-
-### **Email Content Details**
-
-#### **1. Low Balance Warnings** (Critical for Business)
-- **When:** Client balance falls below target balance
-- **Content:** Current balance, target balance, payment link
-- **Action:** Client receives payment link for easy top-up
-
-#### **2. Daily Balance Digest** (Firm Operations)
-- **When:** Daily sync runs (automated or manual)
-- **Content:** Summary of all clients with low balances
-- **Purpose:** Keep firm informed of client payment status
-
-#### **3. Service Resumed Notifications** (Client Satisfaction)
-- **When:** Client balance goes from negative to positive
-- **Content:** Service restoration confirmation
-- **Purpose:** Maintain good client relationships
-
-### **Test Mode Behavior**
-- **All emails redirected** to your firm email address
-- **Subject lines prefixed** with `[TEST]`
-- **Email flags cleared** daily to allow repeated testing
-- **No production emails sent** until Test Mode is disabled
-
-### **Production Mode Behavior**
-- **Client emails sent** directly to clients
-- **Firm notifications sent** to your firm email
-- **Email flags prevent** duplicate daily emails
-- **Professional HTML formatting** for all emails
+> To unlock full automation, connect your [Blawby Payments link](https://blawby.com/payments).
 
 ---
 
-## 📧 **Gmail Payment Integration (Recommended)**
+## 📋 Sheet Overview
 
-**No more Zapier needed!** Blawby automatically detects and processes payment emails from Gmail.
-
-### **Key Features**
-1. **Automatic Detection** - Monitors Gmail for Blawby payment notifications
-2. **Smart Parsing** - Extracts payment amount, client email, payment method, and unique payment ID
-3. **Duplicate Prevention** - Uses Message-ID to prevent processing the same payment twice
-4. **Seamless Processing** - Automatically triggers full client sync and balance calculations
-5. **Email Management** - Marks processed emails as read and archives them
-6. **Automatic Matter Creation** - Creates default matters for new clients
-
-### **Setup Gmail Integration**
-
-1. Click **"Enable Gmail Trigger"** in the Blawby menu
-2. System automatically sets up 15-minute monitoring
-3. **Daily sync will automatically process Gmail payments** - no manual intervention needed
-4. Test with **"Process Gmail Payments"** menu item
-5. Monitor logs for payment processing status
-
-### **Benefits Over Zapier**
-
-- ✅ **No external dependencies** - Everything runs within Google Workspace
-- ✅ **Fully integrated** - Works automatically with daily sync operations
-- ✅ **Real-time processing** - 15-minute check intervals vs Zapier delays
-- ✅ **Simplified setup** - One-click enable vs complex Zapier configuration
-- ✅ **Cost effective** - No Zapier subscription required
-- ✅ **Reliable** - Direct Gmail API integration
-- ✅ **Automatic** - No manual payment processing required
-
-### **Email Format Expected**
-
-```
-From: notifications@blawby.com
-Subject: Payment of $1,250.00 received from [Client Name]
-Body: HTML with payment details including:
-- Payment Amount: $1,250.00
-- Client Email: client@example.com (or "Not provided")
-- Payment Method: card - 5565
-- Payment ID: pay_123456789
-```
-
-### **Automatic Processing**
-
-When a payment email is detected:
-1. **Payment parsed** and added to Payments sheet
-2. **Client created** if new (with auto-generated client ID)
-3. **Default matter created** for new clients
-4. **Balance calculated** and updated
-5. **Low balance emails sent** if needed
-6. **Email archived** to prevent reprocessing
+| Sheet    | Purpose                          | Editable?       |
+| -------- | -------------------------------- | --------------- |
+| Lawyers  | Define team & billing rates      | ✅ Yes           |
+| Clients  | Retainer balances & payment info | ⚙️ Auto-updated |
+| Payments | Track payment activity           | ⚙️ Auto-updated |
+| TimeLogs | Log billable time                | ✅ Yes           |
+| Matters  | Manage case and billing data     | ⚙️ Auto-updated |
 
 ---
 
-## 🔧 **System Features**
+## ✉️ Gmail Email Automation (No Zapier)
 
-### **Simplified Target Balance Logic**
-- **All clients use the same target balance** from Welcome sheet ($500 default)
-- **No complex calculations** - simple and predictable
-- **Easy to adjust** - change one number in Welcome sheet
-- **Consistent across all clients** - fair and transparent
+All emails are sent via Gmail API:
 
-### **Automatic Matter Creation**
-- **New clients get default matters** automatically
-- **Matter ID format**: M-YYYY-XXX (e.g., M-2025-001)
-- **Default description**: "General Legal Matter"
-- **Status**: "Active"
-- **Client names updated** when client info is filled
-
-### **Enhanced Payment Processing**
-- **Message-ID deduplication** - prevents duplicate payments
-- **Robust email parsing** - handles various email formats
-- **Automatic client creation** - seamless new client onboarding
-- **Balance tracking** - real-time balance calculations
+* **Low balance alerts** with payment links
+* **Service resumed** confirmations
+* **Daily firm summary** with client status
+* **Test mode** previews emails without sending to clients
 
 ---
 
-## ❓ Need Help?
+## 🧠 Smart Features for Law Firms
 
-- **Email:** support@blawby.com
-- **Documentation:** [blawby.com/docs](https://blawby.com/docs)
-- **GitHub Issues:** [Report bugs or request features](https://github.com/Blawby/Automatic-Lawyer-Workflow-Payments-Time-Entry-Retainer-Balance-Reminders-Clients/issues)
-
----
-
-## ⭐ Why Use This System?
-
-- **100% Free & Open Source** - No monthly fees or subscriptions
-- **IOLTA Compliant** - Properly track and manage client trust funds
-- **Professional Email System** - Beautiful HTML emails with templates
-- **Google Sheets Based** - Use familiar tools you already know
-- **Fully Automated** - Reduce administrative work with smart notifications
-- **Secure** - Your data stays in your Google Workspace
-- **Highly Customizable** - Adapt it to your firm's needs
-- **Production Ready** - Robust error handling and comprehensive logging
-- **Easy Testing** - Built-in testing utilities and validation tools
+* ⚖️ IOLTA trust compliance tracking
+* 🔁 Auto-matter and client creation
+* 📬 Automatic Gmail payment processing
+* 📧 Email automation via Gmail APIhttps://blawby.com/docs/email-system
+* 🧾 HTML invoices and notifications
 
 ---
 
-## 🛠️ Developer Documentation
+## 🆓 Why Use Blawby Sheets?
 
-### Project Structure
+* ✅ **Free software for lawyers**
+* ✅ **Open source legal tool** you can audit and adapt
+* ✅ **Google Sheets-based** – simple and powerful
+* ✅ **Email automation built-in**
+* ✅ **No external platforms needed** – works in your Google Workspace
+* ✅ **Secure** – all data stays in your account
+
+---
+
+## 🔌 Developer-Friendly
+
+Blawby Sheets is fully open source and welcomes contributions from the community. If you encounter a bug or have a feature idea, please open an issue or submit a pull request on GitHub. We actively monitor [GitHub Issues](https://github.com/Blawby/Automatic-Lawyer-Workflow-Payments-Time-Entry-Retainer-Balance-Reminders-Clients/issues) and encourage collaboration.
+
 ```
 .
-├── Code.gs              # Main entry points, triggers, and menu system
-├── ClientSync.gs        # Client data synchronization and balance processing
-├── Constants.gs         # System constants, settings, and configuration
-├── EmailFunctions.gs    # Universal email system with test mode handling
-├── EmailTemplates.gs    # Professional HTML email templates with caching
-└── UtilityFunctions.gs  # Helper functions, logging, and sheet access
+├── Code.gs              # Triggers + Menu System
+├── ClientSync.gs        # Balance & matter logic
+├── Constants.gs         # Settings & metadata
+├── EmailFunctions.gs    # Gmail API + test mode
+├── EmailTemplates.gs    # HTML template engine
+└── UtilityFunctions.gs  # Logging & helpers
 ```
+
+Full source at: [github.com/Blawby](https://github.com/Blawby/Automatic-Lawyer-Workflow-Payments-Time-Entry-Retainer-Balance-Reminders-Clients)
 
 ---
 
-## 🧪 Testing Features
+## 🔗 Learn More
 
-| Feature | How to Test | Expected Result |
-|---------|-------------|-----------------|
-| **System Validation** | Click 'Send Test Email' in menu | Test email sent to verify configuration |
-| **Client Creation** | Add a payment row to Payments sheet and run sync | Client automatically created in Clients sheet |
-| **Low Balance Warnings** | Add time logs to reduce balance below threshold | Professional HTML email notifications sent |
-| **Matter Tracking** | Time logs are linked to matters by Matter ID | Matter breakdown shown in client records |
-| **Email Notifications** | Set Email Notifications to TRUE and run sync | Low balance, service resumed, and digest emails sent |
-| **Gmail Integration** | Click "Process Gmail Payments" in menu | System checks Gmail for payment notifications |
-| **Daily Sync with Gmail** | Run "Run Full Daily Sync" with Gmail payments present | Gmail payments automatically processed as part of daily sync workflow |
+* [Website](https://blawby.com)
+* [Documentation](https://blawby.com/docs)
+* [Blawby Payments Pricing](https://blawby.com/pricing)
+* [GitHub](https://github.com/Blawby/Automatic-Lawyer-Workflow-Payments-Time-Entry-Retainer-Balance-Reminders-Clients)
+* [Contact Support](mailto:support@blawby.com)

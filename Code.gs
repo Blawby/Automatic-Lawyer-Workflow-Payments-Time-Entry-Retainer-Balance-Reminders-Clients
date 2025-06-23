@@ -6,6 +6,19 @@ function dailySync() {
     // Validate spreadsheet access
     validateSpreadsheetAccess();
     
+    // Validate required settings before proceeding
+    const validationResult = validateRequiredSettings();
+    if (!validationResult.isValid) {
+      // Show user-friendly alert instead of throwing error
+      const ui = SpreadsheetApp.getUi();
+      ui.alert(
+        "❌ Configuration Issues Found", 
+        validationResult.message + "\n\nPlease fix the critical issues before running the sync.\n\nYou can use '🔍 Validate Configuration' from the Blawby menu to check your setup anytime.",
+        SpreadsheetApp.getUi().ButtonSet.OK
+      );
+      return; // Stop execution but don't throw error
+    }
+    
     // Get sheets and ensure they're properly set up
     const sheets = getSheetsAndSetup();
     
@@ -15,7 +28,234 @@ function dailySync() {
     console.log("✅ Daily sync completed successfully");
   } catch (error) {
     console.error("❌ Daily sync failed:", error.message);
-    throw error;
+    
+    // Show user-friendly error alert
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      "❌ Sync Failed", 
+      `The daily sync encountered an error:\n\n${error.message}\n\nPlease check your configuration and try again.`,
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  }
+}
+
+/**
+ * User-facing sync function that shows UI alerts for configuration issues
+ * This is called from the menu and shows user-friendly messages
+ */
+function userDailySync() {
+  console.log("🔄 Starting user daily sync...");
+  
+  try {
+    // Validate spreadsheet access
+    validateSpreadsheetAccess();
+    
+    // Validate required settings before proceeding
+    const validationResult = validateRequiredSettings();
+    if (!validationResult.isValid) {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert(
+        "❌ Configuration Issues Found", 
+        validationResult.message + "\n\nPlease fix the critical issues before running the sync.\n\nYou can use '🔍 Validate Configuration' from the Blawby menu to check your setup anytime.",
+        SpreadsheetApp.getUi().ButtonSet.OK
+      );
+      return;
+    }
+    
+    // Show confirmation dialog
+    const ui = SpreadsheetApp.getUi();
+    const response = ui.alert(
+      "🔄 Start Daily Sync", 
+      "This will:\n• Check for new payments\n• Sync client data\n• Send balance notifications\n\nDo you want to continue?",
+      SpreadsheetApp.getUi().ButtonSet.YES_NO
+    );
+    
+    if (response !== SpreadsheetApp.getUi().Button.YES) {
+      return;
+    }
+    
+    // Get sheets and ensure they're properly set up
+    const sheets = getSheetsAndSetup();
+    
+    // Execute all sync operations
+    executeSyncOperations(sheets);
+    
+    // Show success message
+    ui.alert(
+      "✅ Sync Completed", 
+      "The daily sync has completed successfully!\n\nCheck your email for any balance notifications.",
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+    
+    console.log("✅ User daily sync completed successfully");
+  } catch (error) {
+    console.error("❌ User daily sync failed:", error.message);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      "❌ Sync Failed", 
+      `The daily sync encountered an error:\n\n${error.message}\n\nPlease check your configuration and try again.`,
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  }
+}
+
+/**
+ * Validates all required settings and configuration
+ * @return {Object} - {isValid: boolean, message: string}
+ */
+function validateRequiredSettings() {
+  const issues = [];
+  const warnings = [];
+  
+  try {
+    // Check Firm Email
+    const firmEmail = getSetting(SETTINGS_KEYS.FIRM_EMAIL);
+    if (!firmEmail || !firmEmail.includes('@') || firmEmail === 'your-email@example.com') {
+      issues.push("Firm Email is not set. Please set your email address in the Welcome sheet.");
+    }
+    
+    // Check Blawby Payment URL
+    const paymentUrl = getSetting(SETTINGS_KEYS.BASE_PAYMENT_URL);
+    if (!paymentUrl || paymentUrl === DEFAULT_SETTINGS[SETTINGS_KEYS.BASE_PAYMENT_URL]) {
+      issues.push("Blawby Payment URL is not configured. Please set your payment URL in the Welcome sheet.");
+    } else {
+      // Validate Blawby URL pattern
+      const blawbyUrlPattern = /^https:\/\/app\.blawby\.com\/[^\/]+\/pay$/;
+      if (!blawbyUrlPattern.test(paymentUrl)) {
+        warnings.push(`Payment URL doesn't match Blawby pattern. Expected: https://app.blawby.com/YOUR_FIRM/pay\nCurrent: ${paymentUrl}\n\nYou'll need to manually enter payments in the Payments sheet.`);
+      }
+    }
+    
+    // Check Low Balance Threshold
+    const lowBalanceThreshold = getSetting(SETTINGS_KEYS.LOW_BALANCE_THRESHOLD);
+    if (!lowBalanceThreshold || lowBalanceThreshold <= 0) {
+      issues.push("Low Balance Threshold is not set. Please set a threshold amount in the Welcome sheet.");
+    }
+    
+    // Check if Lawyers are configured in Welcome sheet
+    try {
+      const welcomeSheet = getSheet("Welcome");
+      const lawyers = getLawyersFromWelcomeSheet(welcomeSheet);
+      if (lawyers.length <= 1) { // Only header row
+        issues.push("No lawyers configured. Please add at least one lawyer in the Welcome sheet under the Lawyers section.");
+      } else {
+        // Check for valid lawyer data
+        for (let i = 1; i < lawyers.length; i++) {
+          const row = lawyers[i];
+          if (!row[0] || !row[0].includes('@')) {
+            warnings.push(`Lawyer row ${i + 1} has invalid email: "${row[0]}"`);
+          }
+          if (!row[2] || isNaN(parseFloat(row[2]))) {
+            warnings.push(`Lawyer row ${i + 1} has invalid rate: "${row[2]}"`);
+          }
+        }
+      }
+    } catch (error) {
+      issues.push("Welcome sheet not found or inaccessible. Lawyers must be configured in the Welcome sheet.");
+    }
+    
+    // Check if TimeLogs sheet exists and has proper structure
+    try {
+      const timeLogsSheet = getSheet(SHEET_NAMES.TIME_LOGS);
+      const timeLogsData = timeLogsSheet.getDataRange().getValues();
+      if (timeLogsData.length === 0) {
+        issues.push("TimeLogs sheet is empty. Please ensure it has the proper header row.");
+      } else if (timeLogsData.length === 1) {
+        warnings.push("TimeLogs sheet only has header row. No time entries found.");
+      }
+    } catch (error) {
+      issues.push("TimeLogs sheet not found or inaccessible.");
+    }
+    
+    // Check if Payments sheet exists and has proper structure
+    try {
+      const paymentsSheet = getSheet(SHEET_NAMES.PAYMENTS);
+      const paymentsData = paymentsSheet.getDataRange().getValues();
+      if (paymentsData.length === 0) {
+        issues.push("Payments sheet is empty. Please ensure it has the proper header row.");
+      } else if (paymentsData.length === 1) {
+        warnings.push("Payments sheet only has header row. No payment entries found.");
+      }
+    } catch (error) {
+      issues.push("Payments sheet not found or inaccessible.");
+    }
+    
+    // Check if Clients sheet exists
+    try {
+      const clientsSheet = getSheet(SHEET_NAMES.CLIENTS);
+      const clientsData = clientsSheet.getDataRange().getValues();
+      if (clientsData.length === 0) {
+        issues.push("Clients sheet is empty. Please ensure it has the proper header row.");
+      }
+    } catch (error) {
+      issues.push("Clients sheet not found or inaccessible.");
+    }
+    
+    // Check if Matters sheet exists
+    try {
+      const mattersSheet = getSheet(SHEET_NAMES.MATTERS);
+      const mattersData = mattersSheet.getDataRange().getValues();
+      if (mattersData.length === 0) {
+        issues.push("Matters sheet is empty. Please ensure it has the proper header row.");
+      }
+    } catch (error) {
+      issues.push("Matters sheet not found or inaccessible.");
+    }
+    
+  } catch (error) {
+    issues.push(`Validation error: ${error.message}`);
+  }
+  
+  let message = "";
+  
+  if (issues.length > 0) {
+    message += "❌ CRITICAL ISSUES (must be fixed):\n\n" + issues.map(issue => `• ${issue}`).join('\n');
+  }
+  
+  if (warnings.length > 0) {
+    if (message) message += "\n\n";
+    message += "⚠️ WARNINGS (should be reviewed):\n\n" + warnings.map(warning => `• ${warning}`).join('\n');
+  }
+  
+  if (issues.length === 0 && warnings.length === 0) {
+    message = "✅ All required settings are configured correctly.";
+  }
+  
+  return { 
+    isValid: issues.length === 0, 
+    message: message,
+    hasWarnings: warnings.length > 0
+  };
+}
+
+/**
+ * Manual validation function that can be called to check configuration
+ * This will show a UI alert with any issues found
+ */
+function validateConfiguration() {
+  console.log("🔍 Validating Blawby configuration...");
+  
+  const validationResult = validateRequiredSettings();
+  
+  if (validationResult.isValid && !validationResult.hasWarnings) {
+    SpreadsheetApp.getUi().alert(
+      "✅ Configuration Valid", 
+      "All required settings are properly configured. Blawby is ready to use!",
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  } else if (validationResult.isValid && validationResult.hasWarnings) {
+    SpreadsheetApp.getUi().alert(
+      "⚠️ Configuration Valid with Warnings", 
+      validationResult.message + "\n\nYou can proceed with using Blawby, but please review the warnings above.",
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  } else {
+    SpreadsheetApp.getUi().alert(
+      "❌ Configuration Issues Found", 
+      validationResult.message + "\n\nPlease fix the critical issues before running the sync.",
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
   }
 }
 
@@ -110,6 +350,13 @@ function syncPaymentsAndClientsOnly() {
   
   try {
     validateSpreadsheetAccess();
+    
+    // Validate required settings before proceeding
+    const validationResult = validateRequiredSettings();
+    if (!validationResult.isValid) {
+      throw new Error(`Configuration Error: ${validationResult.message}`);
+    }
+    
     const sheets = getSheetsAndSetup();
     syncPaymentsAndClients();
     log("✅ Payments and clients sync completed");
@@ -123,11 +370,82 @@ function syncPaymentsAndClientsOnly() {
 
 // Manual trigger functions
 function manualSyncClients() {
-  syncPaymentsAndClientsOnly();
+  console.log("🔄 Starting manual client sync...");
+  
+  try {
+    validateSpreadsheetAccess();
+    
+    // Validate required settings before proceeding
+    const validationResult = validateRequiredSettings();
+    if (!validationResult.isValid) {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert(
+        "❌ Configuration Issues Found", 
+        validationResult.message + "\n\nPlease fix the critical issues before running the sync.",
+        SpreadsheetApp.getUi().ButtonSet.OK
+      );
+      return;
+    }
+    
+    const sheets = getSheetsAndSetup();
+    syncPaymentsAndClients();
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      "✅ Client Sync Completed", 
+      "Client and payment data has been synced successfully!",
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+    
+    log("✅ Manual client sync completed");
+  } catch (error) {
+    logError('manualSyncClients', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      "❌ Client Sync Failed", 
+      `The client sync encountered an error:\n\n${error.message}`,
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  }
 }
 
 function manualSendDigest() {
-  sendDailyBalanceDigest();
+  console.log("📧 Starting manual digest...");
+  
+  try {
+    // Validate before sending digest
+    const validationResult = validateRequiredSettings();
+    if (!validationResult.isValid) {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert(
+        "❌ Configuration Issues Found", 
+        validationResult.message + "\n\nPlease fix the critical issues before sending the digest.",
+        SpreadsheetApp.getUi().ButtonSet.OK
+      );
+      return;
+    }
+    
+    sendDailyBalanceDigest();
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      "✅ Digest Sent", 
+      "The daily balance digest has been sent successfully!",
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+    
+    log("✅ Manual digest sent");
+  } catch (error) {
+    logError('manualSendDigest', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      "❌ Digest Failed", 
+      `Failed to send digest:\n\n${error.message}`,
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  }
 }
 
 // Time-based triggers
@@ -349,9 +667,10 @@ function onOpen(e) {
   
   ui.createMenu('Blawby')
     .addItem('🔧 Setup System', 'setupSystem')
+    .addItem('🔍 Validate Configuration', 'validateConfiguration')
     .addItem('📧 Send Test Email', 'sendTestEmail')
     .addSeparator()
-    .addItem('🔄 Daily Sync', 'executeSyncOperations')
+    .addItem('🔄 Daily Sync', 'userDailySync')
     .addItem('📧 Process Gmail Payments', 'processGmailPayments')
     .addSeparator()
     .addItem('⚙️ Enable Gmail Trigger', 'createBlawbyPaymentTrigger')

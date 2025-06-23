@@ -39,6 +39,10 @@ Great for solo lawyers, boutique firms, and legal clinics.
 * Clients get notified when services resume
 * **No manual input** needed
 
+**Expected URL Pattern:** `https://app.blawby.com/YOUR_FIRM/pay`
+* Example: `https://app.blawby.com/northcarolinalegalservices/pay`
+* The system will validate this pattern and warn if incorrect
+
 > For details, see [Blawby Payments pricing](https://blawby.com/pricing)
 
 ### ❗ Using Other Payment Methods?
@@ -46,8 +50,9 @@ Great for solo lawyers, boutique firms, and legal clinics.
 * You must **manually enter payments** into the Payments sheet
 * Payment links will **not** be generated
 * Notifications will still be triggered daily as usual
+* **No Gmail integration** - payments won't be auto-detected
 
-> To unlock full automation, connect your [Blawby Payments link](https://blawby.com/payments).
+> To unlock full automation, connect your [Blawby Payments link](https://blawby.com/payments) with the correct URL pattern.
 
 ---
 
@@ -55,7 +60,7 @@ Great for solo lawyers, boutique firms, and legal clinics.
 
 | Sheet    | Purpose                          | Editable?       |
 | -------- | -------------------------------- | --------------- |
-| Lawyers  | Define team & billing rates      | ✅ Yes           |
+| Welcome  | Firm settings & lawyer config    | ✅ Yes           |
 | Clients  | Retainer balances & payment info | ⚙️ Auto-updated |
 | Payments | Track payment activity           | ⚙️ Auto-updated |
 | TimeLogs | Log billable time                | ✅ Yes           |

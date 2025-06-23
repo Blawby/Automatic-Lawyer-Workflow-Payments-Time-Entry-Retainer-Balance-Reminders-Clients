@@ -25,9 +25,9 @@ A professional, IOLTA-compliant Google Sheets solution for law firms to manage r
 
 ### 3. Test the System (3 minutes)
 1. Click **"Send Test Email"** to verify your email configuration
-2. Click **"Run Full Daily Sync"** to process the sample data
+2. Click **"Run Full Daily Sync"** to test the system with your configuration
 3. Check your email for test notifications
-4. Review the **Clients** sheet to see sample clients created
+4. Review the **Clients** sheet to see how the system processes data
 
 ### 4. Connect Your Payment System (5 minutes)
 **Gmail Integration (Recommended & Automatic)**
@@ -39,7 +39,7 @@ A professional, IOLTA-compliant Google Sheets solution for law firms to manage r
 
 ### 5. Start Using (Ongoing)
 1. Set **Test Mode** to "FALSE" when ready for production
-2. Delete sample data and add your real clients
+2. Add your real data to the sheets
 3. The system will automatically:
    - Create client records from payments
    - Create default matters for new clients
@@ -58,7 +58,7 @@ A professional, IOLTA-compliant Google Sheets solution for law firms to manage r
 | Payments  | Track client payments (Date, Email, Amount, Payment Method, Payment ID, Message-ID) | Auto-updated   |
 | Matters   | Track client matters and case values      | Auto-updated   |
 
-> **Note:** Sample data is included in Payments, TimeLogs, and Matters sheets for testing. Delete these rows and add your real data.
+> **Note:** All sheets start with clean headers only. Add your real data to begin using the system.
 
 ---
 
@@ -265,10 +265,10 @@ When a payment email is detected:
 
 | Feature | How to Test | Expected Result |
 |---------|-------------|-----------------|
-| **System Validation** | Click "Send Test Email" in menu | Test email sent to verify configuration |
-| **Client Creation** | Run "Run Full Daily Sync" with sample payments | Clients sheet populated with client1@example.com and client2@example.com |
-| **Low Balance Warnings** | Add time logs to reduce balance below threshold | Professional HTML email notifications sent to clients |
+| **System Validation** | Click 'Send Test Email' in menu | Test email sent to verify configuration |
+| **Client Creation** | Add a payment row to Payments sheet and run sync | Client automatically created in Clients sheet |
+| **Low Balance Warnings** | Add time logs to reduce balance below threshold | Professional HTML email notifications sent |
 | **Matter Tracking** | Time logs are linked to matters by Matter ID | Matter breakdown shown in client records |
-| **Email Notifications** | Set Email Notifications to TRUE and run sync | Low balance, service resumed, and digest emails sent to firm/clients |
-| **Gmail Integration** | Click "Process Gmail Payments" in menu | System checks Gmail for payment notifications and processes them automatically |
+| **Email Notifications** | Set Email Notifications to TRUE and run sync | Low balance, service resumed, and digest emails sent |
+| **Gmail Integration** | Click "Process Gmail Payments" in menu | System checks Gmail for payment notifications |
 | **Daily Sync with Gmail** | Run "Run Full Daily Sync" with Gmail payments present | Gmail payments automatically processed as part of daily sync workflow |

@@ -460,21 +460,13 @@ function setupPaymentsSheet(sheet) {
     "Client Email", 
     "Amount",
     "Payment Method",
-    "Payment ID"
+    "Payment ID",
+    "Message-ID"
   ];
   setupSheet(sheet, headers);
   
-  // Add sample payment data for testing
-  const samplePayments = [
-    ["2025-01-15", "client1@example.com", "2500", "card", "pay_123456789"],
-    ["2025-01-16", "client2@example.com", "1500", "card", "pay_987654321"],
-    ["2025-01-17", "client1@example.com", "1000", "card", "pay_456789123"]
-  ];
-  
-  sheet.getRange(2, 1, samplePayments.length, 5).setValues(samplePayments);
-  
-  // Add note to explain sample data
-  sheet.getRange(1, 1).setNote("Sample payment data - delete these rows and add your real payment data");
+  // Add note to explain the sheet purpose
+  sheet.getRange(1, 1).setNote("Add your payment data below. Payments are automatically processed from Gmail or can be added manually.");
 }
 
 function setupClientsSheet(sheet) {
@@ -491,7 +483,9 @@ function setupClientsSheet(sheet) {
     "Client ID"
   ];
   setupSheet(sheet, headers);
-  // No instructions or protection
+  
+  // Add note to explain the sheet purpose
+  sheet.getRange(1, 1).setNote("This sheet is automatically updated when payments and time logs are processed. Client names can be filled in manually.");
 }
 
 function setupTimeLogsSheet(sheet) {
@@ -504,34 +498,21 @@ function setupTimeLogsSheet(sheet) {
   ];
   setupSheet(sheet, headers);
   
-  // Add sample time log data for testing
-  const sampleTimeLogs = [
-    ["2025-01-15", "client1@example.com", "M-2025-001", "JS", "2.5"],
-    ["2025-01-16", "client1@example.com", "M-2025-001", "JS", "1.5"],
-    ["2025-01-17", "client2@example.com", "M-2025-002", "JD", "3.0"],
-    ["2025-01-18", "client1@example.com", "M-2025-001", "JS", "4.0"],
-    ["2025-01-19", "client2@example.com", "M-2025-002", "JD", "2.0"]
-  ];
-  
-  sheet.getRange(2, 1, sampleTimeLogs.length, 5).setValues(sampleTimeLogs);
-  
-  // Add note to explain sample data
-  sheet.getRange(1, 1).setNote("Sample data for testing. Replace with your real time logs. Lawyer IDs must match those in Welcome sheet.");
-  // No instructions or protection
+  // Add note to explain the sheet purpose
+  sheet.getRange(1, 1).setNote("Add your time log entries below. Lawyer IDs must match those in the Welcome sheet. Matter IDs should match those in the Matters sheet.");
 }
 
 function setupLowBalanceSheet(sheet) {
   const headers = [
-    "Date",
     "Client Email",
     "Client Name",
-    "Current Balance",
-    "Target Balance",
-    "Status",
-    "Last Notification"
+    "Balance ($)",
+    "Warning"
   ];
   setupSheet(sheet, headers);
-  // No instructions or protection
+  
+  // Add note to explain the sheet purpose
+  sheet.getRange(1, 1).setNote("This sheet shows clients with low balances. It's automatically updated during daily sync.");
 }
 
 function setupMattersSheet(sheet) {
@@ -546,17 +527,8 @@ function setupMattersSheet(sheet) {
   ];
   setupSheet(sheet, headers);
   
-  // Add sample matter data for testing
-  const sampleMatters = [
-    ["M-2025-001", "client1@example.com", "John Smith", "Contract Review", "2025-01-15", "Active", "50000"],
-    ["M-2025-002", "client2@example.com", "Jane Doe", "Litigation Case", "2025-01-16", "Active", "100000"]
-  ];
-  
-  sheet.getRange(2, 1, sampleMatters.length, 7).setValues(sampleMatters);
-  
-  // Add note to explain sample data
-  sheet.getRange(1, 1).setNote("Sample matters for testing. Replace with your real matters. Matter IDs should match those in TimeLogs.");
-  // No instructions or protection
+  // Add note to explain the sheet purpose
+  sheet.getRange(1, 1).setNote("Add your matters below. New clients will automatically get a default matter created. Matter IDs should match those in TimeLogs.");
 }
 
 function setupSheet(sheet, headers) {

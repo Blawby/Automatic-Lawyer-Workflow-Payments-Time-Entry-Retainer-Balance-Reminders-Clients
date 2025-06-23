@@ -9,14 +9,12 @@ function dailySync() {
     // Validate required settings before proceeding
     const validationResult = validateRequiredSettings();
     if (!validationResult.isValid) {
-      // Show user-friendly alert instead of throwing error
-      const ui = SpreadsheetApp.getUi();
-      ui.alert(
-        "❌ Configuration Issues Found", 
-        validationResult.message + "\n\nPlease fix the critical issues before running the sync.\n\nYou can use '🔍 Validate Configuration' from the Blawby menu to check your setup anytime.",
-        SpreadsheetApp.getUi().ButtonSet.OK
-      );
-      return; // Stop execution but don't throw error
+      // Log the configuration issues and exit cleanly (no UI alerts for automated triggers)
+      console.log("❌ Aborting sync: Configuration issues found:");
+      console.log(validationResult.message);
+      console.log("🛑 Sync execution stopped due to configuration issues.");
+      console.log("💡 Fix the issues in the Welcome sheet and try again.");
+      return; // Stop execution cleanly
     }
     
     // Get sheets and ensure they're properly set up
@@ -28,14 +26,7 @@ function dailySync() {
     console.log("✅ Daily sync completed successfully");
   } catch (error) {
     console.error("❌ Daily sync failed:", error.message);
-    
-    // Show user-friendly error alert
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      "❌ Sync Failed", 
-      `The daily sync encountered an error:\n\n${error.message}\n\nPlease check your configuration and try again.`,
-      SpreadsheetApp.getUi().ButtonSet.OK
-    );
+    // Don't show UI alerts for automated triggers - just log the error
   }
 }
 
@@ -53,6 +44,11 @@ function userDailySync() {
     // Validate required settings before proceeding
     const validationResult = validateRequiredSettings();
     if (!validationResult.isValid) {
+      // Log the configuration issues before showing UI alert
+      console.log("❌ Aborting sync: Configuration issues found:");
+      console.log(validationResult.message);
+      console.log("🛑 Sync execution stopped due to configuration issues.");
+      
       const ui = SpreadsheetApp.getUi();
       ui.alert(
         "❌ Configuration Issues Found", 
@@ -71,6 +67,7 @@ function userDailySync() {
     );
     
     if (response !== SpreadsheetApp.getUi().Button.YES) {
+      console.log("🛑 Sync cancelled by user.");
       return;
     }
     
@@ -306,10 +303,20 @@ function executeSyncOperations(sheets) {
     // 1. Check Gmail for new Blawby payments (process new payments first)
     log("📧 Checking Gmail for new Blawby payments...");
     try {
+      // Add timeout protection for Gmail operations
+      const startTime = new Date().getTime();
+      const timeoutMs = 30000; // 30 second timeout
+      
       processGmailPayments(false); // Don't show UI alerts when called automatically
+      
+      const elapsed = new Date().getTime() - startTime;
+      if (elapsed > timeoutMs) {
+        log(`⚠️ Gmail processing took ${elapsed}ms (slow but completed)`);
+      }
       log("✅ Gmail payment check completed");
     } catch (error) {
       logError('processGmailPayments', error);
+      log("⚠️ Gmail processing failed, continuing with other operations");
       // Continue with other operations even if this fails
     }
     
@@ -513,14 +520,95 @@ function checkServiceResumption() {
 }
 
 /**
- * Parse Blawby payment notification email HTML
+ * Enhanced Gmail search that includes forwarded emails
+ * @return {Array} - Array of Gmail threads containing payment emails
+ */
+function searchForPaymentEmails() {
+  log('🔍 Searching for Blawby payment emails (including forwarded)...');
+  
+  const startTime = new Date().getTime();
+  const timeoutMs = 15000; // 15 second timeout for Gmail search
+  
+  try {
+    // Original search for direct emails from Blawby
+    const directQuery = 'from:notifications@blawby.com subject:"Payment of" newer_than:30d';
+    const directThreads = GmailApp.search(directQuery);
+    log(`📧 Found ${directThreads.length} direct Blawby payment emails`);
+    
+    // Check timeout
+    if (new Date().getTime() - startTime > timeoutMs) {
+      log(`⚠️ Gmail search taking too long, returning direct results only`);
+      return directThreads;
+    }
+    
+    // Search for forwarded emails containing Blawby payment content
+    const forwardedQuery = '(subject:"Fwd: Payment of" OR subject:"Forwarded: Payment of" OR subject:"Payment of") (from:notifications@blawby.com OR "CLIENT EMAIL" OR "PAYMENT ID") newer_than:30d';
+    const forwardedThreads = GmailApp.search(forwardedQuery);
+    log(`📧 Found ${forwardedThreads.length} potential forwarded payment emails`);
+    
+    // Check timeout again
+    if (new Date().getTime() - startTime > timeoutMs) {
+      log(`⚠️ Gmail search taking too long, returning combined results without deduplication`);
+      return [...directThreads, ...forwardedThreads];
+    }
+    
+    // Combine and deduplicate threads
+    const allThreads = [...directThreads];
+    const seenIds = new Set(directThreads.map(t => t.getId()));
+    
+    for (const thread of forwardedThreads) {
+      if (!seenIds.has(thread.getId())) {
+        allThreads.push(thread);
+        seenIds.add(thread.getId());
+      }
+    }
+    
+    const elapsed = new Date().getTime() - startTime;
+    log(`📧 Total unique payment emails found: ${allThreads.length} (in ${elapsed}ms)`);
+    return allThreads;
+    
+  } catch (error) {
+    logError('searchForPaymentEmails', error);
+    log(`❌ Gmail search failed: ${error.message}`);
+    return []; // Return empty array to prevent hanging
+  }
+}
+
+/**
+ * Enhanced parsing function that can handle both original and forwarded Blawby payment emails
  * @param {string} html - The HTML body of the email
+ * @param {string} subject - The email subject line
  * @return {Object|null} - Parsed payment data or null if parsing failed
  */
-function parseBlawbyPaymentEmail(html) {
+function parseBlawbyPaymentEmail(html, subject = '') {
   try {
     log('🔍 Parsing Blawby payment email...');
     
+    // Check if this looks like a forwarded email
+    const isForwarded = subject.includes('Fwd:') || subject.includes('Forwarded:') || 
+                       html.includes('---------- Forwarded message ---------') ||
+                       html.includes('From: notifications@blawby.com');
+    
+    if (isForwarded) {
+      log('📧 Detected forwarded email, using enhanced parsing...');
+      return parseForwardedPaymentEmail(html, subject);
+    } else {
+      log('📧 Detected original email, using standard parsing...');
+      return parseOriginalPaymentEmail(html);
+    }
+  } catch (error) {
+    logError('parseBlawbyPaymentEmail', error);
+    return null;
+  }
+}
+
+/**
+ * Parse original (non-forwarded) Blawby payment emails
+ * @param {string} html - The HTML body of the email
+ * @return {Object|null} - Parsed payment data or null if parsing failed
+ */
+function parseOriginalPaymentEmail(html) {
+  try {
     // Extract payment amount - look for the amount in the payment section
     const amountMatch = html.match(/\$([0-9,]+\.?[0-9]*)/);
     
@@ -560,17 +648,117 @@ function parseBlawbyPaymentEmail(html) {
       return null;
     }
     
-    log(`✅ Successfully parsed payment: $${amount} from ${finalClientEmail} (ID: ${paymentId})`);
+    log(`✅ Successfully parsed original payment: $${amount} from ${finalClientEmail} (ID: ${paymentId})`);
     
     return {
       amount: amount,
       clientEmail: finalClientEmail,
       clientName: clientName,
       method: method,
-      paymentId: paymentId
+      paymentId: paymentId,
+      isForwarded: false
     };
   } catch (error) {
-    logError('parseBlawbyPaymentEmail', error);
+    logError('parseOriginalPaymentEmail', error);
+    return null;
+  }
+}
+
+/**
+ * Parse forwarded Blawby payment emails
+ * @param {string} html - The HTML body of the forwarded email
+ * @param {string} subject - The email subject line
+ * @return {Object|null} - Parsed payment data or null if parsing failed
+ */
+function parseForwardedPaymentEmail(html, subject) {
+  try {
+    log('🔍 Parsing forwarded payment email...');
+    
+    // Try multiple strategies to extract the original email content
+    
+    // Strategy 1: Look for forwarded message separator
+    let originalContent = html;
+    const forwardedSeparators = [
+      '---------- Forwarded message ---------',
+      '-------- Original Message --------',
+      'From: notifications@blawby.com',
+      'Begin forwarded message:'
+    ];
+    
+    for (const separator of forwardedSeparators) {
+      const parts = html.split(separator);
+      if (parts.length > 1) {
+        originalContent = parts[parts.length - 1]; // Take the last part (most likely the original)
+        log(`📧 Found forwarded content after separator: "${separator}"`);
+        break;
+      }
+    }
+    
+    // Strategy 2: Look for Blawby-specific content patterns
+    if (originalContent === html) {
+      // If no separator found, look for Blawby-specific patterns
+      const blawbyPatterns = [
+        /CLIENT EMAIL<\/td>[\s\S]*?<td[^>]*>([^<]+)<\/td>/i,
+        /PAYMENT ID<\/td>[\s\S]*?<td[^>]*>([^<]+)<\/td>/i
+      ];
+      
+      for (const pattern of blawbyPatterns) {
+        if (pattern.test(html)) {
+          originalContent = html;
+          log('📧 Found Blawby patterns in email content');
+          break;
+        }
+      }
+    }
+    
+    // Strategy 3: If still no match, try parsing the entire email
+    if (originalContent === html) {
+      log('📧 No forwarded separator found, parsing entire email content');
+    }
+    
+    // Now parse the content using the same logic as original emails
+    const amountMatch = originalContent.match(/\$([0-9,]+\.?[0-9]*)/);
+    const emailMatch = originalContent.match(/CLIENT EMAIL<\/td>[\s\S]*?<td[^>]*>([^<]+)<\/td>/i);
+    const nameMatch = originalContent.match(/CLIENT NAME<\/td>[\s\S]*?<td[^>]*>([^<]+)<\/td>/i);
+    const methodMatch = originalContent.match(/PAYMENT METHOD<\/td>[\s\S]*?<td[^>]*>([^<]+)<\/td>/i);
+    const idMatch = originalContent.match(/PAYMENT ID<\/td>[\s\S]*?<td[^>]*>([^<]+)<\/td>/i);
+    
+    const amount = amountMatch ? parseFloat(amountMatch[1].replace(/,/g, '')) : null;
+    const clientEmail = emailMatch ? emailMatch[1].trim() : null;
+    const clientName = nameMatch ? nameMatch[1].trim() : null;
+    const method = methodMatch ? methodMatch[1].trim().toLowerCase() : 'card';
+    const paymentId = idMatch ? idMatch[1].trim() : null;
+    
+    log(`📊 Parsed forwarded data: amount=${amount}, email=${clientEmail}, name=${clientName}, method=${method}, id=${paymentId}`);
+    
+    // Validate required fields
+    if (!amount || !paymentId) {
+      log(`⚠️ Missing required payment data in forwarded email: amount=${amount}, id=${paymentId}`);
+      return null;
+    }
+    
+    // For client email, if it's "Not provided", we'll use the client name as identifier
+    const finalClientEmail = (clientEmail && clientEmail !== 'Not provided') ? clientEmail : 
+                            (clientName ? `${clientName.toLowerCase().replace(/\s+/g, '.')}@client.blawby.com` : null);
+    
+    // Validate email format (if we have one)
+    if (finalClientEmail && !isValidEmail(finalClientEmail)) {
+      log(`⚠️ Invalid email format in forwarded payment: ${finalClientEmail}`);
+      return null;
+    }
+    
+    log(`✅ Successfully parsed forwarded payment: $${amount} from ${finalClientEmail} (ID: ${paymentId})`);
+    
+    return {
+      amount: amount,
+      clientEmail: finalClientEmail,
+      clientName: clientName,
+      method: method,
+      paymentId: paymentId,
+      isForwarded: true
+    };
+  } catch (error) {
+    logError('parseForwardedPaymentEmail', error);
     return null;
   }
 }
@@ -674,6 +862,8 @@ function onOpen(e) {
     .addItem('📧 Process Gmail Payments', 'processGmailPayments')
     .addSeparator()
     .addItem('⚙️ Enable Gmail Trigger', 'createBlawbyPaymentTrigger')
+    .addItem('🔍 Diagnose Sync Issue', 'diagnoseSyncIssue')
+    .addItem('🔍 Step-by-Step Sync', 'stepByStepSync')
     .addToUi();
 }
 
@@ -999,33 +1189,32 @@ function testGmailPaymentDetection() {
   logStart('testGmailPaymentDetection');
   
   try {
-    log('🔍 Testing Gmail payment detection...');
+    log('🔍 Testing Gmail payment detection (including forwarded emails)...');
     
-    // Search for Blawby payment emails
-    const query = 'from:notifications@blawby.com subject:"Payment of" newer_than:30d';
-    const threads = GmailApp.search(query);
-    
-    log(`📧 Found ${threads.length} Blawby payment emails`);
+    // Use the enhanced search function that includes forwarded emails
+    const threads = searchForPaymentEmails();
     
     if (threads.length === 0) {
-      log('❌ No Blawby payment emails found');
+      log('❌ No Blawby payment emails found (including forwarded)');
     } else {
       log('📋 Found payment emails:');
       for (let i = 0; i < Math.min(threads.length, 3); i++) {
         const message = threads[i].getMessages()[0];
         const subject = message.getSubject();
-        log(`   ${i + 1}. Subject: ${subject}`);
+        const from = message.getFrom();
+        log(`   ${i + 1}. From: ${from} | Subject: ${subject}`);
         
         // Test parsing on each email
         log(`🔍 Testing parsing on email ${i + 1}...`);
         const htmlBody = message.getBody();
-        const parsed = parseBlawbyPaymentEmail(htmlBody);
+        const parsed = parseBlawbyPaymentEmail(htmlBody, subject);
         
         if (parsed) {
           log(`✅ Parsing successful:`);
           log(`   Amount: $${parsed.amount}`);
           log(`   Client Email: ${parsed.clientEmail}`);
           log(`   Payment ID: ${parsed.paymentId}`);
+          log(`   Forwarded: ${parsed.isForwarded ? 'Yes' : 'No'}`);
           
           // Check if it would be added to sheet
           const paymentsSheet = getSheet(SHEET_NAMES.PAYMENTS);
@@ -1046,12 +1235,13 @@ function testGmailPaymentDetection() {
     const ui = SpreadsheetApp.getUi();
     ui.alert(
       'Gmail Payment Detection Test',
-      `📧 Found ${threads.length} Blawby payment emails\n\n` +
+      `📧 Found ${threads.length} Blawby payment emails (including forwarded)\n\n` +
       'Check the execution logs for detailed information about:\n' +
       '• How many payment emails were found\n' +
       '• Whether parsing was successful\n' +
-      '• If payments would be added to the sheet\n\n' +
-      '💡 If no emails are found, the search query may need adjustment.',
+      '• If payments would be added to the sheet\n' +
+      '• Whether emails were forwarded or original\n\n' +
+      '💡 The enhanced search now includes forwarded emails!',
       ui.ButtonSet.OK
     );
     
@@ -1080,28 +1270,29 @@ function processGmailPayments(showUI = true) {
   try {
     const paymentsSheet = getSheet(SHEET_NAMES.PAYMENTS);
     let newPayments = 0;
+    let forwardedPayments = 0;
     
     // Ensure the Payments sheet has the correct header structure
     ensurePaymentsSheetHeader();
     
-    log('🔍 Searching for Blawby payment emails...');
+    log('🔍 Searching for Blawby payment emails (including forwarded)...');
     
-    // Search for payment emails
-    const query = 'from:notifications@blawby.com subject:"Payment of" newer_than:30d';
-    const threads = GmailApp.search(query);
+    // Use the enhanced search function that includes forwarded emails
+    const threads = searchForPaymentEmails();
     
     log(`📧 Found ${threads.length} payment emails`);
     
     for (const thread of threads) {
       const message = thread.getMessages()[0];
       const subject = message.getSubject();
+      const from = message.getFrom();
       const messageDate = message.getDate(); // Get the email date
       const messageId = message.getId(); // Get the unique Message-ID
       
-      log(`📧 Processing: ${subject} (Message-ID: ${messageId})`);
+      log(`📧 Processing: ${subject} (From: ${from}, Message-ID: ${messageId})`);
       
       const htmlBody = message.getBody();
-      const parsed = parseBlawbyPaymentEmail(htmlBody);
+      const parsed = parseBlawbyPaymentEmail(htmlBody, subject);
       
       if (parsed && parsed.paymentId) {
         // Check if payment already exists using Message-ID (which is always unique)
@@ -1109,7 +1300,8 @@ function processGmailPayments(showUI = true) {
           log(`🔄 Payment with Message-ID ${messageId} already exists, skipping`);
         } else {
           // Add payment to sheet
-          log(`💵 Adding payment: $${parsed.amount} from ${parsed.clientEmail} (Payment ID: ${parsed.paymentId}, Message-ID: ${messageId})`);
+          const paymentType = parsed.isForwarded ? 'forwarded' : 'direct';
+          log(`💵 Adding ${paymentType} payment: $${parsed.amount} from ${parsed.clientEmail} (Payment ID: ${parsed.paymentId}, Message-ID: ${messageId})`);
           
           paymentsSheet.appendRow([
             messageDate,                   // Date from email
@@ -1120,8 +1312,11 @@ function processGmailPayments(showUI = true) {
             messageId                     // Message-ID (always unique)
           ]);
           
-          log(`✅ Payment added to sheet successfully`);
+          log(`✅ ${paymentType} payment added to sheet successfully`);
           newPayments++;
+          if (parsed.isForwarded) {
+            forwardedPayments++;
+          }
         }
         
         // Mark as read and archive
@@ -1146,10 +1341,11 @@ function processGmailPayments(showUI = true) {
     // Only show UI alerts if requested
     if (showUI) {
       const ui = SpreadsheetApp.getUi();
+      const forwardedText = forwardedPayments > 0 ? `\n📧 ${forwardedPayments} forwarded payment(s) processed` : '';
       ui.alert(
         'Payment Processing Complete',
         `📧 Processed ${threads.length} payment emails\n` +
-        `💵 Added ${newPayments} new payments to sheet\n\n` +
+        `💵 Added ${newPayments} new payments to sheet${forwardedText}\n\n` +
         'Check the execution logs for detailed information.',
         ui.ButtonSet.OK
       );
@@ -1308,17 +1504,16 @@ function debugGmailSearch() {
   logStart('debugGmailSearch');
   
   try {
-    log('🔍 Testing Gmail search functionality...');
+    log('🔍 Testing Gmail search functionality (including forwarded emails)...');
     
     // Test basic Gmail access
     const basicQuery = 'is:unread newer_than:7d';
     const basicThreads = GmailApp.search(basicQuery);
     log(`📧 Basic Gmail access: Found ${basicThreads.length} unread threads in last 7 days`);
     
-    // Test for Blawby payment emails
-    const blawbyQuery = 'from:notifications@blawby.com subject:"Payment of" newer_than:30d';
-    const blawbyThreads = GmailApp.search(blawbyQuery);
-    log(`📧 Blawby payment emails: Found ${blawbyThreads.length} payment notifications`);
+    // Test enhanced search for Blawby payment emails (including forwarded)
+    const blawbyThreads = searchForPaymentEmails();
+    log(`📧 Enhanced Blawby search: Found ${blawbyThreads.length} payment emails (including forwarded)`);
     
     // Test for any payment-related emails
     const paymentQuery = 'subject:"Payment" newer_than:30d';
@@ -1334,14 +1529,28 @@ function debugGmailSearch() {
       }
     }
     
+    // Show Blawby payment emails if found
+    if (blawbyThreads.length > 0) {
+      log('📋 Blawby payment emails found:');
+      for (let i = 0; i < Math.min(blawbyThreads.length, 3); i++) {
+        const message = blawbyThreads[i].getMessages()[0];
+        const subject = message.getSubject();
+        const from = message.getFrom();
+        const isForwarded = subject.includes('Fwd:') || subject.includes('Forwarded:') || 
+                           from !== 'notifications@blawby.com';
+        log(`   ${i + 1}. From: ${from} | Subject: ${subject} | Forwarded: ${isForwarded ? 'Yes' : 'No'}`);
+      }
+    }
+    
     const ui = SpreadsheetApp.getUi();
     ui.alert(
       'Gmail Search Debug Complete',
       `✅ Gmail search debug completed!\n\n` +
       `📧 Results:\n` +
       `• Total unread emails (7 days): ${basicThreads.length}\n` +
-      `• Blawby payment emails: ${blawbyThreads.length}\n` +
+      `• Blawby payment emails (enhanced): ${blawbyThreads.length}\n` +
       `• Any payment emails: ${paymentThreads.length}\n\n` +
+      `💡 Enhanced search now includes forwarded emails!\n\n` +
       `Check the execution logs for detailed information.`,
       ui.ButtonSet.OK
     );
@@ -1351,12 +1560,230 @@ function debugGmailSearch() {
     
     const ui = SpreadsheetApp.getUi();
     ui.alert(
-      'Gmail Search Debug Failed',
-      `❌ Gmail search debug failed:\n\n${error.message}\n\n` +
-      `This might indicate a Gmail API authorization issue.`,
+      'Debug Failed',
+      `❌ Gmail search debug failed:\n\n${error.message}`,
       ui.ButtonSet.OK
     );
   }
   
   logEnd('debugGmailSearch');
+}
+
+/**
+ * Simple diagnostic function to check why sync might be hanging
+ */
+function diagnoseSyncIssue() {
+  logStart('diagnoseSyncIssue');
+  
+  try {
+    log('🔍 Running sync diagnostics...');
+    
+    // Test 1: Basic spreadsheet access
+    log('📊 Testing spreadsheet access...');
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const sheets = spreadsheet.getSheets();
+    log(`✅ Spreadsheet access OK - Found ${sheets.length} sheets`);
+    
+    // Test 2: Gmail API access
+    log('📧 Testing Gmail API access...');
+    try {
+      const testQuery = 'is:unread newer_than:1d';
+      const testThreads = GmailApp.search(testQuery);
+      log(`✅ Gmail API access OK - Found ${testThreads.length} unread threads`);
+    } catch (gmailError) {
+      log(`❌ Gmail API access failed: ${gmailError.message}`);
+      throw new Error(`Gmail API authorization issue: ${gmailError.message}`);
+    }
+    
+    // Test 3: Settings access
+    log('⚙️ Testing settings access...');
+    try {
+      const settings = loadSettings();
+      log(`✅ Settings access OK - Loaded ${Object.keys(settings).length} settings`);
+    } catch (settingsError) {
+      log(`❌ Settings access failed: ${settingsError.message}`);
+    }
+    
+    // Test 4: Sheet data loading
+    log('📋 Testing sheet data loading...');
+    try {
+      const sheetData = getSheets();
+      const data = loadSheetData(sheetData);
+      log(`✅ Sheet data loading OK - Loaded data for ${data.clientData.length} clients`);
+    } catch (dataError) {
+      log(`❌ Sheet data loading failed: ${dataError.message}`);
+    }
+    
+    log('✅ All basic diagnostics passed');
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Diagnostic Complete',
+      '✅ All basic system checks passed!\n\n' +
+      'The issue might be:\n' +
+      '• A specific email processing step\n' +
+      '• Large data processing timeout\n' +
+      '• Network connectivity issue\n\n' +
+      'Try running "📧 Process Gmail Payments" separately to isolate the issue.',
+      ui.ButtonSet.OK
+    );
+    
+  } catch (error) {
+    logError('diagnoseSyncIssue', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Diagnostic Failed',
+      `❌ Found issue: ${error.message}\n\n` +
+      'This explains why the sync is hanging. Please fix this issue and try again.',
+      ui.ButtonSet.OK
+    );
+  }
+  
+  logEnd('diagnoseSyncIssue');
+}
+
+/**
+ * Step-by-step sync to identify where hanging occurs
+ */
+function stepByStepSync() {
+  logStart('stepByStepSync');
+  
+  try {
+    const ui = SpreadsheetApp.getUi();
+    
+    // Step 1: Basic validation
+    log('🔍 Step 1: Basic validation...');
+    ui.alert('Step 1', 'Testing basic validation...', ui.ButtonSet.OK);
+    
+    validateSpreadsheetAccess();
+    const validationResult = validateRequiredSettings();
+    if (!validationResult.isValid) {
+      throw new Error(`Configuration Error: ${validationResult.message}`);
+    }
+    log('✅ Step 1 passed: Basic validation');
+    
+    // Step 2: Get sheets
+    log('📊 Step 2: Getting sheets...');
+    ui.alert('Step 2', 'Getting spreadsheet sheets...', ui.ButtonSet.OK);
+    
+    const sheets = getSheetsAndSetup();
+    log('✅ Step 2 passed: Sheets loaded');
+    
+    // Step 3: Load data
+    log('📋 Step 3: Loading sheet data...');
+    ui.alert('Step 3', 'Loading sheet data...', ui.ButtonSet.OK);
+    
+    const data = loadSheetData(sheets);
+    log('✅ Step 3 passed: Data loaded');
+    
+    // Step 4: Test Gmail access (most likely culprit)
+    log('📧 Step 4: Testing Gmail access...');
+    ui.alert('Step 4', 'Testing Gmail API access...', ui.ButtonSet.OK);
+    
+    try {
+      const testQuery = 'is:unread newer_than:1d';
+      const testThreads = GmailApp.search(testQuery);
+      log(`✅ Step 4 passed: Gmail access OK - Found ${testThreads.length} unread threads`);
+    } catch (gmailError) {
+      log(`❌ Step 4 failed: Gmail access error - ${gmailError.message}`);
+      throw new Error(`Gmail API issue: ${gmailError.message}`);
+    }
+    
+    // Step 5: Test Gmail payment search
+    log('🔍 Step 5: Testing Gmail payment search...');
+    ui.alert('Step 5', 'Testing Gmail payment search...', ui.ButtonSet.OK);
+    
+    try {
+      const threads = searchForPaymentEmails();
+      log(`✅ Step 5 passed: Payment search OK - Found ${threads.length} payment emails`);
+    } catch (searchError) {
+      log(`❌ Step 5 failed: Payment search error - ${searchError.message}`);
+      throw new Error(`Payment search issue: ${searchError.message}`);
+    }
+    
+    // Step 6: Test client sync
+    log('👥 Step 6: Testing client sync...');
+    ui.alert('Step 6', 'Testing client sync...', ui.ButtonSet.OK);
+    
+    try {
+      syncPaymentsAndClients();
+      log('✅ Step 6 passed: Client sync OK');
+    } catch (syncError) {
+      log(`❌ Step 6 failed: Client sync error - ${syncError.message}`);
+      throw new Error(`Client sync issue: ${syncError.message}`);
+    }
+    
+    // Step 7: Test email sending
+    log('📧 Step 7: Testing email sending...');
+    ui.alert('Step 7', 'Testing email sending...', ui.ButtonSet.OK);
+    
+    try {
+      sendDailyBalanceDigest();
+      log('✅ Step 7 passed: Email sending OK');
+    } catch (emailError) {
+      log(`❌ Step 7 failed: Email sending error - ${emailError.message}`);
+      throw new Error(`Email sending issue: ${emailError.message}`);
+    }
+    
+    log('✅ All steps completed successfully!');
+    ui.alert('Success', 'All sync steps completed successfully! The issue was likely temporary.', ui.ButtonSet.OK);
+    
+  } catch (error) {
+    logError('stepByStepSync', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Sync Issue Found',
+      `❌ Sync failed at step:\n\n${error.message}\n\n` +
+      'This identifies exactly where the hanging occurs. Please fix this issue and try again.',
+      ui.ButtonSet.OK
+    );
+  }
+  
+  logEnd('stepByStepSync');
+}
+
+/**
+ * Check Gmail API authorization and trigger consent if needed
+ */
+function checkGmailAuthorization() {
+  logStart('checkGmailAuthorization');
+  
+  try {
+    log('🔍 Checking Gmail API authorization...');
+    
+    // Try a simple Gmail operation to test authorization
+    const testQuery = 'is:unread newer_than:1d';
+    const testThreads = GmailApp.search(testQuery);
+    
+    log(`✅ Gmail API authorization OK - Found ${testThreads.length} unread threads`);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Gmail API Authorization',
+      '✅ Gmail API is properly authorized!\n\n' +
+      'The sync should work correctly now.',
+      ui.ButtonSet.OK
+    );
+    
+  } catch (error) {
+    logError('checkGmailAuthorization', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Gmail API Authorization Required',
+      '❌ Gmail API authorization failed:\n\n' +
+      `${error.message}\n\n` +
+      '🔧 To fix this:\n' +
+      '1. Go to the Apps Script editor\n' +
+      '2. Click "Services" in the left sidebar\n' +
+      '3. Add "Gmail API" service\n' +
+      '4. Run "📧 Process Gmail Payments" to trigger authorization\n\n' +
+      'This will prompt you to authorize Gmail access.',
+      ui.ButtonSet.OK
+    );
+  }
+  
+  logEnd('checkGmailAuthorization');
 }

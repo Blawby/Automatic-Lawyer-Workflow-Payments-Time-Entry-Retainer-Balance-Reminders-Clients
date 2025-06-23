@@ -459,18 +459,19 @@ function setupPaymentsSheet(sheet) {
     "Date",
     "Client Email", 
     "Amount",
-    "Payment Method"
+    "Payment Method",
+    "Payment ID"
   ];
   setupSheet(sheet, headers);
   
   // Add sample payment data for testing
   const samplePayments = [
-    ["2025-01-15", "client1@example.com", "2500", "card"],
-    ["2025-01-16", "client2@example.com", "1500", "card"],
-    ["2025-01-17", "client1@example.com", "1000", "card"]
+    ["2025-01-15", "client1@example.com", "2500", "card", "pay_123456789"],
+    ["2025-01-16", "client2@example.com", "1500", "card", "pay_987654321"],
+    ["2025-01-17", "client1@example.com", "1000", "card", "pay_456789123"]
   ];
   
-  sheet.getRange(2, 1, samplePayments.length, 4).setValues(samplePayments);
+  sheet.getRange(2, 1, samplePayments.length, 5).setValues(samplePayments);
   
   // Add note to explain sample data
   sheet.getRange(1, 1).setNote("Sample payment data - delete these rows and add your real payment data");
@@ -677,15 +678,25 @@ function setupWelcomeSheet(ss) {
     ["3", "Connect Blawby", "Enter your Blawby payment page URL in the settings above", ""],
     ["4", "Add Your Team", "Add your lawyers in the section above", ""],
     ["5", "Set Up Zapier", "Create a Zap that triggers on new Stripe payments → sends payment info to this sheet", ""],
+    ["5a", "OR Use Gmail Integration", "Enable Gmail trigger in Blawby menu - automatically checks for payment emails", ""],
     ["6", "Replace Sample Data", "Delete sample rows and add your real data", ""],
     ["", "", "", ""],
     ["🎯 Menu Features", "", "", ""],
     ["Feature", "Purpose", "When to Use", ""],
     ["Run Full Daily Sync", "Complete system synchronization", "Daily automation or manual testing", ""],
     ["Sync Payments & Clients", "Process payments and update clients", "After new payments arrive", ""],
+    ["Check Gmail for Payments", "Manually check for payment emails", "Testing or immediate processing", ""],
     ["Send Test Email", "Validate email configuration", "After setup or troubleshooting", ""],
     ["Fix Firm Email", "Auto-detect and fix firm email setting", "If email is not set or invalid", ""],
     ["Setup System", "Initial setup and triggers", "First-time setup only", ""],
+    ["Enable Gmail Trigger", "Set up automatic Gmail checking", "Alternative to Zapier integration", ""],
+    ["", "", "", ""],
+    ["🆕 Gmail Payment Integration (Optional)", "", "", ""],
+    ["Feature", "Benefit", "How to Use", ""],
+    ["Automatic Detection", "No Zapier needed — payment emails from Blawby are automatically detected and processed", "Enable Gmail trigger in Blawby menu", ""],
+    ["Payment Email Parsing", "Extracts payment data automatically", "Sends from notifications@blawby.com", ""],
+    ["Duplicate Prevention", "Payment ID tracking prevents duplicates", "Built-in deduplication system", ""],
+    ["Real-time Processing", "15-minute check intervals", "Automatic trigger setup", ""],
     ["", "", "", ""],
     ["🧪 Testing Features", "", "", ""],
     ["Feature", "How to Test", "Expected Result", ""],
@@ -716,6 +727,7 @@ function setupWelcomeSheet(ss) {
     ["Testing Utilities", "Built-in validation and testing tools", "Confidence in system setup", ""],
     ["Menu Integration", "Easy access to all features", "Better user experience", ""],
     ["Template Caching", "Fast template loading with validation", "Improved performance", ""],
+    ["Gmail Payment Integration", "No Zapier needed - direct Gmail monitoring", "Simplified payment processing", ""],
     ["", "", "", ""],
     ["❓ Need Help?", "", "", ""],
     ["•", "Email: support@blawby.com", "", ""],
@@ -776,7 +788,7 @@ function setupWelcomeSheet(ss) {
              .merge();
   
   // Format section headers
-  const sectionHeaders = [3, 11, 22, 30, 38, 46, 55, 63, 71, 79];
+  const sectionHeaders = [3, 11, 22, 30, 38, 46, 55, 63, 71, 79, 87];
   sectionHeaders.forEach(row => {
     welcomeSheet.getRange(row, 1, 1, 4)
                 .setFontWeight("bold")
@@ -841,7 +853,11 @@ function getLawyersFromWelcomeSheet(welcomeSheet) {
   return [["Email", "Name", "Rate", "Lawyer ID"], ...lawyers];
 }
 
-// Helper function to convert Zapier timestamp to proper date
+/**
+ * Helper function to convert Zapier timestamp to proper date
+ * @param {*} timestamp - The timestamp to parse
+ * @return {Date} - Parsed date object
+ */
 function parseZapierTimestamp(timestamp) {
   try {
     // If it's already a Date object, return it
@@ -878,5 +894,41 @@ function parseZapierTimestamp(timestamp) {
   } catch (error) {
     console.log(`Error parsing timestamp ${timestamp}: ${error.message}`);
     return new Date();
+  }
+}
+
+/**
+ * Delete all triggers for a specific function
+ * @param {string} functionName - Name of the function to delete triggers for
+ */
+function deleteTriggersByFunction(functionName) {
+  const triggers = ScriptApp.getProjectTriggers();
+  for (const t of triggers) {
+    if (t.getHandlerFunction() === functionName) {
+      ScriptApp.deleteTrigger(t);
+      log(`🗑️ Deleted trigger: ${functionName}`);
+    }
+  }
+}
+
+/**
+ * Check if a payment already exists in the payments sheet
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet - The payments sheet
+ * @param {string} paymentId - The payment ID to check
+ * @return {boolean} - True if payment exists, false otherwise
+ */
+function paymentExists(sheet, paymentId) {
+  if (!paymentId) return false;
+  
+  try {
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return false; // Only header row exists
+    
+    // Check if Payment ID column exists (column E, index 4)
+    const values = sheet.getRange(2, 5, lastRow - 1, 1).getValues(); // Column E: Payment ID
+    return values.some(row => row[0] === paymentId);
+  } catch (error) {
+    logError('paymentExists', error);
+    return false;
   }
 } 

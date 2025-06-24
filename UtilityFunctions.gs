@@ -28,6 +28,12 @@ function getConfigMap() {
  * @param {*} defaultValue - Default value if setting not found
  * @return {*} - The setting value or default
  */
+/**
+ * Get a setting value by key with fallback to defaults
+ * @param {string} key - The setting key to retrieve
+ * @param {*} defaultValue - Default value if setting not found
+ * @return {*} - The setting value or default
+ */
 function getSetting(key, defaultValue = null) {
   const configMap = getConfigMap();
   const value = configMap[key];
@@ -52,6 +58,7 @@ function getSetting(key, defaultValue = null) {
   
   return value !== undefined ? value : defaultValue;
 }
+
 
 /**
  * Check if the system is in test mode
@@ -128,6 +135,10 @@ function fixFirmEmailField() {
  * Get the firm email address with improved detection
  * @return {string} - Firm email address
  */
+/**
+ * Get the firm email address with improved detection
+ * @return {string} - Firm email address
+ */
 function getFirmEmail() {
   try {
     // First try to get from settings
@@ -158,6 +169,7 @@ function getFirmEmail() {
     throw new Error("Firm Email not configured. Please set your email address in the Welcome sheet under 'Firm Email' setting.");
   }
 }
+
 
 /**
  * Get the base payment URL

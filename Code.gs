@@ -101,6 +101,10 @@ function userDailySync() {
  * Validates all required settings and configuration
  * @return {Object} - {isValid: boolean, message: string}
  */
+/**
+ * Validates all required settings and configuration
+ * @return {Object} - {isValid: boolean, message: string}
+ */
 function validateRequiredSettings() {
   const issues = [];
   const warnings = [];
@@ -141,10 +145,10 @@ function validateRequiredSettings() {
         for (let i = 1; i < lawyers.length; i++) {
           const row = lawyers[i];
           if (!row[0] || !row[0].includes('@')) {
-            warnings.push(`Lawyer row ${i + 1} has invalid email: "${row[0]}"`);
+            warnings.push(`Lawyer row ${i + 1} has invalid email: \"${row[0]}\"`);
           }
           if (!row[2] || isNaN(parseFloat(row[2]))) {
-            warnings.push(`Lawyer row ${i + 1} has invalid rate: "${row[2]}"`);
+            warnings.push(`Lawyer row ${i + 1} has invalid rate: \"${row[2]}\"`);
           }
         }
       }
@@ -219,12 +223,13 @@ function validateRequiredSettings() {
     message = "✅ All required settings are configured correctly.";
   }
   
-  return { 
-    isValid: issues.length === 0, 
+  return {
+    isValid: issues.length === 0,
     message: message,
     hasWarnings: warnings.length > 0
   };
 }
+
 
 /**
  * Manual validation function that can be called to check configuration
@@ -670,6 +675,12 @@ function parseOriginalPaymentEmail(html) {
  * @param {string} subject - The email subject line
  * @return {Object|null} - Parsed payment data or null if parsing failed
  */
+/**
+ * Parse forwarded Blawby payment emails
+ * @param {string} html - The HTML body of the forwarded email
+ * @param {string} subject - The email subject line
+ * @return {Object|null} - Parsed payment data or null if parsing failed
+ */
 function parseForwardedPaymentEmail(html, subject) {
   try {
     log('🔍 Parsing forwarded payment email...');
@@ -682,14 +693,17 @@ function parseForwardedPaymentEmail(html, subject) {
       '---------- Forwarded message ---------',
       '-------- Original Message --------',
       'From: notifications@blawby.com',
-      'Begin forwarded message:'
+      'Begin forwarded message:',
+      '-- \n',
+      '--\n',
+      '-- '
     ];
     
     for (const separator of forwardedSeparators) {
       const parts = html.split(separator);
       if (parts.length > 1) {
         originalContent = parts[parts.length - 1]; // Take the last part (most likely the original)
-        log(`📧 Found forwarded content after separator: "${separator}"`);
+        log(`📧 Found forwarded content after separator: \"${separator}\"`);
         break;
       }
     }
@@ -737,7 +751,7 @@ function parseForwardedPaymentEmail(html, subject) {
       return null;
     }
     
-    // For client email, if it's "Not provided", we'll use the client name as identifier
+    // For client email, if it's \"Not provided\", we'll use the client name as identifier
     const finalClientEmail = (clientEmail && clientEmail !== 'Not provided') ? clientEmail : 
                             (clientName ? `${clientName.toLowerCase().replace(/\s+/g, '.')}@client.blawby.com` : null);
     
@@ -762,6 +776,7 @@ function parseForwardedPaymentEmail(html, subject) {
     return null;
   }
 }
+
 
 /**
  * Create trigger for Gmail payment checking

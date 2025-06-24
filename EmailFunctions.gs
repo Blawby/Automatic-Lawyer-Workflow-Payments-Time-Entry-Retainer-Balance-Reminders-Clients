@@ -7,6 +7,13 @@
  * @param {string} body - Email body
  * @param {Object} options - Additional options
  */
+/**
+ * Send email using Gmail API (replaces MailApp)
+ * @param {string} recipient - Email recipient
+ * @param {string} subject - Email subject
+ * @param {string} body - Email body
+ * @param {Object} options - Additional options
+ */
 function sendEmailViaGmailAPI(recipient, subject, body, options = {}) {
   const isTest = isTestMode();
   const firmEmail = getFirmEmail();
@@ -16,7 +23,7 @@ function sendEmailViaGmailAPI(recipient, subject, body, options = {}) {
   
   // Validate email address
   if (!finalRecipient || !finalRecipient.includes('@') || finalRecipient === 'your-email@example.com') {
-    const errorMsg = `Invalid email recipient: "${finalRecipient}". Please set your email address in the Welcome sheet under 'Firm Email' setting.`;
+    const errorMsg = `Invalid email recipient: "${finalRecipient}". Please set your email address in the Welcome sheet under 'Firm Email' setting.`
     logError('sendEmailViaGmailAPI', new Error(errorMsg));
     throw new Error(errorMsg);
   }
@@ -53,6 +60,7 @@ function sendEmailViaGmailAPI(recipient, subject, body, options = {}) {
     throw error;
   }
 }
+
 
 /**
  * Create a Gmail API message object
@@ -122,6 +130,10 @@ function sendEmailToFirm(subject, body, options = {}) {
  * Check Gmail API quota (much higher than MailApp)
  * @return {Object} - Object with quota info
  */
+/**
+ * Check Gmail API quota (much higher than MailApp)
+ * @return {Object} - Object with quota info
+ */
 function checkEmailQuota() {
   try {
     // Gmail API has much higher limits - 1M emails/day for most users
@@ -156,6 +168,7 @@ function checkEmailQuota() {
     };
   }
 }
+
 
 /**
  * Track email usage for quota management

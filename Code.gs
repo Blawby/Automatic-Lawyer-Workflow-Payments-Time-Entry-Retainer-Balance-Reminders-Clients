@@ -1,4 +1,5 @@
 // ========== MAIN ENTRY POINTS ==========
+// ========== MAIN ENTRY POINTS ==========
 function dailySync() {
   console.log("🔄 Starting daily sync...");
   
@@ -29,6 +30,7 @@ function dailySync() {
     // Don't show UI alerts for automated triggers - just log the error
   }
 }
+
 
 /**
  * User-facing sync function that shows UI alerts for configuration issues
@@ -97,6 +99,10 @@ function userDailySync() {
   }
 }
 
+/**
+ * Validates all required settings and configuration
+ * @return {Object} - {isValid: boolean, message: string}
+ */
 /**
  * Validates all required settings and configuration
  * @return {Object} - {isValid: boolean, message: string}
@@ -225,6 +231,7 @@ function validateRequiredSettings() {
     hasWarnings: warnings.length > 0
   };
 }
+
 
 /**
  * Manual validation function that can be called to check configuration
@@ -1747,6 +1754,7 @@ function stepByStepSync() {
 /**
  * Check Gmail API authorization and trigger consent if needed
  */
+// Check Gmail API authorization and trigger consent if needed
 function checkGmailAuthorization() {
   logStart('checkGmailAuthorization');
   
@@ -1777,9 +1785,9 @@ function checkGmailAuthorization() {
       `${error.message}\n\n` +
       '🔧 To fix this:\n' +
       '1. Go to the Apps Script editor\n' +
-      '2. Click "Services" in the left sidebar\n' +
-      '3. Add "Gmail API" service\n' +
-      '4. Run "📧 Process Gmail Payments" to trigger authorization\n\n' +
+      '2. Click \'Services\' in the left sidebar\n' +
+      '3. Add \'Gmail API\' service\n' +
+      '4. Run \'📧 Process Gmail Payments\' to trigger authorization\n\n' +
       'This will prompt you to authorize Gmail access.',
       ui.ButtonSet.OK
     );

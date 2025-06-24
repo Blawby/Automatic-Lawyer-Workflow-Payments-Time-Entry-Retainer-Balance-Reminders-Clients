@@ -724,6 +724,7 @@ function setupWelcomeSheet(ss) {
   welcomeSheet.setColumnWidth(4, 150);
 }
 
+
 function getLawyersFromWelcomeSheet(welcomeSheet) {
   const values = welcomeSheet.getDataRange().getValues();
   const lawyerHeaderRow = values.findIndex(row => row[0] && row[0].toString().includes('Lawyers'));

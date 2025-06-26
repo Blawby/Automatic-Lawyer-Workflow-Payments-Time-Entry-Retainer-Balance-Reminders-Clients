@@ -69,113 +69,144 @@ The client's balance has been topped up and services are now active.
     `
   },
   DAILY_DIGEST: {
-    SUBJECT: "Your Blawby Daily Summary",
+    SUBJECT: "Your Daily Blawby Summary",
     BODY: (lowBalanceClients, paymentSummary, newClientsCount, todayRevenue, mattersNeedingTime, enhancedAnalytics) => {
       let body = 'Your Daily Blawby Summary\n\n';
-      body += 'Here\'s a snapshot of client retainer activity and balances today.\n\n';
+      body += 'Here\'s your intelligent daily briefing with key insights and action items.\n\n';
       
-      // TODAY'S ACTIVITY Section
-      body += '📅 TODAY\'S ACTIVITY\n';
-      body += `New Clients: ${newClientsCount}\n`;
-      body += `New Matters Opened: ${enhancedAnalytics.matterMovement.newMatters.length}\n`;
-      body += `Total Revenue Received: $${todayRevenue.toFixed(2)}\n`;
-      body += `Clients Who Made Payments: ${paymentSummary.count}\n`;
-      body += `Time Entries Logged Today: ${enhancedAnalytics.timeTracking.totalHoursToday.toFixed(1)} hours\n`;
+      // TODAY'S ACTIVITY Section - Streamlined and focused
+      body += '📊 TODAY\'S ACTIVITY\n';
+      body += `• New Clients: ${newClientsCount}\n`;
+      body += `• New Matters: ${enhancedAnalytics.matterMovement.newMatters.length}\n`;
+      body += `• Revenue Received: $${todayRevenue.toFixed(2)}\n`;
+      body += `• Time Logged: ${enhancedAnalytics.timeTracking.totalHoursToday.toFixed(1)} hours\n`;
+      body += `• Lawyers Active: ${Object.keys(enhancedAnalytics.timeTracking.lawyersWithTimeToday).length}\n`;
+      body += `• Matters Needing Time: ${mattersNeedingTime.length}\n\n`;
       
-      // Lawyers with entries today
-      const lawyersWithEntries = Object.entries(enhancedAnalytics.timeTracking.lawyersWithTimeToday)
-        .map(([lawyerID, hours]) => `${lawyerID} (${hours.toFixed(1)}h)`)
-        .join(', ');
-      body += `Lawyers With Entries Today: ${lawyersWithEntries || 'None'}\n`;
-      body += `Time Entries Missing (Matters Needing Work): ${enhancedAnalytics.timeTracking.mattersActiveTodayWithNoTime}\n\n`;
+      // KEY ACTION ITEMS Section - New and actionable
+      body += '🔔 KEY ACTION ITEMS\n';
       
-      // TIME TRACKING INSIGHTS Section
-      body += '⏱️ TIME TRACKING INSIGHTS\n';
-      body += `- Total Time Logged Today: ${enhancedAnalytics.timeTracking.totalHoursToday.toFixed(1)}h\n`;
-      body += `- Lawyers With No Time Logged: ${enhancedAnalytics.timeTracking.lawyersWithNoTime.length}\n`;
-      body += `- Matters Active Today With No Time: ${enhancedAnalytics.timeTracking.mattersActiveTodayWithNoTime}\n`;
-      
-      if (enhancedAnalytics.timeTracking.timeGaps.length > 0) {
-        body += `- Time Gaps (worked yesterday, no time today): ${enhancedAnalytics.timeTracking.timeGaps.length} matters\n`;
-      }
-      body += '\n';
-      
-      // MATTER UPDATES Section
-      body += '📋 MATTER UPDATES\n';
-      if (enhancedAnalytics.matterMovement.newMatters.length > 0) {
-        body += `- ${enhancedAnalytics.matterMovement.newMatters.length} new matter(s) opened:\n`;
-        enhancedAnalytics.matterMovement.newMatters.forEach(matter => {
-          body += `  • ${matter[3]} – ${matter[2] || 'Unknown Client'}\n`;
+      // Action items for lawyers who need to log time
+      if (enhancedAnalytics.timeTracking.lawyersWithNoTime.length > 0) {
+        body += `${enhancedAnalytics.timeTracking.lawyersWithNoTime.length} lawyer(s) need to log time today:\n`;
+        enhancedAnalytics.timeTracking.lawyersWithNoTime.forEach(lawyerID => {
+          body += `• Nudge ${lawyerID} to log time\n`;
         });
-      } else {
-        body += '- No new matters opened today\n';
-      }
-      body += `- Active matters: ${enhancedAnalytics.matterMovement.activeMatters}\n`;
-      body += `- Completed matters: ${enhancedAnalytics.matterMovement.completedMatters}\n\n`;
-      
-      // CLIENT INTERACTIONS Section (placeholder for future API integration)
-      body += '📞 CLIENT INTERACTIONS\n';
-      body += `- Client emails received: ${enhancedAnalytics.clientInteractions.clientEmailsReceived}\n`;
-      body += `- Calls scheduled: ${enhancedAnalytics.clientInteractions.callsScheduled}\n`;
-      body += `- Meetings today: ${enhancedAnalytics.clientInteractions.meetingsToday}\n\n`;
-      
-      // RISK & FOLLOW-UP Section
-      body += '⚠️ RISK & FOLLOW-UP\n';
-      if (enhancedAnalytics.riskFlags.mattersWithNoRecentTime.length > 0) {
-        body += `- ${enhancedAnalytics.riskFlags.mattersWithNoRecentTime.length} matter(s) with no time entry in 10+ days:\n`;
-        enhancedAnalytics.riskFlags.mattersWithNoRecentTime.forEach(matter => {
-          body += `  • ${matter.matterDescription} – ${matter.clientName} (${matter.daysSinceLastEntry} days)\n`;
-        });
+        body += '\n';
       }
       
-      if (enhancedAnalytics.riskFlags.clientsAtRisk.length > 0) {
-        body += `- ${enhancedAnalytics.riskFlags.clientsAtRisk.length} client(s) with balance below $100 and no top-up in 5+ days:\n`;
-        enhancedAnalytics.riskFlags.clientsAtRisk.forEach(client => {
-          body += `  • ${client.clientName} – $${client.balance.toFixed(2)} (${client.daysSinceLastPayment} days)\n`;
-        });
-      }
-      
-      if (enhancedAnalytics.riskFlags.mattersWithNoRecentTime.length === 0 && enhancedAnalytics.riskFlags.clientsAtRisk.length === 0) {
-        body += '- No immediate risks identified\n';
-      }
-      body += '\n';
-      
-      // LOW BALANCE CLIENTS Section
-      if (lowBalanceClients.length > 0) {
-        body += `LOW BALANCE CLIENTS (${lowBalanceClients.length})\n\n`;
-        body += lowBalanceClients.map(client => `
-${client.name} (${client.email})
-- Balance: $${client.balance} | Target: $${client.targetBalance} | Top-up needed: $${client.topUp}
-- Last Activity: ${client.lastActivity}
-- Email Sent: ${client.emailSent ? 'Yes' : 'No'}
-- Send Top-up Reminder: ${generateSendEmailUrl(client.clientID, 'low_balance')}
-${parseFloat(client.balance) <= 0
-  ? '- Status: Services Paused'
-  : '- Status: Low Balance'}
-
-`).join('');
-        body += 'Action recommended: Follow up with clients who haven\'t responded or whose services are paused.\n\n';
-      }
-      
-      // MATTERS NEEDING TIME ENTRIES Section
+      // Action items for matters needing time entries
       if (mattersNeedingTime.length > 0) {
-        body += `MATTERS NEEDING TIME ENTRIES (${mattersNeedingTime.length})\n\n`;
-        body += mattersNeedingTime.map(matter => `
-${matter.matterDescription} - ${matter.clientName} (${matter.clientEmail})
-- Matter ID: ${matter.matterID}
-- Client: ${matter.clientName} (${matter.clientEmail})
-- Assigned Lawyer: ${matter.lawyerName} (${matter.lawyerEmail})
-- Reason: ${matter.reason}
-- Last Payment: ${matter.lastPaymentDate || 'None'}
-- Days Since Last Time Entry: ${matter.daysSinceLastTimeEntry}
-- Add Time Entry: ${generateAddTimeEntryUrl(matter.matterID, matter.lawyerID)}
-- Nudge Lawyer: ${generateNudgeLawyerUrl(matter.matterID, matter.lawyerID)}
-
-`).join('');
-        body += 'Action recommended: Lawyers should add time entries for these matters. Use "Nudge Lawyer" to send a reminder email.\n\n';
+        body += `${mattersNeedingTime.length} matter(s) need time entries:\n`;
+        mattersNeedingTime.slice(0, 3).forEach(matter => { // Show top 3
+          body += `• Nudge ${matter.lawyerName} for "${matter.matterDescription}"\n`;
+        });
+        if (mattersNeedingTime.length > 3) {
+          body += `• ... and ${mattersNeedingTime.length - 3} more matters\n`;
+        }
+        body += '\n';
       }
       
-      body += 'This summary was generated automatically by Blawby. Let us know if you\'d like to tweak what you see here.';
+      // Action items for low balance clients
+      if (lowBalanceClients.length > 0) {
+        body += `${lowBalanceClients.length} client(s) need top-up reminders:\n`;
+        lowBalanceClients.slice(0, 3).forEach(client => { // Show top 3
+          body += `• Send reminder to ${client.name} (Balance: $${client.balance})\n`;
+        });
+        if (lowBalanceClients.length > 3) {
+          body += `• ... and ${lowBalanceClients.length - 3} more clients\n`;
+        }
+        body += '\n';
+      }
+      
+      if (enhancedAnalytics.timeTracking.lawyersWithNoTime.length === 0 && 
+          mattersNeedingTime.length === 0 && 
+          lowBalanceClients.length === 0) {
+        body += '• All systems running smoothly - no immediate actions needed\n\n';
+      }
+      
+      // TIME TRACKING INSIGHTS - Condensed
+      if (enhancedAnalytics.timeTracking.totalHoursToday > 0) {
+        body += '⏱️ TIME TRACKING\n';
+        const lawyersWithEntries = Object.entries(enhancedAnalytics.timeTracking.lawyersWithTimeToday)
+          .map(([lawyerID, hours]) => `${lawyerID} (${hours.toFixed(1)}h)`)
+          .join(', ');
+        body += `• Lawyers with time: ${lawyersWithEntries}\n`;
+        
+        if (enhancedAnalytics.timeTracking.timeGaps.length > 0) {
+          body += `• Time gaps detected: ${enhancedAnalytics.timeTracking.timeGaps.length} matters\n`;
+        }
+        body += '\n';
+      }
+      
+      // RISK FLAGS - Only show if there are actual risks
+      const hasRisks = enhancedAnalytics.riskFlags.mattersWithNoRecentTime.length > 0 || 
+                      enhancedAnalytics.riskFlags.clientsAtRisk.length > 0;
+      
+      if (hasRisks) {
+        body += '⚠️ RISK FLAGS\n';
+        if (enhancedAnalytics.riskFlags.mattersWithNoRecentTime.length > 0) {
+          body += `• ${enhancedAnalytics.riskFlags.mattersWithNoRecentTime.length} matter(s) overdue for time entries\n`;
+        }
+        if (enhancedAnalytics.riskFlags.clientsAtRisk.length > 0) {
+          body += `• ${enhancedAnalytics.riskFlags.clientsAtRisk.length} client(s) at risk of service interruption\n`;
+        }
+        body += '\n';
+      }
+      
+      // CLIENT RETAINER DETAILS - Enhanced with email previews
+      if (lowBalanceClients.length > 0) {
+        body += '📧 CLIENT RETAINER UPDATES\n\n';
+        
+        lowBalanceClients.forEach(client => {
+          const balance = parseFloat(client.balance);
+          const daysSinceActivity = client.lastActivity !== 'Unknown' ? 
+            Math.ceil((new Date() - new Date(client.lastActivity)) / (1000 * 60 * 60 * 24)) : 'Unknown';
+          
+          body += `${client.name} (${client.email})\n`;
+          body += `• Balance: $${client.balance} | Target: $${client.targetBalance}\n`;
+          body += `• Top-up needed: $${client.topUp}\n`;
+          body += `• Days since last activity: ${daysSinceActivity}\n`;
+          body += `• Status: ${balance <= 0 ? 'Services Paused' : 'Low Balance'}\n\n`;
+          
+          // Email preview
+          body += '📧 Email Preview:\n';
+          body += `Subject: Retainer Balance Update – Action Needed\n\n`;
+          body += `Dear ${client.name},\n\n`;
+          body += `We hope you're doing well. Our records show your current retainer balance is $${client.balance}, `;
+          body += `below your target of $${client.targetBalance}.\n\n`;
+          body += `Please top up by $${client.topUp} to continue uninterrupted services.\n\n`;
+          body += `Thank you,\nYour Legal Team\n\n`;
+          
+          body += `🔗 Send This Reminder: ${generateSendEmailUrl(client.clientID, 'low_balance')}\n`;
+          body += '─'.repeat(50) + '\n\n';
+        });
+      }
+      
+      // MATTERS NEEDING TIME - Enhanced with action links
+      if (mattersNeedingTime.length > 0) {
+        body += '📋 MATTERS NEEDING TIME ENTRIES\n\n';
+        
+        mattersNeedingTime.forEach(matter => {
+          body += `${matter.matterDescription} – ${matter.clientName}\n`;
+          body += `• Matter ID: ${matter.matterID}\n`;
+          body += `• Assigned Lawyer: ${matter.lawyerName} (${matter.lawyerEmail})\n`;
+          body += `• Reason: ${matter.reason}\n`;
+          body += `• Days since last time entry: ${matter.daysSinceLastTimeEntry}\n\n`;
+          
+          body += `🔗 Add Time Entry: ${generateAddTimeEntryUrl(matter.matterID, matter.lawyerID)}\n`;
+          body += `🔗 Nudge Lawyer: ${generateNudgeLawyerUrl(matter.matterID, matter.lawyerID)}\n`;
+          body += '─'.repeat(50) + '\n\n';
+        });
+      }
+      
+      // Send all emails option if there are multiple clients
+      if (lowBalanceClients.length > 1) {
+        body += '📧 BULK ACTIONS\n';
+        body += `Send all ${lowBalanceClients.length} low balance reminders: ${generateSendAllEmailsUrl(lowBalanceClients.map(c => c.clientID))}\n\n`;
+      }
+      
+      body += 'This summary was generated automatically by Blawby. All action links are ready to use.';
       
       return body;
     }

@@ -201,12 +201,12 @@ function validateRequiredSettings() {
   let message = "";
   
   if (issues.length > 0) {
-    message += "❌ CRITICAL ISSUES (must be fixed):\n\n" + issues.map(issue => `• ${issue}`).join('\n');
+    message += `❌ CRITICAL ISSUES (must be fixed):\n\n${issues.map(issue => `• ${issue}`).join('\n')}`;
   }
   
   if (warnings.length > 0) {
     if (message) message += "\n\n";
-    message += "⚠️ WARNINGS (should be reviewed):\n\n" + warnings.map(warning => `• ${warning}`).join('\n');
+    message += `⚠️ WARNINGS (should be reviewed):\n\n${warnings.map(warning => `• ${warning}`).join('\n')}`;
   }
   
   if (issues.length === 0 && warnings.length === 0) {

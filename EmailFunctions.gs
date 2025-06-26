@@ -164,61 +164,34 @@ function renderTemplate(type, subtype, ...params) {
         'SUBJECT': 'Your Blawby Daily Summary',
         'BODY': (lowBalanceClients, paymentSummary, newClientsCount, todayRevenue, mattersNeedingTime, enhancedAnalytics, unassignedMatters) => {
           let body = 'Your Daily Blawby Summary\n\n';
-          body += 'Here\'s a snapshot of client retainer activity and balances today.\n\n';
+          body += `Here's a snapshot of client retainer activity and balances today.\n\n`;
           
-          body += 'TODAY\'S ACTIVITY:\n';
-          body += `- New Clients: ${newClientsCount || 0}\n`;
-          body += `- Revenue: $${parseFloat(todayRevenue || 0).toFixed(2)}\n`;
-          
-          if (paymentSummary) {
-            body += `- Total Payments Received: $${parseFloat(paymentSummary.total || 0).toFixed(2)}\n`;
-            body += `- Clients Paid Today: ${paymentSummary.count}\n\n`;
-          }
+          // Use DigestRenderer for summary stats
+          const stats = {
+            newClients: newClientsCount,
+            revenue: todayRevenue,
+            paymentSummary: paymentSummary
+          };
+          body += renderSummaryStats(stats);
+          body += '\n';
           
           if (lowBalanceClients.length === 0) {
-            body += 'All client balances are in good standing. Great work!\n';
+            body += renderActionRecommendations({ lowBalanceClients: [] });
           } else {
-            body += `CLIENTS NEEDING ATTENTION (${lowBalanceClients.length})\n\n`;
-            lowBalanceClients.forEach(client => {
-              const balance = parseFloat(client.balance || 0);
-              const targetBalance = parseFloat(client.targetBalance || 0);
-              const topUpNeeded = Math.max(0, targetBalance - balance);
-              
-              body += `${client.name} (${client.email})\n`;
-              body += `  Balance: $${balance.toFixed(2)}\n`;
-              body += `  Target: $${targetBalance.toFixed(2)}\n`;
-              body += `  Top-up Needed: $${topUpNeeded.toFixed(2)}\n`;
-              body += `  Last Activity: ${client.lastActivity || 'N/A'}\n`;
-              body += `  Email Sent: ${client.emailSent ? 'Yes' : 'No'}\n`;
-              body += `  Send Top-up Reminder: ${generateSendEmailUrl(client.clientID, 'low_balance')}\n`;
-              if (balance <= 0) {
-                body += `  Status: Services Paused\n`;
-              } else {
-                body += `  Status: Low Balance\n`;
-              }
-              body += '\n';
-            });
-            body += 'Action recommended: Follow up with clients who haven\'t responded or whose services are paused.\n';
+            // Use DigestRenderer for client blocks
+            const clientBlocks = lowBalanceClients.map(client => renderClientBlock(client));
+            body += renderSection(`Clients Needing Attention (${lowBalanceClients.length})`, clientBlocks);
+            body += renderActionRecommendations({ lowBalanceClients });
           }
           
           if (mattersNeedingTime && mattersNeedingTime.length > 0) {
-            body += '\nMATTERS NEEDING TIME ENTRIES:\n';
-            mattersNeedingTime.forEach(matter => {
-              body += `${matter.matterDescription} (${matter.clientName})\n`;
-              body += `  Client: ${matter.clientName} (${matter.clientEmail})\n`;
-              body += `  Matter ID: ${matter.matterID}\n`;
-              body += `  Matter Date: ${matter.matterDate}\n`;
-              body += `  Reason: ${matter.reason}\n`;
-              body += `  Last Payment Date: ${matter.lastPaymentDate}\n`;
-              body += `  Days Since Last Time Entry: ${matter.daysSinceLastTimeEntry}\n`;
-              body += `  Lawyer: ${matter.lawyerName} (${matter.lawyerEmail})\n`;
-              body += `  Add Time Entry: ${generateAddTimeEntryUrl(matter.matterID, matter.lawyerID)}\n`;
-              body += '\n';
-            });
-            body += 'Action recommended: Follow up with matters needing time entries.\n';
+            // Use DigestRenderer for matter blocks
+            const matterBlocks = mattersNeedingTime.map(matter => renderMatterBlock(matter));
+            body += renderSection('Matters Needing Time Entries', matterBlocks);
+            body += renderActionRecommendations({ mattersNeedingTime });
           }
           
-          body += '\nThis summary was generated automatically by Blawby.';
+          body += `\nThis summary was generated automatically by Blawby.`;
           return body;
         }
       },
@@ -272,8 +245,6 @@ function sendDailyDigest() {
     // Get unassigned matters
     const unassignedMatters = getUnassignedMatters(data, lawyerData);
     
-    const subject = `Daily Balance Digest - ${today} (${lowBalanceClients.length} low balance clients, ${mattersNeedingTime.length} matters need time, ${unassignedMatters.length} unassigned matters)`;
-    const body = renderTemplate('DAILY_DIGEST_HTML', 'BODY', lowBalanceClients, paymentSummary, newClientsCount, todayRevenue, mattersNeedingTime, enhancedAnalytics, unassignedMatters);
     
     // Generate email using centralized system
     const emailData = {
@@ -1040,25 +1011,6 @@ function nudgeLawyerForTimeEntry(matterID, lawyerID) {
     // Generate time entry link
     const timeEntryUrl = generateAddTimeEntryUrl(matterID, lawyerID);
     
-    // Create email content
-    const subject = `Time Entry Reminder: ${matterDescription} - ${clientName}`;
-    
-    const emailBody = `Hi ${lawyerName},
-
-This is a friendly reminder to log your time for the following matter:
-
-Matter: ${matterDescription} (${matterID})
-Client: ${clientName} (${clientEmail})
-Practice Area: ${practiceArea}
-
-Please log your time entries using the link below:
-${timeEntryUrl}
-
-If you have any questions about this matter or need assistance, please don't hesitate to reach out.
-
-Best regards,
-${ownerEmail.split('@')[0]} (Firm Owner)`;
-
     // Create email using centralized email generation
     const emailData = {
       matter: {

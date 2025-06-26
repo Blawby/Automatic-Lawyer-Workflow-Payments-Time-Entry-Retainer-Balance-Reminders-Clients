@@ -626,23 +626,39 @@ function buildActionLink(actionType, params = {}) {
 }
 
 /**
- * Format money amount with currency symbol
- * @param {number} amount - Amount to format
- * @param {string} currency - Currency symbol (default: $)
- * @return {string} - Formatted money string
+ * Format a number as currency
+ * @param {number} amount - The amount to format
+ * @param {string} currency - The currency symbol (default: '$')
+ * @return {string} - Formatted currency string
  */
 function formatMoney(amount, currency = '$') {
-  return `${currency}${Number(amount).toFixed(2)}`;
+  if (amount === null || amount === undefined || isNaN(amount)) {
+    return `${currency}0.00`;
+  }
+  return `${currency}${parseFloat(amount).toFixed(2)}`;
 }
 
 /**
- * Pluralize a noun based on count
- * @param {number} count - Number of items
- * @param {string} noun - Noun to pluralize
- * @return {string} - Pluralized string
+ * Pluralize a word based on count
+ * @param {number} count - The count
+ * @param {string} singular - The singular form
+ * @param {string} plural - The plural form (optional, defaults to singular + 's')
+ * @return {string} - The appropriate form
  */
-function pluralize(count, noun) {
-  return `${count} ${noun}${count === 1 ? '' : 's'}`;
+function pluralize(count, singular, plural = null) {
+  if (count === 1) {
+    return singular;
+  }
+  return plural || `${singular}s`;
+}
+
+/**
+ * Render a section header with consistent formatting
+ * @param {string} title - The section title
+ * @return {string} - Formatted section header
+ */
+function renderSectionHeader(title) {
+  return `\n${title.toUpperCase()}\n${'─'.repeat(title.length)}\n`;
 }
 
 /**

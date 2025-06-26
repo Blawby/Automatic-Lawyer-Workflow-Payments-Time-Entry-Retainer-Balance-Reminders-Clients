@@ -104,12 +104,8 @@ function sendEmail(recipient, subject, body, options = {}) {
       noReply: true
     };
     
-    // Add HTML formatting if specified
-    if (options.isHtml) {
-      emailOptions.htmlBody = body;
-    } else {
-      emailOptions.body = body;
-    }
+    // Always use plain text for better reliability
+    emailOptions.body = body;
     
     // Send email via Gmail API
     log(`📧 Sending email to: ${recipient}`);
@@ -279,48 +275,44 @@ function sendDailyBalanceDigest() {
     const actionButtons = lowBalanceClients.map(client => {
       const sendUrl = generateSendEmailUrl(client.clientID, 'low_balance');
       return `
-        <div style="margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-          <strong>${client.name}</strong> (${client.email})<br>
-          Balance: $${client.balance} | Target: $${client.targetBalance} | Top-up needed: $${client.topUp}<br>
-          <a href="${sendUrl}" style="background: #4285f4; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; display: inline-block; margin-top: 5px;">Send Low Balance Email</a>
-        </div>
-      `;
+${client.name} (${client.email})
+Balance: $${client.balance} | Target: $${client.targetBalance} | Top-up needed: $${client.topUp}
+Send Low Balance Email: ${sendUrl}
+
+`;
     }).join('');
-    
+
     // Generate "Send All" button if there are low balance clients
     const sendAllButton = lowBalanceClients.length > 0 ? `
-      <div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 5px;">
-        <strong>Send All Low Balance Emails:</strong><br>
-        <a href="${generateSendAllEmailsUrl(lowBalanceClients.map(c => c.clientID))}" style="background: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; display: inline-block; margin-top: 5px;">Send All (${lowBalanceClients.length} emails)</a>
-      </div>
-    ` : '';
-    
+Send All Low Balance Emails:
+Send All (${lowBalanceClients.length} emails): ${generateSendAllEmailsUrl(lowBalanceClients.map(c => c.clientID))}
+
+` : '';
+
     // Create digest content
     const subject = `📊 Daily Balance Digest - ${today} (${lowBalanceClients.length} low balance clients)`;
     const body = `
-      <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #4285f4;">📊 Daily Balance Digest</h2>
-        <p><strong>Date:</strong> ${today}</p>
-        <p><strong>Low Balance Clients:</strong> ${lowBalanceClients.length}</p>
-        
-        ${lowBalanceClients.length > 0 ? `
-          <h3 style="color: #dc3545;">⚠️ Clients Needing Top-up</h3>
-          ${actionButtons}
-          ${sendAllButton}
-        ` : `
-          <h3 style="color: #28a745;">✅ All Clients Have Sufficient Balance</h3>
-        `}
-        
-        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-        <p style="color: #666; font-size: 12px;">
-          💡 Click the action buttons above to send low balance emails to clients.<br>
-          Service resumed emails are still sent automatically when balances become positive.
-        </p>
-      </div>
+📊 Daily Balance Digest
+
+Date: ${today}
+Low Balance Clients: ${lowBalanceClients.length}
+
+${lowBalanceClients.length > 0 ? `
+⚠️ Clients Needing Top-up
+
+${actionButtons}
+${sendAllButton}
+` : `
+✅ All Clients Have Sufficient Balance
+`}
+
+---
+💡 Click the action links above to send low balance emails to clients.
+Service resumed emails are still sent automatically when balances become positive.
     `;
     
     // Send digest to firm
-    sendEmail(firmEmail, subject, body, { isHtml: true });
+    sendEmail(firmEmail, subject, body);
     log(`✅ Daily balance digest sent to ${firmEmail} with ${lowBalanceClients.length} low balance clients`);
     
   } catch (error) {
@@ -364,14 +356,14 @@ function notifyServiceResumed(clientID, email, clientName, balance, today) {
     const clientBody = renderTemplate('SERVICE_RESUMED', 'CLIENT_BODY', clientName);
     
     log(`📧 Sending service resumed notification to client: ${email}`);
-    sendEmail(email, clientSubject, clientBody, { isHtml: true, emailType: 'service_resumed_client' });
+    sendEmail(email, clientSubject, clientBody, { emailType: 'service_resumed_client' });
     
     // Send to firm using template
     const ownerSubject = renderTemplate('SERVICE_RESUMED', 'OWNER_SUBJECT', clientName);
     const ownerBody = renderTemplate('SERVICE_RESUMED', 'OWNER_BODY', clientName);
     
     log(`📧 Sending service resumed notification to firm`);
-    sendEmailToFirm(ownerSubject, ownerBody, { isHtml: true, emailType: 'service_resumed_firm' });
+    sendEmailToFirm(ownerSubject, ownerBody, { emailType: 'service_resumed_firm' });
     
     // Mark as sent (only in production mode)
     if (isLiveEmailsEnabled()) {
@@ -464,7 +456,7 @@ function sendLowBalanceEmailManual(clientID) {
     const subject = renderTemplate('LOW_BALANCE', 'CLIENT_SUBJECT', clientName);
     const body = renderTemplate('LOW_BALANCE', 'CLIENT_BODY', clientName, balance, targetBalance, paymentLink);
     
-    sendEmail(email, subject, body, { isHtml: true });
+    sendEmail(email, subject, body);
     
     log(`✅ Low balance email sent manually to ${clientName} (${email})`);
     
@@ -529,7 +521,7 @@ function sendAllLowBalanceEmailsManual(clientIDs) {
         const subject = renderTemplate('LOW_BALANCE', 'CLIENT_SUBJECT', clientName);
         const body = renderTemplate('LOW_BALANCE', 'CLIENT_BODY', clientName, balance, targetBalance, paymentLink);
         
-        sendEmail(email, subject, body, { isHtml: true });
+        sendEmail(email, subject, body);
         
         sentCount++;
         log(`✅ Low balance email sent to ${clientName} (${email})`);

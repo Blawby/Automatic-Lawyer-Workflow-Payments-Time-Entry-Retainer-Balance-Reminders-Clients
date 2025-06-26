@@ -268,12 +268,19 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
   log(`   - Target balance: $${targetBalance.toFixed(2)}`);
   log(`   - Top-up needed: $${(targetBalance - balance).toFixed(2)}`);
   log(`   - Payment link: ${paymentLink}`);
-  log(`   - Test mode: ${isTestMode() ? 'YES' : 'NO'}`);
+  log(`   - Live emails enabled: ${isLiveEmailsEnabled() ? 'YES' : 'NO'}`);
   log(`   - Firm email: ${getFirmEmail()}`);
   
   // Check if email already sent today
   if (props.getProperty(emailKey)) {
     log(`📧 Low balance email already sent today for ${clientName}`);
+    logEnd('sendLowBalanceEmail');
+    return false;
+  }
+  
+  // Check if live emails are enabled
+  if (!isLiveEmailsEnabled()) {
+    log(`🔒 Live emails disabled - skipping low balance email for ${clientName}`);
     logEnd('sendLowBalanceEmail');
     return false;
   }
@@ -305,7 +312,7 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
     trackEmailUsage();
     
     // Mark as sent (only in production mode)
-    if (!isTestMode()) {
+    if (isLiveEmailsEnabled()) {
       props.setProperty(emailKey, "1");
     }
     
@@ -434,6 +441,13 @@ function notifyServiceResumed(clientID, email, clientName, balance, today) {
       return;
     }
     
+    // Check if live emails are enabled
+    if (!isLiveEmailsEnabled()) {
+      log(`🔒 Live emails disabled - skipping service resumed notification for ${clientName}`);
+      logEnd('notifyServiceResumed');
+      return;
+    }
+    
     // Check email quota before sending
     const quota = checkEmailQuota();
     if (!quota.canSend) {
@@ -459,7 +473,7 @@ function notifyServiceResumed(clientID, email, clientName, balance, today) {
     trackEmailUsage();
     
     // Mark as sent (only in production mode)
-    if (!isTestMode()) {
+    if (isLiveEmailsEnabled()) {
       props.setProperty(emailKey, "1");
     }
     

@@ -484,7 +484,11 @@ function setupWelcomeSheet(ss) {
     const values = welcomeSheet.getDataRange().getValues();
     const lawyerHeaderRow = values.findIndex(row => row[0] && row[0].toString().includes('Lawyers'));
     if (lawyerHeaderRow > -1) {
-      preservedLawyers = values.slice(lawyerHeaderRow + 2, lawyerHeaderRow + 7).map(row => row.slice(0, 4));
+      // Get all lawyer rows (up to 5) that have valid email addresses
+      const lawyerRows = values.slice(lawyerHeaderRow + 2, lawyerHeaderRow + 7)
+        .filter(row => row[0] && row[0].toString().includes('@'))
+        .map(row => row.slice(0, 5)); // Ensure we have 5 columns
+      preservedLawyers = lawyerRows;
     }
   } catch (e) {
     preservedLawyers = [];
@@ -504,15 +508,25 @@ function setupWelcomeSheet(ss) {
     ["Low Balance Threshold", preservedValues[2] || "500", "Target balance amount for all clients", "", ""],
     ["", "", "", "", ""],
     ["👩‍⚖️ Lawyers", "", "", "", ""],
-    ["Email", "Name", "Rate", "Lawyer ID", "Practice Areas"],
-    ["lawyer1@email.com", "Jane Smith", "250", "JS", "Corporate Law, Contracts"],
-    ["lawyer2@email.com", "John Doe", "300", "JD", "Litigation, Family Law"],
-    ["", "", "", "", ""],
-    ["", "", "", "", ""],
-    ["", "", "", "", ""],
-    ["", "", "", "", ""],
-    ["", "", "", "", ""]
+    ["Email", "Name", "Rate", "Lawyer ID", "Practice Areas"]
   ];
+  
+  // Add preserved lawyers or placeholders if none exist
+  if (preservedLawyers.length > 0) {
+    // Use preserved lawyers
+    preservedLawyers.forEach(lawyer => {
+      content.push([lawyer[0] || "", lawyer[1] || "", lawyer[2] || "", lawyer[3] || "", lawyer[4] || ""]);
+    });
+  } else {
+    // Add placeholder lawyers only if no preserved lawyers exist
+    content.push(["lawyer1@email.com", "Jane Smith", "250", "JS", "Corporate Law, Contracts"]);
+    content.push(["lawyer2@email.com", "John Doe", "300", "JD", "Litigation, Family Law"]);
+  }
+  
+  // Add empty rows to fill up to 17 total rows
+  while (content.length < 17) {
+    content.push(["", "", "", "", ""]);
+  }
   
   // Write content to sheet with exact column count
   welcomeSheet.getRange(1, 1, content.length, 5).setValues(content);
@@ -523,18 +537,6 @@ function setupWelcomeSheet(ss) {
       if (preservedValues[i] !== "" && preservedValues[i] !== undefined && preservedValues[i] !== null) {
         // For all settings, preserve the value as-is
         welcomeSheet.getRange(5 + i, 2).setValue(preservedValues[i]);
-      }
-    }
-  }
-
-  // --- Restore preserved lawyers ---
-  if (preservedLawyers.length > 0) {
-    for (let i = 0; i < Math.min(preservedLawyers.length, 5); i++) {
-      const lawyer = preservedLawyers[i];
-      if (lawyer[0] && lawyer[0].includes('@')) {
-        // Ensure we have 5 columns (add empty practice areas if missing)
-        const lawyerWithPracticeAreas = [...lawyer.slice(0, 4), lawyer[4] || ''];
-        welcomeSheet.getRange(13 + i, 1, 1, 5).setValues([lawyerWithPracticeAreas]);
       }
     }
   }

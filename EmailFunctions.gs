@@ -1406,7 +1406,7 @@ function getUnassignedMatters(data, lawyerData) {
  * Generate URL for assigning matter to lawyer
  */
 function generateAssignMatterUrl(matterID, practiceArea) {
-  const scriptId = 'AKfycbyf3LSaFigy3zHlkJAU3E7w1LyDFyDnzrtTp_aSAbnP90U9_KJSkhXXIUyqWpi6YShg';
+  const scriptId = 'AKfycbxiztbOp4fNyuL0DzCK00SQa3gFmGYN-CUX8HYcHcUoBIMJhncasQg-0Beu38I5d8Pf';
   const webAppUrl = `https://script.google.com/macros/s/${scriptId}/exec`;
   return `${webAppUrl}?action=assign_matter&matter_id=${encodeURIComponent(matterID)}&practice_area=${encodeURIComponent(practiceArea)}`;
 }
@@ -1443,7 +1443,7 @@ function assignMatterForm(matterID, practiceArea) {
   // Sort by name
   allLawyers.sort((a, b) => a.name.localeCompare(b.name));
   
-  const scriptId = 'AKfycbyf3LSaFigy3zHlkJAU3E7w1LyDFyDnzrtTp_aSAbnP90U9_KJSkhXXIUyqWpi6YShg';
+  const scriptId = 'AKfycbxiztbOp4fNyuL0DzCK00SQa3gFmGYN-CUX8HYcHcUoBIMJhncasQg-0Beu38I5d8Pf';
   const webAppUrl = `https://script.google.com/macros/s/${scriptId}/exec`;
   
   // Build suggested lawyers HTML

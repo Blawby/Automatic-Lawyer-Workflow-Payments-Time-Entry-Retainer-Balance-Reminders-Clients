@@ -70,79 +70,23 @@ function detectEmail() {
 }
 
 /**
- * Automatically fix the Firm Email field if it's showing boolean values
- * This function can be called to clean up invalid email values
- */
-function fixFirmEmailField() {
-  try {
-    const welcomeSheet = getSheet("Welcome");
-    const firmEmailCell = welcomeSheet.getRange(8, 2); // Firm Email is in row 8, column 2
-    const currentValue = firmEmailCell.getValue();
-    
-    // Check if the current value is invalid
-    if (currentValue === true || currentValue === false || 
-        currentValue === "TRUE" || currentValue === "FALSE" ||
-        !currentValue || !currentValue.includes('@') || 
-        currentValue === 'your-email@example.com') {
-      
-      // Try to get the spreadsheet owner's email
-      let ownerEmail = "your-email@example.com";
-      try {
-        ownerEmail = SpreadsheetApp.getActiveSpreadsheet().getOwner().getEmail();
-      } catch (e) {
-        log(`⚠️ Could not get spreadsheet owner email: ${e.message}`);
-      }
-      
-      if (ownerEmail && ownerEmail !== 'your-email@example.com') {
-        firmEmailCell.setValue(ownerEmail);
-        log(`✅ Fixed Firm Email field: "${currentValue}" → "${ownerEmail}"`);
-        return true;
-      } else {
-        log(`⚠️ Could not detect valid email to replace "${currentValue}"`);
-        return false;
-      }
-    } else {
-      log(`✅ Firm Email field already has valid value: ${currentValue}`);
-      return true;
-    }
-  } catch (error) {
-    logError('fixFirmEmailField', error);
-    return false;
-  }
-}
-
-/**
- * Get the firm email address with improved detection
+ * Get the firm email address (always the spreadsheet owner)
  * @return {string} - Firm email address
  */
 function getFirmEmail() {
   try {
-    // First try to get from settings
-    const settings = loadSettings();
-    const firmEmail = settings[SETTINGS_KEYS.FIRM_EMAIL];
-    
-    // If it's a valid email, use it
-    if (firmEmail && typeof firmEmail === 'string' && firmEmail.includes('@') && firmEmail !== 'your-email@example.com') {
-      log(`📧 Using firm email from settings: ${firmEmail}`);
-      return firmEmail;
+    // Always use the spreadsheet owner's email
+    const ownerEmail = SpreadsheetApp.getActiveSpreadsheet().getOwner().getEmail();
+    if (ownerEmail && ownerEmail.includes('@') && ownerEmail !== 'your-email@example.com') {
+      log(`📧 Using spreadsheet owner email: ${ownerEmail}`);
+      return ownerEmail;
     }
     
-    // If not valid, try to get from spreadsheet owner
-    try {
-      const ownerEmail = SpreadsheetApp.getActiveSpreadsheet().getOwner().getEmail();
-      if (ownerEmail && ownerEmail.includes('@') && ownerEmail !== 'your-email@example.com') {
-        log(`📧 Using spreadsheet owner email: ${ownerEmail}`);
-        return ownerEmail;
-      }
-    } catch (e) {
-      log(`⚠️ Spreadsheet owner detection failed: ${e.message}`);
-    }
-    
-    // Final fallback - this will cause a clear error
-    throw new Error("No valid email found. Please set your email address in the Welcome sheet under 'Firm Email' setting.");
+    // Fallback error
+    throw new Error("Could not detect spreadsheet owner email. Please ensure you have access to this spreadsheet.");
   } catch (error) {
     logError('getFirmEmail', error);
-    throw new Error("Firm Email not configured. Please set your email address in the Welcome sheet under 'Firm Email' setting.");
+    throw new Error("Firm Email not available. Please ensure you have access to this spreadsheet.");
   }
 }
 
@@ -301,7 +245,7 @@ function loadSheetData(sheets) {
 
 function loadSettings() {
   const welcomeSheet = getSheet("Welcome");
-  const settingsData = welcomeSheet.getRange(5, 1, 4, 2).getValues(); // Get settings from Welcome sheet (rows 5-8, columns 1-2)
+  const settingsData = welcomeSheet.getRange(5, 1, 3, 2).getValues(); // Get settings from Welcome sheet (rows 5-7, columns 1-2)
   console.log('🟦 Raw settingsData from Welcome sheet:', JSON.stringify(settingsData));
   const settings = { ...SETTINGS_DEFAULTS }; // Start with defaults
   
@@ -324,12 +268,6 @@ function loadSettings() {
     // Handle numeric settings
     if (key === "Low Balance Threshold") {
       settings[SETTINGS_KEYS.LOW_BALANCE_THRESHOLD] = parseInt(value) || 0;
-      continue;
-    }
-    
-    // Handle Firm Email setting - treat as text, not boolean
-    if (key === "Firm Email") {
-      settings[SETTINGS_KEYS.FIRM_EMAIL] = value;
       continue;
     }
     
@@ -517,7 +455,7 @@ function setupWelcomeSheet(ss) {
   // --- Preserve existing values in the Value column (column 2) for settings rows ---
   let preservedValues = [];
   try {
-    const maybeExisting = welcomeSheet.getRange(5, 1, 4, 2).getValues();
+    const maybeExisting = welcomeSheet.getRange(5, 1, 3, 2).getValues();
     preservedValues = maybeExisting.map(row => row[1]);
   } catch (e) {
     preservedValues = [];
@@ -557,7 +495,6 @@ function setupWelcomeSheet(ss) {
     ["Blawby Payment URL", preservedValues[0] || "https://app.blawby.com/pay", "Your Blawby payment page URL", ""],
     ["Default Currency", preservedValues[1] || "USD", "Default currency for all payments", ""],
     ["Low Balance Threshold", preservedValues[2] || "500", "Target balance amount for all clients", ""],
-    ["Firm Email", preservedValues[3] || ownerEmail, "Email address for daily digest and notifications", ""],
     ["", "", "", ""],
     ["👩‍⚖️ Lawyers", "", "", ""],
     ["Email", "Name", "Rate", "Lawyer ID"],
@@ -577,24 +514,8 @@ function setupWelcomeSheet(ss) {
   if (preservedValues.length > 0) {
     for (let i = 0; i < preservedValues.length; i++) {
       if (preservedValues[i] !== "" && preservedValues[i] !== undefined && preservedValues[i] !== null) {
-        // Special handling for Firm Email field (index 3)
-        if (i === 3) { // Firm Email is the 4th setting (index 3)
-          const preservedEmail = preservedValues[i];
-          // If the preserved value is a boolean or invalid, use the detected email
-          if (preservedEmail === true || preservedEmail === false || 
-              preservedEmail === "TRUE" || preservedEmail === "FALSE" ||
-              !preservedEmail.includes('@') || preservedEmail === 'your-email@example.com') {
-            welcomeSheet.getRange(5 + i, 2).setValue(ownerEmail);
-            log(`📧 Replaced invalid Firm Email value "${preservedEmail}" with detected email: ${ownerEmail}`);
-          } else {
-            // Valid email, keep it
-            welcomeSheet.getRange(5 + i, 2).setValue(preservedValues[i]);
-            log(`📧 Preserved valid Firm Email: ${preservedEmail}`);
-          }
-        } else {
-          // For all other settings, preserve the value as-is
-          welcomeSheet.getRange(5 + i, 2).setValue(preservedValues[i]);
-        }
+        // For all settings, preserve the value as-is
+        welcomeSheet.getRange(5 + i, 2).setValue(preservedValues[i]);
       }
     }
   }

@@ -181,31 +181,8 @@ function processClientBalances(clientsById, data, lawyerData, today) {
         `Needs top-up of $${topUp.toFixed(2)}`
       ]);
 
-      // Send email if not already sent today
-      log(`📧 Attempting to send low balance email for ${clientName}...`);
-      const emailSent = sendLowBalanceEmail(
-        clientID, 
-        email, 
-        clientName, 
-        balance, 
-        targetBalance, 
-        paymentLink, 
-        balanceInfo.lastLawyerID, 
-        lawyerData.emails, 
-        today
-      );
-
-      if (emailSent) {
-        emailsSent++;
-        log(`✅ Low balance email sent successfully for ${clientName}`);
-      } else {
-        // Check if live emails are disabled to provide better messaging
-        if (!isLiveEmailsEnabled()) {
-          log(`🔒 Low balance email not sent for ${clientName} (live emails disabled)`);
-        } else {
-          log(`❌ Low balance email was not sent for ${clientName} (likely already sent today)`);
-        }
-      }
+      // Note: Low balance emails are now sent manually via daily digest action buttons
+      log(`📧 Low balance email will be available in daily digest for ${clientName}`);
     } else {
       log(`✅ Balance OK for ${clientName}: $${balance.toFixed(2)} (target: $${targetBalance.toFixed(2)})`);
     }

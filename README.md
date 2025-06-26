@@ -77,7 +77,7 @@ All emails are sent via Gmail API:
 * **Daily firm summary** with client status
 * **Test emails** via "Send Test Emails" menu (sends one of each email type)
 
-> 💡 **Safe Mode**: "Activate Live Emails" is disabled by default to prevent accidental emails to clients. Enable it in the Welcome sheet when ready to send real emails.
+> 💡 **Safe Mode**: By default, **Activate Live Emails** is set to `FALSE` to prevent accidental emails to clients. Enable it in the Welcome sheet when ready to send real emails. This is the **only setting** that controls all email automation.
 
 ---
 
@@ -86,7 +86,7 @@ All emails are sent via Gmail API:
 * ⚖️ IOLTA trust compliance tracking
 * 🔁 Auto-matter and client creation
 * 📬 Automatic Gmail payment processing
-* 📧 Email automation via Gmail APIhttps://blawby.com/docs/email-system
+* 📧 Email automation via Gmail API
 * 🧾 HTML invoices and notifications
 
 ---
@@ -99,6 +99,7 @@ All emails are sent via Gmail API:
 * ✅ **Email automation built-in**
 * ✅ **No external platforms needed** – works in your Google Workspace
 * ✅ **Secure** – all data stays in your account
+* ✅ **Simplified setup** – only one toggle for email automation
 
 ---
 

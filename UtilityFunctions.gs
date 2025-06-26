@@ -32,11 +32,6 @@ function getSetting(key, defaultValue = null) {
   const configMap = getConfigMap();
   const value = configMap[key];
   
-  // Handle boolean settings
-  if (key === "Email Notifications" || key === "Activate Live Emails") {
-    return value === true || value === "TRUE" || value === "true";
-  }
-  
   // Handle numeric settings
   if (key === "Low Balance Threshold") {
     return parseInt(value) || defaultValue || 0;
@@ -51,14 +46,6 @@ function getSetting(key, defaultValue = null) {
   }
   
   return value !== undefined ? value : defaultValue;
-}
-
-/**
- * Check if live emails to clients are enabled
- * @return {boolean} - True if live emails are enabled, false for safe mode
- */
-function isLiveEmailsEnabled() {
-  return getSetting(SETTINGS_KEYS.ACTIVATE_LIVE_EMAILS, false);
 }
 
 /**
@@ -334,11 +321,6 @@ function loadSettings() {
       continue;
     }
     
-    // Handle boolean settings
-    if (key === "Activate Live Emails") {
-      settings[SETTINGS_KEYS.ACTIVATE_LIVE_EMAILS] = value.toString().toLowerCase() === 'true';
-    }
-    
     // Handle numeric settings
     if (key === "Low Balance Threshold") {
       settings[SETTINGS_KEYS.LOW_BALANCE_THRESHOLD] = parseInt(value) || 0;
@@ -535,7 +517,7 @@ function setupWelcomeSheet(ss) {
   // --- Preserve existing values in the Value column (column 2) for settings rows ---
   let preservedValues = [];
   try {
-    const maybeExisting = welcomeSheet.getRange(5, 1, 5, 2).getValues();
+    const maybeExisting = welcomeSheet.getRange(5, 1, 4, 2).getValues();
     preservedValues = maybeExisting.map(row => row[1]);
   } catch (e) {
     preservedValues = [];
@@ -576,7 +558,6 @@ function setupWelcomeSheet(ss) {
     ["Default Currency", preservedValues[1] || "USD", "Default currency for all payments", ""],
     ["Low Balance Threshold", preservedValues[2] || "500", "Target balance amount for all clients", ""],
     ["Firm Email", preservedValues[3] || ownerEmail, "Email address for system notifications", ""],
-    ["Activate Live Emails", preservedValues[4] || "FALSE", "Send real emails to clients (FALSE = safe mode)", ""],
     ["", "", "", ""],
     ["👩‍⚖️ Lawyers", "", "", ""],
     ["Email", "Name", "Rate", "Lawyer ID"],

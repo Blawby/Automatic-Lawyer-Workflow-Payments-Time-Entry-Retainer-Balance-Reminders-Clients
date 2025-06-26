@@ -64,14 +64,12 @@ const SETTINGS_KEYS = {
   BASE_PAYMENT_URL: "Blawby Payment URL",
   DEFAULT_CURRENCY: "Default Currency",
   LOW_BALANCE_THRESHOLD: "Low Balance Threshold",
-  FIRM_EMAIL: "Firm Email",
-  ACTIVATE_LIVE_EMAILS: "Activate Live Emails"
+  FIRM_EMAIL: "Firm Email"
 };
 
 const SETTINGS_DEFAULTS = {
   [SETTINGS_KEYS.BASE_PAYMENT_URL]: "https://app.blawby.com/pay",
   [SETTINGS_KEYS.DEFAULT_CURRENCY]: "USD",
   [SETTINGS_KEYS.LOW_BALANCE_THRESHOLD]: "500",
-  [SETTINGS_KEYS.FIRM_EMAIL]: "your-email@example.com",
-  [SETTINGS_KEYS.ACTIVATE_LIVE_EMAILS]: "false"
+  [SETTINGS_KEYS.FIRM_EMAIL]: "your-email@example.com"
 }; 

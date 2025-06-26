@@ -840,7 +840,7 @@ function onOpen(e) {
   ui.createMenu('Blawby')
     .addItem('🔧 Setup System', 'setupSystem')
     .addItem('🔍 Validate Configuration', 'validateConfiguration')
-    .addItem('📧 Send Test Emails', 'sendTestEmail')
+    .addItem('📊 Send Daily Digest', 'sendDailyBalanceDigest')
     .addSeparator()
     .addItem('🔄 Daily Sync', 'userDailySync')
     .addItem('📧 Process Gmail Payments', 'processGmailPayments')
@@ -852,138 +852,10 @@ function onOpen(e) {
 }
 
 /**
- * Send comprehensive test emails to validate email configuration
- * Sends one of each email type for testing purposes
- */
-function sendTestEmail() {
-  logStart('sendTestEmail');
-  
-  try {
-    const firmEmail = getFirmEmail();
-    
-    if (!firmEmail || !firmEmail.includes('@') || firmEmail === 'your-email@example.com') {
-      const ui = SpreadsheetApp.getUi();
-      ui.alert(
-        '⚠️ Email Configuration Required',
-        'Your firm email is not properly configured.\n\n' +
-        'Please go to the Welcome sheet and update the "Firm Email" setting with your actual email address.',
-        ui.ButtonSet.OK
-      );
-      return;
-    }
-    
-    // Send test emails for each type
-    let emailsSent = 0;
-    
-    // 1. Basic test email
-    const basicSubject = '🧪 Blawby Email Test - Basic';
-    const basicBody = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #4285f4;">🎉 Blawby Email System Test</h2>
-        <p>This is a basic test email to confirm your email configuration is working correctly.</p>
-        <p><strong>Firm Email:</strong> ${firmEmail}</p>
-        <p><strong>Test Date:</strong> ${new Date().toLocaleDateString()}</p>
-        <p><strong>Test Time:</strong> ${new Date().toLocaleTimeString()}</p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-        <p style="color: #666; font-size: 12px;">
-          ✅ If you received this email, your Blawby email system is working perfectly!
-        </p>
-      </div>
-    `;
-    
-    sendEmail(firmEmail, basicSubject, basicBody, { isHtml: true });
-    emailsSent++;
-    
-    // 2. Low balance email test
-    const lowBalanceSubject = renderTemplate('LOW_BALANCE', 'CLIENT_SUBJECT', 'Test Client');
-    const lowBalanceBody = renderTemplate('LOW_BALANCE', 'CLIENT_BODY', 'Test Client', 150.00, 500.00, 'https://app.blawby.com/test/pay?amount=35000');
-    
-    sendEmail(firmEmail, `🧪 ${lowBalanceSubject}`, lowBalanceBody, { isHtml: true });
-    emailsSent++;
-    
-    // 3. Service resumed email test
-    const serviceResumedSubject = renderTemplate('SERVICE_RESUMED', 'CLIENT_SUBJECT');
-    const serviceResumedBody = renderTemplate('SERVICE_RESUMED', 'CLIENT_BODY', 'Test Client');
-    
-    sendEmail(firmEmail, `🧪 ${serviceResumedSubject}`, serviceResumedBody, { isHtml: true });
-    emailsSent++;
-    
-    // 4. Daily digest email test
-    const testLowBalanceClients = [
-      {
-        name: 'Test Client 1',
-        balance: 150.00,
-        targetBalance: 500.00,
-        lastActivity: '2024-01-15',
-        emailSent: true
-      },
-      {
-        name: 'Test Client 2',
-        balance: 0.00,
-        targetBalance: 1000.00,
-        lastActivity: '2024-01-10',
-        emailSent: false
-      }
-    ];
-    
-    const testPaymentSummary = {
-      total: 2500.00,
-      count: 3
-    };
-    
-    const dailyDigestSubject = renderTemplate('DAILY_DIGEST', 'SUBJECT');
-    const dailyDigestBody = renderTemplate('DAILY_DIGEST', 'BODY', testLowBalanceClients, testPaymentSummary);
-    
-    sendEmail(firmEmail, `🧪 ${dailyDigestSubject}`, dailyDigestBody, { isHtml: true });
-    emailsSent++;
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      '✅ Test Emails Sent Successfully',
-      `${emailsSent} test emails have been sent to:\n\n${firmEmail}\n\n` +
-      '📧 Email types sent:\n' +
-      '• Basic email test\n' +
-      '• Low balance warning\n' +
-      '• Service resumed notification\n' +
-      '• Daily balance digest\n\n' +
-      'Please check your inbox (and spam folder) to confirm all emails were received.\n\n' +
-      '💡 If you received all emails, your Blawby system is properly configured!',
-      SpreadsheetApp.getUi().ButtonSet.OK
-    );
-    
-    log(`✅ ${emailsSent} test emails sent successfully to ${firmEmail}`);
-  } catch (error) {
-    logError('sendTestEmail', error);
-    
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      '❌ Test Email Failed',
-      `Failed to send test emails:\n\n${error.message}\n\n` +
-      'Please check your email configuration in the Welcome sheet.',
-      SpreadsheetApp.getUi().ButtonSet.OK
-    );
-  }
-  
-  logEnd('sendTestEmail');
-}
-
-/**
  * Manually triggers the daily sync process.
- * Only works when Test Mode is enabled.
  */
 function manualDailySync() {
   console.log('🔍 Starting manualDailySync...');
-  
-  if (!isLiveEmailsEnabled()) {
-    console.log('❌ Live emails are disabled, showing alert...');
-    const ui = SpreadsheetApp.getUi();
-    const response = ui.alert(
-      'Live Emails Disabled',
-      'Please enable "Activate Live Emails" in the Welcome sheet before running manual sync.',
-      SpreadsheetApp.getUi().ButtonSet.OK
-    );
-    return;
-  }
   
   console.log('🔄 Starting manual daily sync...');
   
@@ -1010,11 +882,11 @@ function manualDailySync() {
     ui.alert(
       'Sync Complete',
       `✅ The daily sync process has completed successfully!\n\n` +
-      `📧 Test emails have been sent to: ${firmEmail}\n\n` +
+      `📧 Daily digest has been sent to: ${firmEmail}\n\n` +
       `🔍 Check your inbox for:\n` +
-      `• Low balance warnings for sample clients\n` +
-      `• Daily balance digest\n` +
-      `• Service resumed notifications\n\n` +
+      `• Daily balance digest with action buttons\n` +
+      `• Low balance client summaries\n` +
+      `• Service resumed notifications (if any)\n\n` +
       `💡 If you don't see emails, check your spam folder or verify your email address in the Welcome sheet.`,
       ui.ButtonSet.OK
     );
@@ -1456,41 +1328,6 @@ function ensurePaymentsSheetHeader() {
     log('📝 Updating Payments sheet header to include Message-ID column');
     paymentsSheet.getRange(1, 1, 1, 6).setValues([expectedHeaders]);
     log('✅ Payments sheet header updated');
-  }
-}
-
-function checkEmailQuotaStatus() {
-  try {
-    const quota = checkEmailQuota();
-    const ui = SpreadsheetApp.getUi();
-    
-    let message = `📧 Gmail API Email Quota Status:\n\n`;
-    message += `Remaining emails: ${quota.remaining}/${quota.total}\n`;
-    message += `Used today: ${quota.used}/${quota.total} (${quota.percentageUsed.toFixed(1)}%)\n\n`;
-    
-    if (quota.canSend) {
-      if (quota.isNearLimit) {
-        message += `⚠️ WARNING: You're near the daily limit!\n`;
-        message += `Consider reducing email frequency or contact support.`;
-      } else {
-        message += `✅ You can still send emails today.\n`;
-        message += `🚀 Gmail API allows up to 1M emails/day!`;
-      }
-    } else {
-      message += `❌ Daily quota exceeded!\n`;
-      message += `No more emails can be sent until tomorrow.`;
-    }
-    
-    message += `\n\n💡 Gmail API vs MailApp:\n`;
-    message += `• Gmail API: 1,000,000 emails/day\n`;
-    message += `• MailApp: 100 emails/day\n`;
-    message += `• You're using Gmail API (much better!)`;
-    
-    ui.alert('Gmail API Email Quota Status', message, ui.ButtonSet.OK);
-  } catch (error) {
-    logError('checkEmailQuotaStatus', error);
-    const ui = SpreadsheetApp.getUi();
-    ui.alert('Error', `Failed to check email quota: ${error.message}`, ui.ButtonSet.OK);
   }
 }
 

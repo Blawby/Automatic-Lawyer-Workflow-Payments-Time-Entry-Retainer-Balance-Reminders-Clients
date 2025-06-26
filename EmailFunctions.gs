@@ -1624,11 +1624,19 @@ function submitAssignment(matterID, lawyerID, notes, e) {
     const matter = data.matters.find(m => m && Array.isArray(m) && m[0] === matterID);
     const clientName = matter ? matter[2] : '';
     const matterDesc = matter ? matter[3] : '';
+    const practiceArea = matter && matter[7] ? matter[7] : 'General';
     const subject = `New Matter Assigned: ${matterDesc}`;
+    
+    // Generate time entry URL
+    const timeEntryUrl = generateAddTimeEntryUrl(matterID, lawyerID);
+    
     let emailBody = `You have been assigned a new matter.\n\n`;
-    emailBody += `Matter: ${matterDesc}\nClient: ${clientName}\nMatter ID: ${matterID}\n`;
+    emailBody += `Matter: ${matterDesc}\nClient: ${clientName}\nMatter ID: ${matterID}\nPractice Area: ${practiceArea}\n`;
     if (notes) emailBody += `\nNotes: ${notes}\n`;
-    emailBody += `\nPlease log in to Blawby to review and begin work.`;
+    emailBody += `\nTo begin work on this matter, please enter your time using the link below:\n`;
+    emailBody += `${timeEntryUrl}\n\n`;
+    emailBody += `You can also access this matter through the daily digest emails for quick time entry.`;
+    
     if (lawyerEmail) {
       MailApp.sendEmail({
         to: lawyerEmail,

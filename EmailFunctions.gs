@@ -460,29 +460,11 @@ function sendLowBalanceEmailManual(clientID) {
     const topUp = Math.max(0, targetBalance - balance);
     const paymentLink = `${getSetting(SETTINGS_KEYS.BASE_PAYMENT_URL)}?amount=${Math.round(topUp * 100)}`;
     
-    // Check if email already sent today
-    const props = PropertiesService.getScriptProperties();
-    const today = new Date().toISOString().split('T')[0];
-    const emailKey = `low_balance_${clientID}_${today}`;
-    
-    if (props.getProperty(emailKey)) {
-      return HtmlService.createHtmlOutput(`
-        <div style="font-family: Arial, sans-serif; padding: 20px;">
-          <h2>Email Already Sent</h2>
-          <p>Low balance email for ${clientName} was already sent today.</p>
-          <a href="javascript:window.close()">Close</a>
-        </div>
-      `);
-    }
-    
     // Send email
     const subject = renderTemplate('LOW_BALANCE', 'CLIENT_SUBJECT', clientName);
     const body = renderTemplate('LOW_BALANCE', 'CLIENT_BODY', clientName, balance, targetBalance, paymentLink);
     
     sendEmail(email, subject, body, { isHtml: true });
-    
-    // Mark as sent
-    props.setProperty(emailKey, "1");
     
     log(`✅ Low balance email sent manually to ${clientName} (${email})`);
     
@@ -543,23 +525,11 @@ function sendAllLowBalanceEmailsManual(clientIDs) {
         const topUp = Math.max(0, targetBalance - balance);
         const paymentLink = `${getSetting(SETTINGS_KEYS.BASE_PAYMENT_URL)}?amount=${Math.round(topUp * 100)}`;
         
-        // Check if email already sent today
-        const props = PropertiesService.getScriptProperties();
-        const today = new Date().toISOString().split('T')[0];
-        const emailKey = `low_balance_${clientID}_${today}`;
-        
-        if (props.getProperty(emailKey)) {
-          continue; // Skip if already sent
-        }
-        
         // Send email
         const subject = renderTemplate('LOW_BALANCE', 'CLIENT_SUBJECT', clientName);
         const body = renderTemplate('LOW_BALANCE', 'CLIENT_BODY', clientName, balance, targetBalance, paymentLink);
         
         sendEmail(email, subject, body, { isHtml: true });
-        
-        // Mark as sent
-        props.setProperty(emailKey, "1");
         
         sentCount++;
         log(`✅ Low balance email sent to ${clientName} (${email})`);

@@ -33,7 +33,7 @@ function getSetting(key, defaultValue = null) {
   const value = configMap[key];
   
   // Handle boolean settings
-  if (key === "Email Notifications" || key === "Test Mode") {
+  if (key === "Email Notifications" || key === "Activate Live Emails") {
     return value === true || value === "TRUE" || value === "true";
   }
   
@@ -54,11 +54,11 @@ function getSetting(key, defaultValue = null) {
 }
 
 /**
- * Check if the system is in test mode
- * @return {boolean} - True if test mode is enabled
+ * Check if live emails to clients are enabled
+ * @return {boolean} - True if live emails are enabled, false for safe mode
  */
-function isTestMode() {
-  return getSetting("Test Mode", false);
+function isLiveEmailsEnabled() {
+  return getSetting(SETTINGS_KEYS.ACTIVATE_LIVE_EMAILS, false);
 }
 
 /**
@@ -335,9 +335,8 @@ function loadSettings() {
     }
     
     // Handle boolean settings
-    if (key === "Email Notifications" || key === "Test Mode") {
-      settings[key === "Email Notifications" ? SETTINGS_KEYS.EMAIL_NOTIFICATIONS : SETTINGS_KEYS.TEST_MODE] = value.toString().toLowerCase() === 'true';
-      continue;
+    if (key === "Activate Live Emails") {
+      settings[SETTINGS_KEYS.ACTIVATE_LIVE_EMAILS] = value.toString().toLowerCase() === 'true';
     }
     
     // Handle numeric settings
@@ -464,9 +463,6 @@ function setupPaymentsSheet(sheet) {
     "Message-ID"
   ];
   setupSheet(sheet, headers);
-  
-  // Add note to explain the sheet purpose
-  sheet.getRange(1, 1).setNote("Add your payment data below. Payments are automatically processed from Gmail or can be added manually.");
 }
 
 function setupClientsSheet(sheet) {
@@ -483,9 +479,6 @@ function setupClientsSheet(sheet) {
     "Client ID"
   ];
   setupSheet(sheet, headers);
-  
-  // Add note to explain the sheet purpose
-  sheet.getRange(1, 1).setNote("This sheet is automatically updated when payments and time logs are processed. Client names can be filled in manually.");
 }
 
 function setupTimeLogsSheet(sheet) {
@@ -497,9 +490,6 @@ function setupTimeLogsSheet(sheet) {
     "Hours"
   ];
   setupSheet(sheet, headers);
-  
-  // Add note to explain the sheet purpose
-  sheet.getRange(1, 1).setNote("Add your time log entries below. Lawyer IDs must match those in the Welcome sheet. Matter IDs should match those in the Matters sheet.");
 }
 
 function setupLowBalanceSheet(sheet) {
@@ -510,9 +500,6 @@ function setupLowBalanceSheet(sheet) {
     "Warning"
   ];
   setupSheet(sheet, headers);
-  
-  // Add note to explain the sheet purpose
-  sheet.getRange(1, 1).setNote("This sheet shows clients with low balances. It's automatically updated during daily sync.");
 }
 
 function setupMattersSheet(sheet) {
@@ -526,9 +513,6 @@ function setupMattersSheet(sheet) {
     "Case Value"
   ];
   setupSheet(sheet, headers);
-  
-  // Add note to explain the sheet purpose
-  sheet.getRange(1, 1).setNote("Add your matters below. New clients will automatically get a default matter created. Matter IDs should match those in TimeLogs.");
 }
 
 function setupSheet(sheet, headers) {
@@ -538,48 +522,11 @@ function setupSheet(sheet, headers) {
   // Add headers
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   
-  // Format headers
-  const headerRange = sheet.getRange(1, 1, 1, headers.length);
-  headerRange.setBackground('#f3f3f3')
-             .setFontWeight('bold')
-             .setHorizontalAlignment('center');
-  
   // Auto-resize columns
   sheet.autoResizeColumns(1, headers.length);
   
   // Freeze header row
   sheet.setFrozenRows(1);
-  
-  // Get the actual number of rows (including header)
-  const numRows = sheet.getLastRow();
-  const numCols = headers.length;
-  
-  // Format header borders
-  headerRange.setBorder(true, true, true, true, true, true);
-  
-  // Only format data rows if they exist
-  if (numRows > 1) {
-    const dataRange = sheet.getRange(2, 1, numRows - 1, numCols);
-    
-    // Add borders to data rows
-    dataRange.setBorder(true, true, true, true, true, true);
-    
-    // Apply alternating colors to data rows
-    dataRange.applyRowBanding();
-    
-    // Format date and currency columns
-    headers.forEach((header, index) => {
-      const col = index + 1;
-      if (header.toLowerCase().includes('date')) {
-        sheet.getRange(2, col, numRows - 1, 1).setNumberFormat('yyyy-mm-dd');
-      } else if (header.toLowerCase().includes('amount') || 
-                 header.toLowerCase().includes('balance') || 
-                 header.toLowerCase().includes('rate') || 
-                 header.toLowerCase().includes('total')) {
-        sheet.getRange(2, col, numRows - 1, 1).setNumberFormat('$#,##0.00');
-      }
-    });
-  }
 }
 
 function setupWelcomeSheet(ss) {
@@ -588,7 +535,7 @@ function setupWelcomeSheet(ss) {
   // --- Preserve existing values in the Value column (column 2) for settings rows ---
   let preservedValues = [];
   try {
-    const maybeExisting = welcomeSheet.getRange(5, 1, 6, 2).getValues();
+    const maybeExisting = welcomeSheet.getRange(5, 1, 5, 2).getValues();
     preservedValues = maybeExisting.map(row => row[1]);
   } catch (e) {
     preservedValues = [];
@@ -628,9 +575,8 @@ function setupWelcomeSheet(ss) {
     ["Blawby Payment URL", preservedValues[0] || "https://app.blawby.com/pay", "Your Blawby payment page URL", ""],
     ["Default Currency", preservedValues[1] || "USD", "Default currency for all payments", ""],
     ["Low Balance Threshold", preservedValues[2] || "500", "Target balance amount for all clients", ""],
-    ["Email Notifications", preservedValues[3] || "TRUE", "Send email notifications", ""],
-    ["Firm Email", preservedValues[4] || ownerEmail, "Email address for system notifications", ""],
-    ["Test Mode", preservedValues[5] || "FALSE", "Enable test mode for safe testing", ""],
+    ["Firm Email", preservedValues[3] || ownerEmail, "Email address for system notifications", ""],
+    ["Activate Live Emails", preservedValues[4] || "FALSE", "Send real emails to clients (FALSE = safe mode)", ""],
     ["", "", "", ""],
     ["👩‍⚖️ Lawyers", "", "", ""],
     ["Email", "Name", "Rate", "Lawyer ID"],
@@ -650,8 +596,8 @@ function setupWelcomeSheet(ss) {
   if (preservedValues.length > 0) {
     for (let i = 0; i < preservedValues.length; i++) {
       if (preservedValues[i] !== "" && preservedValues[i] !== undefined && preservedValues[i] !== null) {
-        // Special handling for Firm Email field (index 4)
-        if (i === 4) { // Firm Email is the 5th setting (index 4)
+        // Special handling for Firm Email field (index 3)
+        if (i === 3) { // Firm Email is the 4th setting (index 3)
           const preservedEmail = preservedValues[i];
           // If the preserved value is a boolean or invalid, use the detected email
           if (preservedEmail === true || preservedEmail === false || 
@@ -661,7 +607,7 @@ function setupWelcomeSheet(ss) {
             log(`📧 Replaced invalid Firm Email value "${preservedEmail}" with detected email: ${ownerEmail}`);
           } else {
             // Valid email, keep it
-            welcomeSheet.getRange(5 + i, 2).setValue(preservedEmail);
+            welcomeSheet.getRange(5 + i, 2).setValue(preservedValues[i]);
             log(`📧 Preserved valid Firm Email: ${preservedEmail}`);
           }
         } else {
@@ -681,47 +627,6 @@ function setupWelcomeSheet(ss) {
       }
     }
   }
-  
-  // Format the sheet
-  const headerRange = welcomeSheet.getRange(1, 1, 1, 4);
-  headerRange.setFontSize(16)
-             .setFontWeight("bold")
-             .setBackground("#4285f4")
-             .setFontColor("white")
-             .setHorizontalAlignment("center")
-             .merge();
-  
-  // Format section headers
-  const sectionHeaders = [3, 11];
-  sectionHeaders.forEach(row => {
-    welcomeSheet.getRange(row, 1, 1, 4)
-                .setFontWeight("bold")
-                .setBackground("#f3f3f3")
-                .setFontSize(14)
-                .merge();
-  });
-  
-  // Format settings table
-  const settingsRange = welcomeSheet.getRange(4, 1, 7, 4);
-  settingsRange.setBorder(true, true, true, true, true, true)
-               .setHorizontalAlignment("left");
-
-  // Format lawyers table
-  const lawyersRange = welcomeSheet.getRange(12, 1, 8, 4);
-  lawyersRange.setBorder(true, true, true, true, true, true)
-               .setHorizontalAlignment("left");
-  
-  // Auto-resize columns
-  welcomeSheet.autoResizeColumns(1, 4);
-  
-  // Freeze header row
-  welcomeSheet.setFrozenRows(1);
-  
-  // Set column widths
-  welcomeSheet.setColumnWidth(1, 200);
-  welcomeSheet.setColumnWidth(2, 200);
-  welcomeSheet.setColumnWidth(3, 300);
-  welcomeSheet.setColumnWidth(4, 150);
 }
 
 function getLawyersFromWelcomeSheet(welcomeSheet) {

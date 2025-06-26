@@ -63,21 +63,15 @@ const SETTINGS_COLUMNS = {
 const SETTINGS_KEYS = {
   BASE_PAYMENT_URL: "Blawby Payment URL",
   DEFAULT_CURRENCY: "Default Currency",
-  TARGET_BALANCE_PERCENTAGE: "target_balance_percentage",
-  MIN_TARGET_BALANCE: "min_target_balance",
   LOW_BALANCE_THRESHOLD: "Low Balance Threshold",
-  EMAIL_NOTIFICATIONS: "Email Notifications",
-  TEST_MODE: "Test Mode",
-  FIRM_EMAIL: "Firm Email"
+  FIRM_EMAIL: "Firm Email",
+  ACTIVATE_LIVE_EMAILS: "Activate Live Emails"
 };
 
-const DEFAULT_SETTINGS = {
-  [SETTINGS_KEYS.BASE_PAYMENT_URL]: "https://app.blawby.com/northcarolinalegalservices/pay",
+const SETTINGS_DEFAULTS = {
+  [SETTINGS_KEYS.BASE_PAYMENT_URL]: "https://app.blawby.com/pay",
   [SETTINGS_KEYS.DEFAULT_CURRENCY]: "USD",
-  [SETTINGS_KEYS.TARGET_BALANCE_PERCENTAGE]: "10",
-  [SETTINGS_KEYS.MIN_TARGET_BALANCE]: "500",
-  [SETTINGS_KEYS.LOW_BALANCE_THRESHOLD]: "1000",
-  [SETTINGS_KEYS.EMAIL_NOTIFICATIONS]: "true",
-  [SETTINGS_KEYS.TEST_MODE]: "false",
-  [SETTINGS_KEYS.FIRM_EMAIL]: "admin@blawby.com"
+  [SETTINGS_KEYS.LOW_BALANCE_THRESHOLD]: "500",
+  [SETTINGS_KEYS.FIRM_EMAIL]: "your-email@example.com",
+  [SETTINGS_KEYS.ACTIVATE_LIVE_EMAILS]: "false"
 }; 

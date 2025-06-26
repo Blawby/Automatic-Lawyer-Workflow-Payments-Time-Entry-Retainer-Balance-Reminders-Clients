@@ -338,6 +338,13 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
 function sendDailyBalanceDigest() {
   logStart('sendDailyBalanceDigest');
   try {
+    // Check if live emails are enabled
+    if (!isLiveEmailsEnabled()) {
+      log(`🔒 Live emails disabled - skipping daily digest email`);
+      logEnd('sendDailyBalanceDigest');
+      return;
+    }
+    
     // Check email quota first
     const quota = checkEmailQuota();
     if (!quota.canSend) {

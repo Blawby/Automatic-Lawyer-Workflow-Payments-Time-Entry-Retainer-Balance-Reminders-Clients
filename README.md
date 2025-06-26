@@ -77,7 +77,7 @@ All emails are sent via Gmail API:
 * **Daily firm summary** with client status
 * **Test emails** via "Send Test Emails" menu (sends one of each email type)
 
-> 💡 **Test Mode**: Disabled by default to prevent email spam. Use "📧 Send Test Emails" from the Blawby menu to test all email types at once.
+> 💡 **Safe Mode**: "Activate Live Emails" is disabled by default to prevent accidental emails to clients. Enable it in the Welcome sheet when ready to send real emails.
 
 ---
 

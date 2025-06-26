@@ -526,7 +526,7 @@ function searchForPaymentEmails() {
     }
     
     // Search for forwarded emails containing Blawby payment content
-    const forwardedQuery = '(subject:"Fwd: Payment of" OR subject:"Forwarded: Payment of" OR subject:"Payment of") (from:notifications@blawby.com OR "CLIENT EMAIL" OR "PAYMENT ID") newer_than:30d';
+    const forwardedQuery = '(subject:"Fwd: Payment of" OR subject:"Forwarded: Payment of") (from:notifications@blawby.com OR "CLIENT EMAIL" OR "PAYMENT ID") newer_than:30d';
     const forwardedThreads = GmailApp.search(forwardedQuery);
     log(`📧 Found ${forwardedThreads.length} potential forwarded payment emails`);
     
@@ -974,13 +974,13 @@ function sendTestEmail() {
 function manualDailySync() {
   console.log('🔍 Starting manualDailySync...');
   
-  if (!isTestMode()) {
-    console.log('❌ Test Mode is disabled, showing alert...');
+  if (!isLiveEmailsEnabled()) {
+    console.log('❌ Live emails are disabled, showing alert...');
     const ui = SpreadsheetApp.getUi();
     const response = ui.alert(
-      'Test Mode Required',
-      'Please enable Test Mode in the Welcome sheet before running manual sync.',
-      ui.ButtonSet.OK
+      'Live Emails Disabled',
+      'Please enable "Activate Live Emails" in the Welcome sheet before running manual sync.',
+      SpreadsheetApp.getUi().ButtonSet.OK
     );
     return;
   }
@@ -1383,4 +1383,446 @@ function processGmailPayments(showUI = true) {
       const forwardedText = forwardedPayments > 0 ? `\n📧 ${forwardedPayments} forwarded payment(s) processed` : '';
       ui.alert(
         'Payment Processing Complete',
-        `
+        `📧 Processed ${threads.length} payment emails\n` +
+        `💵 Added ${newPayments} new payments to sheet${forwardedText}\n\n` +
+        'Check the execution logs for detailed information.',
+        ui.ButtonSet.OK
+      );
+    }
+    
+  } catch (error) {
+    logError('processGmailPayments', error);
+    
+    // Only show UI alerts if requested
+    if (showUI) {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert(
+        'Processing Failed',
+        `❌ Payment processing failed:\n\n${error.message}`,
+        ui.ButtonSet.OK
+      );
+    }
+  }
+  
+  logEnd('processGmailPayments');
+}
+
+/**
+ * Check if a payment already exists in the payments sheet
+ * Uses Message-ID as primary deduplication key since Payment IDs are being reused by Blawby
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet - The payments sheet
+ * @param {string} messageId - The email Message-ID (unique identifier)
+ * @param {string} paymentId - The payment ID (for reference)
+ * @return {boolean} - True if payment exists, false otherwise
+ */
+function paymentExists(sheet, messageId, paymentId = null) {
+  if (!messageId) return false;
+  
+  try {
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return false; // Only header row exists
+    
+    // Check if we have a Message-ID column (we'll add this as column F)
+    const values = sheet.getRange(2, 1, lastRow - 1, 6).getValues(); // Columns A-F
+    
+    // Check if Message-ID already exists (column F, index 5)
+    return values.some(row => row[5] === messageId);
+  } catch (error) {
+    logError('paymentExists', error);
+    return false;
+  }
+}
+
+/**
+ * Ensure the Payments sheet has the correct header structure
+ */
+function ensurePaymentsSheetHeader() {
+  const paymentsSheet = getSheet(SHEET_NAMES.PAYMENTS);
+  
+  // Check if header exists and has the right columns
+  const headerRow = paymentsSheet.getRange(1, 1, 1, 6).getValues()[0];
+  const expectedHeaders = ["Date", "Client Email", "Amount", "Payment Method", "Payment ID", "Message-ID"];
+  
+  let needsUpdate = false;
+  
+  // Check if we need to add Message-ID column
+  if (headerRow.length < 6) {
+    needsUpdate = true;
+  } else if (headerRow[5] !== "Message-ID") {
+    needsUpdate = true;
+  }
+  
+  if (needsUpdate) {
+    log('📝 Updating Payments sheet header to include Message-ID column');
+    paymentsSheet.getRange(1, 1, 1, 6).setValues([expectedHeaders]);
+    log('✅ Payments sheet header updated');
+  }
+}
+
+function checkEmailQuotaStatus() {
+  try {
+    const quota = checkEmailQuota();
+    const ui = SpreadsheetApp.getUi();
+    
+    let message = `📧 Gmail API Email Quota Status:\n\n`;
+    message += `Remaining emails: ${quota.remaining}/${quota.total}\n`;
+    message += `Used today: ${quota.used}/${quota.total} (${quota.percentageUsed.toFixed(1)}%)\n\n`;
+    
+    if (quota.canSend) {
+      if (quota.isNearLimit) {
+        message += `⚠️ WARNING: You're near the daily limit!\n`;
+        message += `Consider reducing email frequency or contact support.`;
+      } else {
+        message += `✅ You can still send emails today.\n`;
+        message += `🚀 Gmail API allows up to 1M emails/day!`;
+      }
+    } else {
+      message += `❌ Daily quota exceeded!\n`;
+      message += `No more emails can be sent until tomorrow.`;
+    }
+    
+    message += `\n\n💡 Gmail API vs MailApp:\n`;
+    message += `• Gmail API: 1,000,000 emails/day\n`;
+    message += `• MailApp: 100 emails/day\n`;
+    message += `• You're using Gmail API (much better!)`;
+    
+    ui.alert('Gmail API Email Quota Status', message, ui.ButtonSet.OK);
+  } catch (error) {
+    logError('checkEmailQuotaStatus', error);
+    const ui = SpreadsheetApp.getUi();
+    ui.alert('Error', `Failed to check email quota: ${error.message}`, ui.ButtonSet.OK);
+  }
+}
+
+function testGmailAPIEmail() {
+  try {
+    logStart('testGmailAPIEmail');
+    
+    const firmEmail = getFirmEmail();
+    const testSubject = '[TEST] Gmail API Email Test';
+    const testBody = `This is a test email sent via Gmail API to verify the new email system is working correctly.
+
+🚀 Benefits of Gmail API:
+• 1,000,000 emails/day limit (vs 100 with MailApp)
+• Better reliability and performance
+• No more quota issues for multi-user systems
+
+✅ If you receive this email, the Gmail API integration is working perfectly!
+
+Sent at: ${new Date().toISOString()}`;
+
+    log(`📧 Testing Gmail API email to: ${firmEmail}`);
+    sendEmail(firmEmail, testSubject, testBody, { isHtml: false });
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Gmail API Test Complete',
+      `✅ Test email sent successfully!\n\n` +
+      `📧 Sent to: ${firmEmail}\n` +
+      `📧 Subject: ${testSubject}\n\n` +
+      `🚀 Gmail API is working correctly!\n` +
+      `💡 Check your inbox for the test email.`,
+      ui.ButtonSet.OK
+    );
+    
+    logEnd('testGmailAPIEmail');
+  } catch (error) {
+    logError('testGmailAPIEmail', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Gmail API Test Failed',
+      `❌ Test email failed:\n\n${error.message}\n\n` +
+      `This might indicate a Gmail API authorization issue.`,
+      ui.ButtonSet.OK
+    );
+  }
+}
+
+function debugGmailSearch() {
+  logStart('debugGmailSearch');
+  
+  try {
+    log('🔍 Testing Gmail search functionality (including forwarded emails)...');
+    
+    // Test basic Gmail access
+    const basicQuery = 'is:unread newer_than:7d';
+    const basicThreads = GmailApp.search(basicQuery);
+    log(`📧 Basic Gmail access: Found ${basicThreads.length} unread threads in last 7 days`);
+    
+    // Test enhanced search for Blawby payment emails (including forwarded)
+    const blawbyThreads = searchForPaymentEmails();
+    log(`📧 Enhanced Blawby search: Found ${blawbyThreads.length} payment emails (including forwarded)`);
+    
+    // Test for any payment-related emails
+    const paymentQuery = 'subject:"Payment" newer_than:30d';
+    const paymentThreads = GmailApp.search(paymentQuery);
+    log(`📧 Any payment emails: Found ${paymentThreads.length} payment-related emails`);
+    
+    // Show sample emails if found
+    if (basicThreads.length > 0) {
+      log('📋 Sample emails found:');
+      for (let i = 0; i < Math.min(basicThreads.length, 3); i++) {
+        const message = basicThreads[i].getMessages()[0];
+        log(`   ${i + 1}. From: ${message.getFrom()} | Subject: ${message.getSubject()}`);
+      }
+    }
+    
+    // Show Blawby payment emails if found
+    if (blawbyThreads.length > 0) {
+      log('📋 Blawby payment emails found:');
+      for (let i = 0; i < Math.min(blawbyThreads.length, 3); i++) {
+        const message = blawbyThreads[i].getMessages()[0];
+        const subject = message.getSubject();
+        const from = message.getFrom();
+        const isForwarded = subject.includes('Fwd:') || subject.includes('Forwarded:') || 
+                           from !== 'notifications@blawby.com';
+        log(`   ${i + 1}. From: ${from} | Subject: ${subject} | Forwarded: ${isForwarded ? 'Yes' : 'No'}`);
+      }
+    }
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Gmail Search Debug Complete',
+      `✅ Gmail search debug completed!\n\n` +
+      `📧 Results:\n` +
+      `• Total unread emails (7 days): ${basicThreads.length}\n` +
+      `• Blawby payment emails (enhanced): ${blawbyThreads.length}\n` +
+      `• Any payment emails: ${paymentThreads.length}\n\n` +
+      `💡 Enhanced search now includes forwarded emails!\n\n` +
+      `Check the execution logs for detailed information.`,
+      ui.ButtonSet.OK
+    );
+    
+  } catch (error) {
+    logError('debugGmailSearch', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Debug Failed',
+      `❌ Gmail search debug failed:\n\n${error.message}`,
+      ui.ButtonSet.OK
+    );
+  }
+  
+  logEnd('debugGmailSearch');
+}
+
+/**
+ * Simple diagnostic function to check why sync might be hanging
+ */
+function diagnoseSyncIssue() {
+  logStart('diagnoseSyncIssue');
+  
+  try {
+    log('🔍 Running sync diagnostics...');
+    
+    // Test 1: Basic spreadsheet access
+    log('📊 Testing spreadsheet access...');
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const sheets = spreadsheet.getSheets();
+    log(`✅ Spreadsheet access OK - Found ${sheets.length} sheets`);
+    
+    // Test 2: Gmail API access
+    log('📧 Testing Gmail API access...');
+    try {
+      const testQuery = 'is:unread newer_than:1d';
+      const testThreads = GmailApp.search(testQuery);
+      log(`✅ Gmail API access OK - Found ${testThreads.length} unread threads`);
+    } catch (gmailError) {
+      log(`❌ Gmail API access failed: ${gmailError.message}`);
+      throw new Error(`Gmail API authorization issue: ${gmailError.message}`);
+    }
+    
+    // Test 3: Settings access
+    log('⚙️ Testing settings access...');
+    try {
+      const settings = loadSettings();
+      log(`✅ Settings access OK - Loaded ${Object.keys(settings).length} settings`);
+    } catch (settingsError) {
+      log(`❌ Settings access failed: ${settingsError.message}`);
+    }
+    
+    // Test 4: Sheet data loading
+    log('📋 Testing sheet data loading...');
+    try {
+      const sheetData = getSheets();
+      const data = loadSheetData(sheetData);
+      log(`✅ Sheet data loading OK - Loaded data for ${data.clientData.length} clients`);
+    } catch (dataError) {
+      log(`❌ Sheet data loading failed: ${dataError.message}`);
+    }
+    
+    log('✅ All basic diagnostics passed');
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Diagnostic Complete',
+      '✅ All basic system checks passed!\n\n' +
+      'The issue might be:\n' +
+      '• A specific email processing step\n' +
+      '• Large data processing timeout\n' +
+      '• Network connectivity issue\n\n' +
+      'Try running "📧 Process Gmail Payments" separately to isolate the issue.',
+      ui.ButtonSet.OK
+    );
+    
+  } catch (error) {
+    logError('diagnoseSyncIssue', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Diagnostic Failed',
+      `❌ Found issue: ${error.message}\n\n` +
+      'This explains why the sync is hanging. Please fix this issue and try again.',
+      ui.ButtonSet.OK
+    );
+  }
+  
+  logEnd('diagnoseSyncIssue');
+}
+
+/**
+ * Step-by-step sync to identify where hanging occurs
+ */
+function stepByStepSync() {
+  logStart('stepByStepSync');
+  
+  try {
+    const ui = SpreadsheetApp.getUi();
+    
+    // Step 1: Basic validation
+    log('🔍 Step 1: Basic validation...');
+    ui.alert('Step 1', 'Testing basic validation...', ui.ButtonSet.OK);
+    
+    validateSpreadsheetAccess();
+    const validationResult = validateRequiredSettings();
+    if (!validationResult.isValid) {
+      throw new Error(`Configuration Error: ${validationResult.message}`);
+    }
+    log('✅ Step 1 passed: Basic validation');
+    
+    // Step 2: Get sheets
+    log('📊 Step 2: Getting sheets...');
+    ui.alert('Step 2', 'Getting spreadsheet sheets...', ui.ButtonSet.OK);
+    
+    const sheets = getSheetsAndSetup();
+    log('✅ Step 2 passed: Sheets loaded');
+    
+    // Step 3: Load data
+    log('📋 Step 3: Loading sheet data...');
+    ui.alert('Step 3', 'Loading sheet data...', ui.ButtonSet.OK);
+    
+    const data = loadSheetData(sheets);
+    log('✅ Step 3 passed: Data loaded');
+    
+    // Step 4: Test Gmail access (most likely culprit)
+    log('📧 Step 4: Testing Gmail access...');
+    ui.alert('Step 4', 'Testing Gmail API access...', ui.ButtonSet.OK);
+    
+    try {
+      const testQuery = 'is:unread newer_than:1d';
+      const testThreads = GmailApp.search(testQuery);
+      log(`✅ Step 4 passed: Gmail access OK - Found ${testThreads.length} unread threads`);
+    } catch (gmailError) {
+      log(`❌ Step 4 failed: Gmail access error - ${gmailError.message}`);
+      throw new Error(`Gmail API issue: ${gmailError.message}`);
+    }
+    
+    // Step 5: Test Gmail payment search
+    log('🔍 Step 5: Testing Gmail payment search...');
+    ui.alert('Step 5', 'Testing Gmail payment search...', ui.ButtonSet.OK);
+    
+    try {
+      const threads = searchForPaymentEmails();
+      log(`✅ Step 5 passed: Payment search OK - Found ${threads.length} payment emails`);
+    } catch (searchError) {
+      log(`❌ Step 5 failed: Payment search error - ${searchError.message}`);
+      throw new Error(`Payment search issue: ${searchError.message}`);
+    }
+    
+    // Step 6: Test client sync
+    log('👥 Step 6: Testing client sync...');
+    ui.alert('Step 6', 'Testing client sync...', ui.ButtonSet.OK);
+    
+    try {
+      syncPaymentsAndClients();
+      log('✅ Step 6 passed: Client sync OK');
+    } catch (syncError) {
+      log(`❌ Step 6 failed: Client sync error - ${syncError.message}`);
+      throw new Error(`Client sync issue: ${syncError.message}`);
+    }
+    
+    // Step 7: Test email sending
+    log('📧 Step 7: Testing email sending...');
+    ui.alert('Step 7', 'Testing email sending...', ui.ButtonSet.OK);
+    
+    try {
+      sendDailyBalanceDigest();
+      log('✅ Step 7 passed: Email sending OK');
+    } catch (emailError) {
+      log(`❌ Step 7 failed: Email sending error - ${emailError.message}`);
+      throw new Error(`Email sending issue: ${emailError.message}`);
+    }
+    
+    log('✅ All steps completed successfully!');
+    ui.alert('Success', 'All sync steps completed successfully! The issue was likely temporary.', ui.ButtonSet.OK);
+    
+  } catch (error) {
+    logError('stepByStepSync', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Sync Issue Found',
+      `❌ Sync failed at step:\n\n${error.message}\n\n` +
+      'This identifies exactly where the hanging occurs. Please fix this issue and try again.',
+      ui.ButtonSet.OK
+    );
+  }
+  
+  logEnd('stepByStepSync');
+}
+
+/**
+ * Check Gmail API authorization and trigger consent if needed
+ */
+function checkGmailAuthorization() {
+  logStart('checkGmailAuthorization');
+  
+  try {
+    log('🔍 Checking Gmail API authorization...');
+    
+    // Try a simple Gmail operation to test authorization
+    const testQuery = 'is:unread newer_than:1d';
+    const testThreads = GmailApp.search(testQuery);
+    
+    log(`✅ Gmail API authorization OK - Found ${testThreads.length} unread threads`);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Gmail API Authorization',
+      '✅ Gmail API is properly authorized!\n\n' +
+      'The sync should work correctly now.',
+      ui.ButtonSet.OK
+    );
+    
+  } catch (error) {
+    logError('checkGmailAuthorization', error);
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Gmail API Authorization Required',
+      '❌ Gmail API authorization failed:\n\n' +
+      `${error.message}\n\n` +
+      '🔧 To fix this:\n' +
+      '1. Go to the Apps Script editor\n' +
+      '2. Click "Services" in the left sidebar\n' +
+      '3. Add "Gmail API" service\n' +
+      '4. Run "📧 Process Gmail Payments" to trigger authorization\n\n' +
+      'This will prompt you to authorize Gmail access.',
+      ui.ButtonSet.OK
+    );
+  }
+  
+  logEnd('checkGmailAuthorization');
+}

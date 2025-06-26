@@ -199,7 +199,12 @@ function processClientBalances(clientsById, data, lawyerData, today) {
         emailsSent++;
         log(`✅ Low balance email sent successfully for ${clientName}`);
       } else {
-        log(`❌ Low balance email was not sent for ${clientName} (likely already sent today)`);
+        // Check if live emails are disabled to provide better messaging
+        if (!isLiveEmailsEnabled()) {
+          log(`🔒 Low balance email not sent for ${clientName} (live emails disabled)`);
+        } else {
+          log(`❌ Low balance email was not sent for ${clientName} (likely already sent today)`);
+        }
       }
     } else {
       log(`✅ Balance OK for ${clientName}: $${balance.toFixed(2)} (target: $${targetBalance.toFixed(2)})`);

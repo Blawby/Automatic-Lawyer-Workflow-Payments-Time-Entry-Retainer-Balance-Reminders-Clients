@@ -275,13 +275,27 @@ function sendDailyDigest() {
     const subject = `Daily Balance Digest - ${today} (${lowBalanceClients.length} low balance clients, ${mattersNeedingTime.length} matters need time, ${unassignedMatters.length} unassigned matters)`;
     const body = renderTemplate('DAILY_DIGEST_HTML', 'BODY', lowBalanceClients, paymentSummary, newClientsCount, todayRevenue, mattersNeedingTime, enhancedAnalytics, unassignedMatters);
     
+    // Generate email using centralized system
+    const emailData = {
+      lowBalanceClients,
+      paymentSummary,
+      newClientsCount,
+      todayRevenue,
+      mattersNeedingTime,
+      enhancedAnalytics,
+      unassignedMatters,
+      today
+    };
+    
+    const email = generateEmail(EMAIL_TYPES.DAILY_DIGEST, emailData);
+    
     // Send to spreadsheet owner
     const ownerEmail = getActiveSpreadsheet().getOwner().getEmail();
     
     MailApp.sendEmail({
       to: ownerEmail,
-      subject: subject,
-      htmlBody: body
+      subject: email.subject,
+      htmlBody: email.body
     });
     
     log(`✅ Daily digest sent to ${ownerEmail}`);
@@ -324,19 +338,23 @@ function notifyServiceResumed(clientID, email, clientName, balance, today) {
       return;
     }
     
-    // Send to client using template
-    const clientSubject = renderTemplate('SERVICE_RESUMED', 'CLIENT_SUBJECT');
-    const clientBody = renderTemplate('SERVICE_RESUMED', 'CLIENT_BODY', clientName);
+    // Send to client using centralized email generation
+    const clientEmailData = {
+      clientName: clientName
+    };
+    const clientEmail = generateEmail(EMAIL_TYPES.SERVICE_RESUMED, clientEmailData, 'CLIENT');
     
     log(`📧 Sending service resumed notification to client: ${email}`);
-    sendEmail(email, clientSubject, clientBody, { emailType: 'service_resumed_client' });
+    sendEmail(email, clientEmail.subject, clientEmail.body, { emailType: 'service_resumed_client' });
     
-    // Send to firm using template
-    const ownerSubject = renderTemplate('SERVICE_RESUMED', 'OWNER_SUBJECT', clientName);
-    const ownerBody = renderTemplate('SERVICE_RESUMED', 'OWNER_BODY', clientName);
+    // Send to firm using centralized email generation
+    const ownerEmailData = {
+      clientName: clientName
+    };
+    const ownerEmail = generateEmail(EMAIL_TYPES.SERVICE_RESUMED, ownerEmailData, 'OWNER');
     
     log(`📧 Sending service resumed notification to firm`);
-    sendEmailToFirm(ownerSubject, ownerBody, { emailType: 'service_resumed_firm' });
+    sendEmailToFirm(ownerEmail.subject, ownerEmail.body, { emailType: 'service_resumed_firm' });
     
     // Mark as sent (only in production mode)
     if (isLiveEmailsEnabled()) {
@@ -460,11 +478,16 @@ function sendLowBalanceEmailManual(clientID) {
     const topUp = Math.max(0, targetBalance - balance);
     const paymentLink = `${getSetting(SETTINGS_KEYS.BASE_PAYMENT_URL)}?amount=${Math.round(topUp * 100)}`;
     
-    // Send email
-    const subject = renderTemplate('LOW_BALANCE', 'CLIENT_SUBJECT', clientName);
-    const body = renderTemplate('LOW_BALANCE', 'CLIENT_BODY', clientName, balance, targetBalance, paymentLink);
+    // Send email using centralized email generation
+    const emailData = {
+      clientName: clientName,
+      balance: balance,
+      targetBalance: targetBalance,
+      paymentLink: paymentLink
+    };
+    const email = generateEmail(EMAIL_TYPES.LOW_BALANCE, emailData, 'CLIENT');
     
-    sendEmail(email, subject, body);
+    sendEmail(email, email.subject, email.body);
     
     log(`✅ Low balance email sent manually to ${clientName} (${email})`);
     
@@ -525,11 +548,16 @@ function sendAllLowBalanceEmailsManual(clientIDs) {
         const topUp = Math.max(0, targetBalance - balance);
         const paymentLink = `${getSetting(SETTINGS_KEYS.BASE_PAYMENT_URL)}?amount=${Math.round(topUp * 100)}`;
         
-        // Send email
-        const subject = renderTemplate('LOW_BALANCE', 'CLIENT_SUBJECT', clientName);
-        const body = renderTemplate('LOW_BALANCE', 'CLIENT_BODY', clientName, balance, targetBalance, paymentLink);
+        // Send email using centralized email generation
+        const emailData = {
+          clientName: clientName,
+          balance: balance,
+          targetBalance: targetBalance,
+          paymentLink: paymentLink
+        };
+        const email = generateEmail(EMAIL_TYPES.LOW_BALANCE, emailData, 'CLIENT');
         
-        sendEmail(email, subject, body);
+        sendEmail(email, email.subject, email.body);
         
         sentCount++;
         log(`✅ Low balance email sent to ${clientName} (${email})`);

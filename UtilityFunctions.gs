@@ -724,4 +724,61 @@ function safeInterpolate(template, data, fallback = '') {
   return template.replace(/\${(\w+)}/g, (match, key) => {
     return data[key] !== undefined ? data[key] : fallback;
   });
-} 
+}
+
+/**
+ * Format utilities for consistent data formatting
+ * Groups one-liner functions for better organization
+ */
+const Format = {
+  /**
+   * Format money values
+   * @param {number|string} value - Value to format
+   * @return {string} - Formatted money string
+   */
+  money: (value) => `$${Number(value || 0).toFixed(2)}`,
+  
+  /**
+   * Format percentage values
+   * @param {number|string} value - Value to format
+   * @param {number} decimals - Number of decimal places
+   * @return {string} - Formatted percentage string
+   */
+  percent: (value, decimals = 1) => `${Number(value || 0).toFixed(decimals)}%`,
+  
+  /**
+   * Format date values
+   * @param {Date|string} date - Date to format
+   * @return {string} - Formatted date string
+   */
+  date: (date) => {
+    if (!date) return 'N/A';
+    const d = new Date(date);
+    return d.toLocaleDateString();
+  },
+  
+  /**
+   * Format date with time
+   * @param {Date|string} date - Date to format
+   * @return {string} - Formatted date and time string
+   */
+  dateTime: (date) => {
+    if (!date) return 'N/A';
+    const d = new Date(date);
+    return d.toLocaleString();
+  },
+  
+  /**
+   * Format phone numbers
+   * @param {string} phone - Phone number to format
+   * @return {string} - Formatted phone number
+   */
+  phone: (phone) => {
+    if (!phone) return 'N/A';
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 10) {
+      return `(${cleaned.slice(0,3)}) ${cleaned.slice(3,6)}-${cleaned.slice(6)}`;
+    }
+    return phone;
+  }
+}; 

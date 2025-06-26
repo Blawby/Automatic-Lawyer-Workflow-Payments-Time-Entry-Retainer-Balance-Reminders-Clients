@@ -1696,3 +1696,110 @@ function getSuggestedLawyers(practiceArea, lawyerData) {
     return a.name.localeCompare(b.name);
   });
 }
+
+/**
+ * Send low balance warning email to client
+ * @param {Object} client - Client data
+ * @return {boolean} - Success status
+ */
+function sendLowBalanceEmail(client) {
+  try {
+    const emailData = generateEmail(EMAIL_TYPES.LOW_BALANCE, client, { recipient: 'CLIENT' });
+    
+    GmailApp.sendEmail(
+      client.email,
+      emailData.subject,
+      emailData.body,
+      {
+        name: 'Blawby Legal Management',
+        replyTo: getSpreadsheetOwnerEmail()
+      }
+    );
+    
+    return true;
+  } catch (error) {
+    console.error(`Failed to send low balance email to ${client.email}:`, error.message);
+    return false;
+  }
+}
+
+/**
+ * Send service resumed notification email to client
+ * @param {Object} client - Client data
+ * @return {boolean} - Success status
+ */
+function sendServiceResumedEmail(client) {
+  try {
+    const emailData = generateEmail(EMAIL_TYPES.SERVICE_RESUMED, client, { recipient: 'CLIENT' });
+    
+    GmailApp.sendEmail(
+      client.email,
+      emailData.subject,
+      emailData.body,
+      {
+        name: 'Blawby Legal Management',
+        replyTo: getSpreadsheetOwnerEmail()
+      }
+    );
+    
+    return true;
+  } catch (error) {
+    console.error(`Failed to send service resumed email to ${client.email}:`, error.message);
+    return false;
+  }
+}
+
+/**
+ * Send matter assignment notification to lawyer
+ * @param {Object} matter - Matter data
+ * @param {Object} lawyer - Lawyer data
+ * @return {boolean} - Success status
+ */
+function sendMatterAssignedEmail(matter, lawyer) {
+  try {
+    const emailData = generateEmail(EMAIL_TYPES.MATTER_ASSIGNED, { matter, lawyer });
+    
+    GmailApp.sendEmail(
+      lawyer.email,
+      emailData.subject,
+      emailData.body,
+      {
+        name: 'Blawby Legal Management',
+        replyTo: getSpreadsheetOwnerEmail()
+      }
+    );
+    
+    return true;
+  } catch (error) {
+    console.error(`Failed to send matter assigned email to ${lawyer.email}:`, error.message);
+    return false;
+  }
+}
+
+/**
+ * Send lawyer nudge email for time entries
+ * @param {Object} matter - Matter data
+ * @param {Object} lawyer - Lawyer data
+ * @return {boolean} - Success status
+ */
+function sendLawyerNudgeEmail(matter, lawyer) {
+  try {
+    const emailData = generateEmail(EMAIL_TYPES.LAWYER_NUDGE, { matter, lawyer });
+    
+    GmailApp.sendEmail(
+      lawyer.email,
+      emailData.subject,
+      emailData.body,
+      {
+        name: 'Blawby Legal Management',
+        replyTo: getSpreadsheetOwnerEmail(),
+        cc: getSpreadsheetOwnerEmail()
+      }
+    );
+    
+    return true;
+  } catch (error) {
+    console.error(`Failed to send lawyer nudge email to ${lawyer.email}:`, error.message);
+    return false;
+  }
+}

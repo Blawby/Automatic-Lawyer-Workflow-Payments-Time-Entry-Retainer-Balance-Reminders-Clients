@@ -637,8 +637,8 @@ function validateEmailTemplates() {
  * @return {string} - Formatted client block
  */
 function renderClientBlock(client, isPreview = false) {
-  const balance = formatMoney(client.balance);
-  const topUp = formatMoney(client.topUp);
+  const balance = Format.money(client.balance);
+  const topUp = Format.money(client.topUp);
   const lastActivity = formatDate(client.lastActivity, 'relative');
   
   if (isPreview) {
@@ -746,7 +746,7 @@ function renderDigestSection(title, content, isPreview = false) {
  */
 function renderSummaryStats(stats, isPreview = false) {
   const newClients = pluralize(stats.newClients, 'new client');
-  const revenue = formatMoney(stats.revenue);
+  const revenue = Format.money(stats.revenue);
   const lowBalanceCount = pluralize(stats.lowBalanceCount, 'client');
   const mattersNeedingTime = pluralize(stats.mattersNeedingTime, 'matter');
   const unassignedMatters = pluralize(stats.unassignedMatters, 'unassigned matter');
@@ -775,140 +775,161 @@ function renderSummaryStats(stats, isPreview = false) {
 // ========== CENTRALIZED EMAIL GENERATION ==========
 
 /**
- * Generate email content based on type and data
- * @param {string} emailType - Type of email (from EMAIL_TYPES)
+ * Unified email template generator
+ * Standardized interface for all email types with preview support
+ * @param {string} type - Email type from EMAIL_TYPES
  * @param {Object} data - Email data
- * @param {Object} options - Options including previewOnly
+ * @param {Object} options - Options including preview mode
  * @return {Object} - Email object with subject and body
  */
-function generateEmail(emailType, data, options = {}) {
-  const { previewOnly = false } = options;
+function generateEmail(type, data, options = {}) {
+  const { preview = false, recipient = 'CLIENT' } = options;
   
-  switch (emailType) {
+  switch (type) {
     case EMAIL_TYPES.LOW_BALANCE:
-      return generateLowBalanceEmail(data, previewOnly);
+      return generateLowBalanceEmail(data, { preview, recipient });
     case EMAIL_TYPES.SERVICE_RESUMED:
-      return generateServiceResumedEmail(data, previewOnly);
+      return generateServiceResumedEmail(data, { preview, recipient });
     case EMAIL_TYPES.MATTER_ASSIGNED:
-      return generateMatterAssignedEmail(data, previewOnly);
+      return generateMatterAssignedEmail(data, { preview });
     case EMAIL_TYPES.LAWYER_NUDGE:
-      return generateLawyerNudgeEmail(data, previewOnly);
+      return generateLawyerNudgeEmail(data, { preview });
     case EMAIL_TYPES.DAILY_DIGEST:
-      return generateDailyDigestEmail(data, previewOnly);
+      return generateDailyDigestEmail(data, { preview });
     default:
-      throw new Error(`Unknown email type: ${emailType}`);
+      throw new Error(`Unknown email type: ${type}`);
   }
 }
 
 /**
- * Generate low balance reminder email
+ * Generate low balance warning email
  * @param {Object} data - Client data
- * @param {boolean} previewOnly - Whether this is for preview
- * @return {Object} - Email object
+ * @param {Object} options - Options including preview and recipient
+ * @return {Object} - Email object with subject and body
  */
-function generateLowBalanceEmail(data, previewOnly = false) {
-  const { client } = data;
-  const balance = formatMoney(client.balance);
-  const targetBalance = formatMoney(client.targetBalance);
-  const topUp = formatMoney(client.topUp);
+function generateLowBalanceEmail(data, options = {}) {
+  const { preview = false, recipient = 'CLIENT' } = options;
+  const client = data;
   
-  const subject = `Retainer Balance Update – Action Needed`;
+  const subject = preview ? 
+    `[PREVIEW] Low Balance Warning - ${client.name}` :
+    `Low Balance Warning - ${client.name}`;
   
-  const body = `
-Dear ${client.name},
-
-We hope you're doing well. Our records show your current retainer balance is ${balance}, below your target of ${targetBalance}.
-
-Please top up by ${topUp} to continue uninterrupted services.
-
-Thank you,
-Your Legal Team`.trim();
+  const balance = parseFloat(client.balance || 0);
+  const targetBalance = parseFloat(client.targetBalance || 0);
+  const topUpNeeded = Math.max(0, targetBalance - balance);
   
+  const body = `Dear ${client.name},
+
+Your retainer balance is currently ${Format.money(balance)}, which is below your target balance of ${Format.money(targetBalance)}.
+
+To ensure uninterrupted service, please top up your retainer by ${Format.money(topUpNeeded)}.
+
+You can make a payment by:
+- Bank transfer to our trust account
+- Credit card payment through our secure portal
+- Check mailed to our office
+
+If your balance falls to zero, we will need to pause services until payment is received.
+
+Please contact us if you have any questions about your account or payment options.
+
+Best regards,
+Your Legal Team`;
+
   return { subject, body };
 }
 
 /**
  * Generate service resumed notification email
  * @param {Object} data - Client data
- * @param {boolean} previewOnly - Whether this is for preview
- * @return {Object} - Email object
+ * @param {Object} options - Options including preview and recipient
+ * @return {Object} - Email object with subject and body
  */
-function generateServiceResumedEmail(data, previewOnly = false) {
-  const { client, paymentAmount } = data;
-  const amount = formatMoney(paymentAmount);
+function generateServiceResumedEmail(data, options = {}) {
+  const { preview = false, recipient = 'CLIENT' } = options;
+  const client = data;
   
-  const subject = `Service Resumed - Thank You for Your Payment`;
+  const subject = preview ? 
+    `[PREVIEW] Services Resumed - ${client.name}` :
+    `Services Resumed - ${client.name}`;
   
-  const body = `
-Dear ${client.name},
+  const body = `Dear ${client.name},
 
-Thank you for your payment of ${amount}. Your retainer has been updated and services have resumed.
+Great news! Your retainer has been topped up and services have been resumed.
 
-Your current balance is ${formatMoney(client.balance)}.
+Your current balance is ${Format.money(client.balance)}.
 
-We appreciate your business and look forward to continuing to serve you.
+We're ready to continue working on your legal matters. If you have any questions or need to discuss your case, please don't hesitate to reach out.
 
 Best regards,
-Your Legal Team`.trim();
-  
+Your Legal Team`;
+
   return { subject, body };
 }
 
 /**
- * Generate matter assignment notification email
- * @param {Object} data - Matter assignment data
- * @param {boolean} previewOnly - Whether this is for preview
- * @return {Object} - Email object
+ * Generate matter assigned notification email
+ * @param {Object} data - Matter and lawyer data
+ * @param {Object} options - Options including preview
+ * @return {Object} - Email object with subject and body
  */
-function generateMatterAssignedEmail(data, previewOnly = false) {
-  const { matter, lawyer, notes, timeEntryUrl } = data;
+function generateMatterAssignedEmail(data, options = {}) {
+  const { preview = false } = options;
+  const { matter, lawyer } = data;
   
-  const subject = `New Matter Assigned: ${matter.description}`;
+  const subject = preview ? 
+    `[PREVIEW] Matter Assigned - ${matter.description}` :
+    `Matter Assigned - ${matter.description}`;
   
-  const body = `
-You have been assigned a new matter.
+  const body = `Dear ${lawyer.name},
+
+You have been assigned to the following matter:
 
 Matter: ${matter.description}
 Client: ${matter.clientName}
+Practice Area: ${matter.practiceArea}
 Matter ID: ${matter.matterID}
-Practice Area: ${matter.practiceArea}${notes ? `\nNotes: ${notes}` : ''}
 
-To begin work on this matter, please enter your time using the link below:
-${timeEntryUrl}
+Please review the matter details and begin work as appropriate. You can add time entries through our system.
 
-You can also access this matter through the daily digest emails for quick time entry.`.trim();
-  
+If you have any questions about this assignment, please contact the managing partner.
+
+Best regards,
+Management`;
+
   return { subject, body };
 }
 
 /**
- * Generate lawyer nudge email
- * @param {Object} data - Nudge data
- * @param {boolean} previewOnly - Whether this is for preview
- * @return {Object} - Email object
+ * Generate lawyer nudge email for time entries
+ * @param {Object} data - Matter and lawyer data
+ * @param {Object} options - Options including preview
+ * @return {Object} - Email object with subject and body
  */
-function generateLawyerNudgeEmail(data, previewOnly = false) {
-  const { matter, lawyer, timeEntryUrl } = data;
+function generateLawyerNudgeEmail(data, options = {}) {
+  const { preview = false } = options;
+  const { matter, lawyer } = data;
   
-  const subject = `Time Entry Reminder: ${matter.description} - ${matter.clientName}`;
+  const subject = preview ? 
+    `[PREVIEW] Time Entry Reminder - ${matter.description}` :
+    `Time Entry Reminder - ${matter.description}`;
   
-  const body = `
-Hi ${lawyer.name},
+  const body = `Dear ${lawyer.name},
 
-This is a friendly reminder to log your time for the following matter:
+This is a friendly reminder to add time entries for the following matter:
 
-Matter: ${matter.description} (${matter.matterID})
-Client: ${matter.clientName} (${matter.clientEmail})
-Practice Area: ${matter.practiceArea}
+Matter: ${matter.description}
+Client: ${matter.clientName}
+Days Since Last Time Entry: ${matter.daysSinceLastTimeEntry}
 
-Please log your time entries using the link below:
-${timeEntryUrl}
+You can add time entries through our system. Please ensure all billable time is properly recorded.
 
-If you have any questions about this matter or need assistance, please don't hesitate to reach out.
+Thank you for your attention to this matter.
 
 Best regards,
-Your Legal Team`.trim();
-  
+Management`;
+
   return { subject, body };
 }
 

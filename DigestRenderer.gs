@@ -5,6 +5,37 @@
  */
 
 /**
+ * DigestData structure for organized digest content
+ * Makes testing easier, future JSON APIs easier to return, and multiple render targets trivial to add
+ * @typedef {Object} DigestData
+ * @property {Array} clientsNeedingTopUp - Clients with low balances
+ * @property {Array} mattersNeedingTime - Matters needing time entries
+ * @property {Array} unassignedMatters - Matters without assigned lawyers
+ * @property {Object} summaryStats - Summary statistics
+ * @property {Array} actionRecommendations - Recommended actions
+ */
+
+/**
+ * Generic digest section renderer
+ * Eliminates redundancy across all section rendering functions
+ * @param {string} title - Section title
+ * @param {Array} items - Array of items to render
+ * @param {Function} renderFn - Function to render each item
+ * @param {boolean} isPreview - Whether this is for preview mode
+ * @return {string} - Formatted section
+ */
+function renderDigestSection(title, items, renderFn, isPreview = false) {
+  if (!items || items.length === 0) return '';
+  
+  const header = isPreview ? 
+    `\n\n**${title}**\n` : 
+    renderSectionHeader(title);
+  
+  const content = items.map(renderFn).join('\n\n');
+  return `${header}${content}\n`;
+}
+
+/**
  * Render a client block for digest
  * @param {Object} client - Client data
  * @param {boolean} isPreview - Whether this is for preview mode
@@ -17,17 +48,17 @@ function renderClientBlock(client, isPreview = false) {
   
   if (isPreview) {
     return `📧 **${client.name}** (${client.email})
-• Balance: ${formatMoney(balance)}
-• Target: ${formatMoney(targetBalance)}
-• Top-up Needed: ${formatMoney(topUpNeeded)}
+• Balance: ${Format.money(balance)}
+• Target: ${Format.money(targetBalance)}
+• Top-up Needed: ${Format.money(topUpNeeded)}
 • Status: ${balance <= 0 ? 'Services Paused' : 'Low Balance'}
 • Last Activity: ${client.lastActivity || 'N/A'}`;
   }
   
   return `${client.name} (${client.email})
-  Balance: ${formatMoney(balance)}
-  Target: ${formatMoney(targetBalance)}
-  Top-up Needed: ${formatMoney(topUpNeeded)}
+  Balance: ${Format.money(balance)}
+  Target: ${Format.money(targetBalance)}
+  Top-up Needed: ${Format.money(topUpNeeded)}
   Last Activity: ${client.lastActivity || 'N/A'}
   Email Sent: ${client.emailSent ? 'Yes' : 'No'}
   Send Top-up Reminder: ${generateSendEmailUrl(client.clientID, 'low_balance')}
@@ -115,15 +146,15 @@ function renderSummaryStats(stats, isPreview = false) {
   if (isPreview) {
     return `📊 **Today's Activity**
 • New Clients: ${stats.newClients}
-• Revenue: ${formatMoney(stats.revenue)}
+• Revenue: ${Format.money(stats.revenue)}
 • Low Balance Clients: ${stats.lowBalanceClients}
 • Matters Needing Time: ${stats.mattersNeedingTime}
 • Unassigned Matters: ${stats.unassignedMatters}`;
   }
   
   return `- New Clients: ${stats.newClients || 0}
-- Revenue: ${formatMoney(stats.revenue || 0)}
-${stats.paymentSummary ? `- Total Payments Received: ${formatMoney(stats.paymentSummary.total || 0)}
+- Revenue: ${Format.money(stats.revenue || 0)}
+${stats.paymentSummary ? `- Total Payments Received: ${Format.money(stats.paymentSummary.total || 0)}
 - Clients Paid Today: ${stats.paymentSummary.count}` : ''}`;
 }
 
@@ -160,12 +191,50 @@ function renderActionRecommendations(data, isPreview = false) {
 }
 
 /**
+ * Create digest data structure from raw data
+ * @param {Object} data - Raw digest data
+ * @return {DigestData} - Structured digest data
+ */
+function createDigestData(data) {
+  return {
+    clientsNeedingTopUp: data.lowBalanceClients || [],
+    mattersNeedingTime: data.mattersNeedingTime || [],
+    unassignedMatters: data.unassignedMatters || [],
+    summaryStats: {
+      newClients: data.newClients || 0,
+      revenue: data.revenue || 0,
+      lowBalanceClients: (data.lowBalanceClients || []).length,
+      mattersNeedingTime: (data.mattersNeedingTime || []).length,
+      unassignedMatters: (data.unassignedMatters || []).length,
+      paymentSummary: data.paymentSummary
+    },
+    actionRecommendations: generateActionRecommendations(data)
+  };
+}
+
+/**
+ * Render full digest using structured data
+ * @param {DigestData} digestData - Structured digest data
+ * @param {boolean} isPreview - Whether this is for preview mode
+ * @return {string} - Complete digest content
+ */
+function renderFullDigest(digestData, isPreview = false) {
+  const sections = [
+    renderDigestSection('Summary', [digestData.summaryStats], renderSummaryStats, isPreview),
+    renderDigestSection('Clients Needing Top-Up', digestData.clientsNeedingTopUp, renderClientBlock, isPreview),
+    renderDigestSection('Matters Needing Time Entries', digestData.mattersNeedingTime, renderMatterBlock, isPreview),
+    renderDigestSection('Unassigned Matters', digestData.unassignedMatters, renderUnassignedMatterBlock, isPreview),
+    renderDigestSection('Action Recommendations', [digestData.actionRecommendations], renderActionRecommendations, isPreview)
+  ];
+  
+  return sections.filter(section => section).join('\n');
+}
+
+/**
  * Test edge cases for digest rendering
  * This function helps validate the digest system with various data scenarios
  */
 function testDigestEdgeCases() {
-  console.log('🧪 Testing Digest Edge Cases...');
-  
   // Test 1: No matters, but clients with balance issues
   const testCase1 = {
     lowBalanceClients: [
@@ -185,8 +254,7 @@ function testDigestEdgeCases() {
     todayRevenue: 0
   };
   
-  console.log('✅ Test Case 1 - Low balance clients only:');
-  console.log(renderClientBlock(testCase1.lowBalanceClients[0], true));
+  renderClientBlock(testCase1.lowBalanceClients[0], true);
   
   // Test 2: All lawyers logged time (no matters needing time)
   const testCase2 = {
@@ -197,8 +265,7 @@ function testDigestEdgeCases() {
     todayRevenue: 1500
   };
   
-  console.log('✅ Test Case 2 - All systems running smoothly:');
-  console.log(renderActionRecommendations(testCase2, true));
+  renderActionRecommendations(testCase2, true);
   
   // Test 3: Long client/matter names
   const testCase3 = {
@@ -233,9 +300,8 @@ function testDigestEdgeCases() {
     todayRevenue: 500
   };
   
-  console.log('✅ Test Case 3 - Long names (check for wrapping):');
-  console.log(renderClientBlock(testCase3.lowBalanceClients[0], true));
-  console.log(renderMatterBlock(testCase3.mattersNeedingTime[0], true));
+  renderClientBlock(testCase3.lowBalanceClients[0], true);
+  renderMatterBlock(testCase3.mattersNeedingTime[0], true);
   
   // Test 4: Matter with multiple flags
   const testCase4 = {
@@ -256,8 +322,5 @@ function testDigestEdgeCases() {
     todayRevenue: 0
   };
   
-  console.log('✅ Test Case 4 - Unassigned matter with multiple suggested lawyers:');
-  console.log(renderUnassignedMatterBlock(testCase4.unassignedMatters[0], true));
-  
-  console.log('🎉 All edge case tests completed successfully!');
+  renderUnassignedMatterBlock(testCase4.unassignedMatters[0], true);
 } 

@@ -1031,13 +1031,31 @@ If you have any questions about this matter or need assistance, please don't hes
 Best regards,
 ${ownerEmail.split('@')[0]} (Firm Owner)`;
 
+    // Create email using centralized email generation
+    const emailData = {
+      matter: {
+        description: matterDescription,
+        matterID: matterID,
+        clientName: clientName,
+        clientEmail: clientEmail,
+        practiceArea: practiceArea
+      },
+      lawyer: {
+        name: lawyerName,
+        email: lawyerEmail
+      },
+      timeEntryUrl: timeEntryUrl
+    };
+    
+    const email = generateEmail(EMAIL_TYPES.LAWYER_NUDGE, emailData);
+    
     // Send email to lawyer and CC owner
     const emailOptions = {
       cc: ownerEmail,
       name: 'Blawby Time Entry Reminder'
     };
     
-    MailApp.sendEmail(lawyerEmail, subject, emailBody, emailOptions);
+    MailApp.sendEmail(lawyerEmail, email.subject, email.body, emailOptions);
     
     log(`✅ Nudge email sent to ${lawyerName} (${lawyerEmail}) for matter ${matterID}`);
     
@@ -1622,30 +1640,35 @@ function submitAssignment(matterID, lawyerID, notes, e) {
       ]);
     }
 
-    // Send notification email
+    // Send notification email using centralized email generation
     const lawyerEmail = lawyerData.emails[lawyerID];
     const matter = data.matters.find(m => m && Array.isArray(m) && m[0] === matterID);
-    const clientName = matter ? matter[2] : '';
-    const matterDesc = matter ? matter[3] : '';
-    const practiceArea = matter && matter[7] ? matter[7] : 'General';
-    const subject = `New Matter Assigned: ${matterDesc}`;
     
-    // Generate time entry URL
-    const timeEntryUrl = generateAddTimeEntryUrl(matterID, lawyerID);
-    
-    let emailBody = `You have been assigned a new matter.\n\n`;
-    emailBody += `Matter: ${matterDesc}\nClient: ${clientName}\nMatter ID: ${matterID}\nPractice Area: ${practiceArea}\n`;
-    if (notes) emailBody += `\nNotes: ${notes}\n`;
-    emailBody += `\nTo begin work on this matter, please enter your time using the link below:\n`;
-    emailBody += `${timeEntryUrl}\n\n`;
-    emailBody += `You can also access this matter through the daily digest emails for quick time entry.`;
-    
-    if (lawyerEmail) {
+    if (lawyerEmail && matter) {
+      const timeEntryUrl = generateAddTimeEntryUrl(matterID, lawyerID);
+      
+      const emailData = {
+        matter: {
+          description: matter[3] || 'Unknown Matter',
+          clientName: matter[2] || 'Unknown Client',
+          matterID: matterID,
+          practiceArea: matter[7] || 'General'
+        },
+        lawyer: {
+          name: lawyerData.names[lawyerID] || lawyerID,
+          email: lawyerEmail
+        },
+        notes: notes,
+        timeEntryUrl: timeEntryUrl
+      };
+      
+      const email = generateEmail(EMAIL_TYPES.MATTER_ASSIGNED, emailData);
+      
       MailApp.sendEmail({
         to: lawyerEmail,
         cc: ownerEmail,
-        subject: subject,
-        body: emailBody
+        subject: email.subject,
+        body: email.body
       });
     }
 

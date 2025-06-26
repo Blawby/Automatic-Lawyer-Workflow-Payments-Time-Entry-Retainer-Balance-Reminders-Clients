@@ -770,4 +770,291 @@ function renderSummaryStats(stats, isPreview = false) {
 • ${mattersNeedingTime} need time entries
 • ${unassignedMatters} need assignment
 `;
+}
+
+// ========== CENTRALIZED EMAIL GENERATION ==========
+
+/**
+ * Generate email content based on type and data
+ * @param {string} emailType - Type of email (from EMAIL_TYPES)
+ * @param {Object} data - Email data
+ * @param {Object} options - Options including previewOnly
+ * @return {Object} - Email object with subject and body
+ */
+function generateEmail(emailType, data, options = {}) {
+  const { previewOnly = false } = options;
+  
+  switch (emailType) {
+    case EMAIL_TYPES.LOW_BALANCE:
+      return generateLowBalanceEmail(data, previewOnly);
+    case EMAIL_TYPES.SERVICE_RESUMED:
+      return generateServiceResumedEmail(data, previewOnly);
+    case EMAIL_TYPES.MATTER_ASSIGNED:
+      return generateMatterAssignedEmail(data, previewOnly);
+    case EMAIL_TYPES.LAWYER_NUDGE:
+      return generateLawyerNudgeEmail(data, previewOnly);
+    case EMAIL_TYPES.DAILY_DIGEST:
+      return generateDailyDigestEmail(data, previewOnly);
+    default:
+      throw new Error(`Unknown email type: ${emailType}`);
+  }
+}
+
+/**
+ * Generate low balance reminder email
+ * @param {Object} data - Client data
+ * @param {boolean} previewOnly - Whether this is for preview
+ * @return {Object} - Email object
+ */
+function generateLowBalanceEmail(data, previewOnly = false) {
+  const { client } = data;
+  const balance = formatMoney(client.balance);
+  const targetBalance = formatMoney(client.targetBalance);
+  const topUp = formatMoney(client.topUp);
+  
+  const subject = `Retainer Balance Update – Action Needed`;
+  
+  const body = `
+Dear ${client.name},
+
+We hope you're doing well. Our records show your current retainer balance is ${balance}, below your target of ${targetBalance}.
+
+Please top up by ${topUp} to continue uninterrupted services.
+
+Thank you,
+Your Legal Team`.trim();
+  
+  return { subject, body };
+}
+
+/**
+ * Generate service resumed notification email
+ * @param {Object} data - Client data
+ * @param {boolean} previewOnly - Whether this is for preview
+ * @return {Object} - Email object
+ */
+function generateServiceResumedEmail(data, previewOnly = false) {
+  const { client, paymentAmount } = data;
+  const amount = formatMoney(paymentAmount);
+  
+  const subject = `Service Resumed - Thank You for Your Payment`;
+  
+  const body = `
+Dear ${client.name},
+
+Thank you for your payment of ${amount}. Your retainer has been updated and services have resumed.
+
+Your current balance is ${formatMoney(client.balance)}.
+
+We appreciate your business and look forward to continuing to serve you.
+
+Best regards,
+Your Legal Team`.trim();
+  
+  return { subject, body };
+}
+
+/**
+ * Generate matter assignment notification email
+ * @param {Object} data - Matter assignment data
+ * @param {boolean} previewOnly - Whether this is for preview
+ * @return {Object} - Email object
+ */
+function generateMatterAssignedEmail(data, previewOnly = false) {
+  const { matter, lawyer, notes, timeEntryUrl } = data;
+  
+  const subject = `New Matter Assigned: ${matter.description}`;
+  
+  const body = `
+You have been assigned a new matter.
+
+Matter: ${matter.description}
+Client: ${matter.clientName}
+Matter ID: ${matter.matterID}
+Practice Area: ${matter.practiceArea}${notes ? `\nNotes: ${notes}` : ''}
+
+To begin work on this matter, please enter your time using the link below:
+${timeEntryUrl}
+
+You can also access this matter through the daily digest emails for quick time entry.`.trim();
+  
+  return { subject, body };
+}
+
+/**
+ * Generate lawyer nudge email
+ * @param {Object} data - Nudge data
+ * @param {boolean} previewOnly - Whether this is for preview
+ * @return {Object} - Email object
+ */
+function generateLawyerNudgeEmail(data, previewOnly = false) {
+  const { matter, lawyer, timeEntryUrl } = data;
+  
+  const subject = `Time Entry Reminder: ${matter.description} - ${matter.clientName}`;
+  
+  const body = `
+Hi ${lawyer.name},
+
+This is a friendly reminder to log your time for the following matter:
+
+Matter: ${matter.description} (${matter.matterID})
+Client: ${matter.clientName} (${matter.clientEmail})
+Practice Area: ${matter.practiceArea}
+
+Please log your time entries using the link below:
+${timeEntryUrl}
+
+If you have any questions about this matter or need assistance, please don't hesitate to reach out.
+
+Best regards,
+Your Legal Team`.trim();
+  
+  return { subject, body };
+}
+
+/**
+ * Generate daily digest email
+ * @param {Object} data - Digest data
+ * @param {boolean} previewOnly - Whether this is for preview
+ * @return {Object} - Email object
+ */
+function generateDailyDigestEmail(data, previewOnly = false) {
+  const { 
+    lowBalanceClients, 
+    paymentSummary, 
+    newClientsCount, 
+    todayRevenue, 
+    mattersNeedingTime, 
+    enhancedAnalytics, 
+    unassignedMatters 
+  } = data;
+  
+  const subject = "Your Daily Blawby Brief";
+  
+  // Use the existing digest template but with preview option
+  const body = previewOnly ? 
+    generateDailyDigestPreview(data) : 
+    EmailTemplates.DAILY_DIGEST.BODY(
+      lowBalanceClients, 
+      paymentSummary, 
+      newClientsCount, 
+      todayRevenue, 
+      mattersNeedingTime, 
+      enhancedAnalytics, 
+      unassignedMatters
+    );
+  
+  return { subject, body };
+}
+
+/**
+ * Generate daily digest preview (simplified version)
+ * @param {Object} data - Digest data
+ * @return {string} - Preview version of digest
+ */
+function generateDailyDigestPreview(data) {
+  const { 
+    lowBalanceClients, 
+    newClientsCount, 
+    todayRevenue, 
+    mattersNeedingTime, 
+    unassignedMatters 
+  } = data;
+  
+  const today = new Date().toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+  
+  // Build summary statistics
+  const stats = {
+    newClients: newClientsCount,
+    revenue: todayRevenue,
+    lowBalanceCount: lowBalanceClients.length,
+    mattersNeedingTime: mattersNeedingTime.length,
+    unassignedMatters: unassignedMatters ? unassignedMatters.length : 0
+  };
+  
+  // Build sections using preview mode
+  const summarySection = renderSummaryStats(stats, true);
+  
+  // Build unassigned matters section (preview)
+  let unassignedSection = '';
+  if (unassignedMatters && unassignedMatters.length > 0) {
+    const unassignedContent = unassignedMatters
+      .slice(0, 3)
+      .map(matter => renderUnassignedMatterBlock(matter, true))
+      .join('');
+    
+    if (unassignedMatters.length > 3) {
+      unassignedContent += `\n• ... and ${unassignedMatters.length - 3} more matters need assignment\n`;
+    }
+    
+    unassignedSection = renderDigestSection(
+      `Assign ${unassignedMatters.length === 1 ? 'Unassigned Matter' : 'Unassigned Matters'}`,
+      unassignedContent,
+      true
+    );
+  }
+  
+  // Build matters needing time section (preview)
+  let timeEntrySection = '';
+  if (mattersNeedingTime.length > 0) {
+    const timeEntryContent = mattersNeedingTime
+      .slice(0, 3)
+      .map(matter => renderMatterBlock(matter, true))
+      .join('');
+    
+    if (mattersNeedingTime.length > 3) {
+      timeEntryContent += `\n• ... and ${mattersNeedingTime.length - 3} more matters need time entries\n`;
+    }
+    
+    timeEntrySection = renderDigestSection('Matters Needing Time Entries', timeEntryContent, true);
+  }
+  
+  // Build low balance section (preview)
+  let lowBalanceSection = '';
+  if (lowBalanceClients.length > 0) {
+    const lowBalanceContent = lowBalanceClients
+      .slice(0, 3)
+      .map(client => renderClientBlock(client, true))
+      .join('');
+    
+    if (lowBalanceClients.length > 3) {
+      lowBalanceContent += `\n• ... and ${lowBalanceClients.length - 3} more clients need attention\n`;
+    }
+    
+    lowBalanceSection = renderDigestSection(
+      `Client Retainer Alert${lowBalanceClients.length > 1 ? 's' : ''}`,
+      lowBalanceContent,
+      true
+    );
+  }
+  
+  // Check if there are any actions
+  const hasActions = unassignedSection || timeEntrySection || lowBalanceSection;
+  
+  return `
+Your Daily Blawby Brief – ${today}
+
+Here's your intelligent daily briefing. You have open tasks and matter updates that need review. Key action items are summarized below.
+
+${'─'.repeat(60)}
+
+${summarySection}
+
+🔔 KEY ACTION ITEMS
+
+${hasActions ? 
+  `${unassignedSection}${timeEntrySection}${lowBalanceSection}` : 
+  '✅ **All systems running smoothly** – No immediate actions needed today.\n'
+}
+
+${'─'.repeat(60)}
+
+*Need changes to your summary? Let us know — Blawby is always learning.*
+
+This briefing was generated automatically by your Blawby system. All action links are ready to use.`.trim();
 } 

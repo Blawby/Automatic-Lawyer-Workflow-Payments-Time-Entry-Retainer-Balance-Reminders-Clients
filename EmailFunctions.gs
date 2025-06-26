@@ -361,9 +361,10 @@ function notifyServiceResumed(clientID, email, clientName, balance, today) {
  * Generate URL for sending individual low balance email
  */
 function generateSendEmailUrl(clientID, emailType) {
-  const scriptId = 'AKfycbyRlOh_7iVEsJXG5y4ZNrJ32l-vVCH82F2km_WLrv3C0M4fRVPGw7H5bNszqCTpQf34';
-  const webAppUrl = `https://script.google.com/macros/s/${scriptId}/exec`;
-  return `${webAppUrl}?action=send_email&client_id=${encodeURIComponent(clientID)}&email_type=${emailType}`;
+  return buildActionLink(ACTION_TYPES.SEND_EMAIL, {
+    client_id: clientID,
+    email_type: emailType
+  });
 }
 
 /**
@@ -379,18 +380,20 @@ function generateSendAllEmailsUrl(clientIDs) {
  * Generate URL for adding time entry
  */
 function generateAddTimeEntryUrl(matterID, lawyerID) {
-  const scriptId = 'AKfycbyRlOh_7iVEsJXG5y4ZNrJ32l-vVCH82F2km_WLrv3C0M4fRVPGw7H5bNszqCTpQf34';
-  const webAppUrl = `https://script.google.com/macros/s/${scriptId}/exec`;
-  return `${webAppUrl}?action=add_time_entry&matter_id=${encodeURIComponent(matterID)}&lawyer_id=${encodeURIComponent(lawyerID)}`;
+  return buildActionLink(ACTION_TYPES.ADD_TIME_ENTRY, {
+    matter_id: matterID,
+    lawyer_id: lawyerID
+  });
 }
 
 /**
  * Generate URL for nudging lawyer about time entry
  */
 function generateNudgeLawyerUrl(matterID, lawyerID) {
-  const scriptId = 'AKfycbyRlOh_7iVEsJXG5y4ZNrJ32l-vVCH82F2km_WLrv3C0M4fRVPGw7H5bNszqCTpQf34';
-  const webAppUrl = `https://script.google.com/macros/s/${scriptId}/exec`;
-  return `${webAppUrl}?action=nudge_lawyer&matter_id=${encodeURIComponent(matterID)}&lawyer_id=${encodeURIComponent(lawyerID)}`;
+  return buildActionLink(ACTION_TYPES.NUDGE_LAWYER, {
+    matter_id: matterID,
+    lawyer_id: lawyerID
+  });
 }
 
 /**
@@ -1406,9 +1409,10 @@ function getUnassignedMatters(data, lawyerData) {
  * Generate URL for assigning matter to lawyer
  */
 function generateAssignMatterUrl(matterID, practiceArea) {
-  const scriptId = 'AKfycbxiztbOp4fNyuL0DzCK00SQa3gFmGYN-CUX8HYcHcUoBIMJhncasQg-0Beu38I5d8Pf';
-  const webAppUrl = `https://script.google.com/macros/s/${scriptId}/exec`;
-  return `${webAppUrl}?action=assign_matter&matter_id=${encodeURIComponent(matterID)}&practice_area=${encodeURIComponent(practiceArea)}`;
+  return buildActionLink(ACTION_TYPES.ASSIGN_MATTER, {
+    matter_id: matterID,
+    practice_area: practiceArea
+  });
 }
 
 /**
@@ -1443,8 +1447,7 @@ function assignMatterForm(matterID, practiceArea) {
   // Sort by name
   allLawyers.sort((a, b) => a.name.localeCompare(b.name));
   
-  const scriptId = 'AKfycbxiztbOp4fNyuL0DzCK00SQa3gFmGYN-CUX8HYcHcUoBIMJhncasQg-0Beu38I5d8Pf';
-  const webAppUrl = `https://script.google.com/macros/s/${scriptId}/exec`;
+  const webAppUrl = SCRIPT_BASE_URL;
   
   // Build suggested lawyers HTML
   let suggestedLawyersHtml = '';

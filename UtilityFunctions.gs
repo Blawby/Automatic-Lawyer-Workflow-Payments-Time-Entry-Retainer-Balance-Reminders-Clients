@@ -608,4 +608,104 @@ function deleteTriggersByFunction(functionName) {
       log(`🗑️ Deleted trigger: ${functionName}`);
     }
   }
+}
+
+// ========== HELPER UTILITIES ==========
+
+/**
+ * Build action URL with parameters
+ * @param {string} actionType - Type of action (from ACTION_TYPES)
+ * @param {Object} params - Parameters for the action
+ * @return {string} - Complete action URL
+ */
+function buildActionLink(actionType, params = {}) {
+  const query = Object.entries(params)
+    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+    .join('&');
+  return `${SCRIPT_BASE_URL}?action=${actionType}&${query}`;
+}
+
+/**
+ * Format money amount with currency symbol
+ * @param {number} amount - Amount to format
+ * @param {string} currency - Currency symbol (default: $)
+ * @return {string} - Formatted money string
+ */
+function formatMoney(amount, currency = '$') {
+  return `${currency}${Number(amount).toFixed(2)}`;
+}
+
+/**
+ * Pluralize a noun based on count
+ * @param {number} count - Number of items
+ * @param {string} noun - Noun to pluralize
+ * @return {string} - Pluralized string
+ */
+function pluralize(count, noun) {
+  return `${count} ${noun}${count === 1 ? '' : 's'}`;
+}
+
+/**
+ * Format date for display
+ * @param {Date|string} date - Date to format
+ * @param {string} format - Format style ('short', 'long', 'relative')
+ * @return {string} - Formatted date string
+ */
+function formatDate(date, format = 'short') {
+  const dateObj = date instanceof Date ? date : new Date(date);
+  
+  switch (format) {
+    case 'short':
+      return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    case 'long':
+      return dateObj.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+    case 'relative':
+      const now = new Date();
+      const diffTime = now.getTime() - dateObj.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays === 0) return 'Today';
+      if (diffDays === 1) return 'Yesterday';
+      if (diffDays > 0) return `${diffDays} days ago`;
+      return `${Math.abs(diffDays)} days from now`;
+    default:
+      return dateObj.toLocaleDateString();
+  }
+}
+
+/**
+ * Truncate text to specified length
+ * @param {string} text - Text to truncate
+ * @param {number} maxLength - Maximum length
+ * @param {string} suffix - Suffix to add (default: '...')
+ * @return {string} - Truncated text
+ */
+function truncateText(text, maxLength, suffix = '...') {
+  if (!text || text.length <= maxLength) return text;
+  return text.substring(0, maxLength - suffix.length) + suffix;
+}
+
+/**
+ * Capitalize first letter of each word
+ * @param {string} text - Text to capitalize
+ * @return {string} - Capitalized text
+ */
+function capitalizeWords(text) {
+  return text.replace(/\b\w/g, l => l.toUpperCase());
+}
+
+/**
+ * Safe string interpolation with fallback
+ * @param {string} template - Template string with ${placeholders}
+ * @param {Object} data - Data object
+ * @param {string} fallback - Fallback value for missing data
+ * @return {string} - Interpolated string
+ */
+function safeInterpolate(template, data, fallback = '') {
+  return template.replace(/\${(\w+)}/g, (match, key) => {
+    return data[key] !== undefined ? data[key] : fallback;
+  });
 } 

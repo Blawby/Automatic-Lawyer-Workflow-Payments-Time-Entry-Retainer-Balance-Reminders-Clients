@@ -74,4 +74,44 @@ const SETTINGS_DEFAULTS = {
   [SETTINGS_KEYS.BASE_PAYMENT_URL]: "https://app.blawby.com/pay",
   [SETTINGS_KEYS.DEFAULT_CURRENCY]: "USD",
   [SETTINGS_KEYS.LOW_BALANCE_THRESHOLD]: "500"
+};
+
+// ========== ACTION TYPES ==========
+const ACTION_TYPES = {
+  SEND_EMAIL: "send_email",
+  ASSIGN_MATTER: "assign_matter",
+  SUBMIT_ASSIGNMENT: "submit_assignment",
+  ADD_TIME_ENTRY: "add_time_entry",
+  SUBMIT_TIME_ENTRY: "submit_time_entry",
+  NUDGE_LAWYER: "nudge_lawyer"
+};
+
+// ========== EMAIL TYPES ==========
+const EMAIL_TYPES = {
+  LOW_BALANCE: "low_balance",
+  SERVICE_RESUMED: "service_resumed",
+  DAILY_DIGEST: "daily_digest",
+  MATTER_ASSIGNED: "matter_assigned",
+  LAWYER_NUDGE: "lawyer_nudge"
+};
+
+// ========== MATTER STATUS ==========
+const MATTER_STATUS = {
+  ACTIVE: "Active",
+  CLOSED: "Closed",
+  PENDING: "Pending"
+};
+
+// ========== WEB APP CONFIG ==========
+const SCRIPT_BASE_URL = "https://script.google.com/macros/s/AKfycbxiztbOp4fNyuL0DzCK00SQa3gFmGYN-CUX8HYcHcUoBIMJhncasQg-0Beu38I5d8Pf/exec";
+
+// ========== COMMON LABELS ==========
+const LABELS = {
+  CLIENT: "Client",
+  MATTER: "Matter",
+  LAWYER: "Lawyer",
+  BALANCE: "Balance",
+  TOP_UP: "Top-up",
+  TIME_ENTRY: "Time Entry",
+  ASSIGNMENT: "Assignment"
 }; 

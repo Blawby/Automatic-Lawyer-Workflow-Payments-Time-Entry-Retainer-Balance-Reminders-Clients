@@ -273,12 +273,16 @@ function sendDailyDigest() {
     const unassignedMatters = getUnassignedMatters(data, lawyerData);
     
     const subject = `Daily Balance Digest - ${today} (${lowBalanceClients.length} low balance clients, ${mattersNeedingTime.length} matters need time, ${unassignedMatters.length} unassigned matters)`;
-    const body = renderTemplate('DAILY_DIGEST', 'BODY', lowBalanceClients, paymentSummary, newClientsCount, todayRevenue, mattersNeedingTime, enhancedAnalytics, unassignedMatters);
+    const body = renderTemplate('DAILY_DIGEST_HTML', 'BODY', lowBalanceClients, paymentSummary, newClientsCount, todayRevenue, mattersNeedingTime, enhancedAnalytics, unassignedMatters);
     
     // Send to spreadsheet owner
     const ownerEmail = getActiveSpreadsheet().getOwner().getEmail();
     
-    MailApp.sendEmail(ownerEmail, subject, body);
+    MailApp.sendEmail({
+      to: ownerEmail,
+      subject: subject,
+      htmlBody: body
+    });
     
     log(`✅ Daily digest sent to ${ownerEmail}`);
     log(`📊 Summary: ${lowBalanceClients.length} low balance clients, ${mattersNeedingTime.length} matters need time`);
@@ -654,7 +658,7 @@ function addTimeEntryForm(matterID, lawyerID) {
   // Get suggested lawyers based on practice area
   const suggestedLawyers = suggestLawyersByPracticeArea(practiceArea, lawyerData);
   
-  const scriptId = 'AKfycbyTH2ZENNYm7J3dM-Y6ltGAYtp39CsmzNP4TZvabK8OjfeaQjN5mNhb46p8OtXiZyhZ';
+  const scriptId = 'AKfycbww5kqg5J44np0mIuGk0aFC5Bg8nhCb9YeDpFUyBuJ87hIWz6YCQatp-eVHECY8hDQ';
   const webAppUrl = `https://script.google.com/macros/s/${scriptId}/exec`;
   
   // Build suggested lawyers HTML
@@ -1402,7 +1406,7 @@ function getUnassignedMatters(data, lawyerData) {
  * Generate URL for assigning matter to lawyer
  */
 function generateAssignMatterUrl(matterID, practiceArea) {
-  const scriptId = 'AKfycbyRlOh_7iVEsJXG5y4ZNrJ32l-vVCH82F2km_WLrv3C0M4fRVPGw7H5bNszqCTpQf34';
+  const scriptId = 'AKfycbyf3LSaFigy3zHlkJAU3E7w1LyDFyDnzrtTp_aSAbnP90U9_KJSkhXXIUyqWpi6YShg';
   const webAppUrl = `https://script.google.com/macros/s/${scriptId}/exec`;
   return `${webAppUrl}?action=assign_matter&matter_id=${encodeURIComponent(matterID)}&practice_area=${encodeURIComponent(practiceArea)}`;
 }
@@ -1439,7 +1443,7 @@ function assignMatterForm(matterID, practiceArea) {
   // Sort by name
   allLawyers.sort((a, b) => a.name.localeCompare(b.name));
   
-  const scriptId = 'AKfycbyTH2ZENNYm7J3dM-Y6ltGAYtp39CsmzNP4TZvabK8OjfeaQjN5mNhb46p8OtXiZyhZ';
+  const scriptId = 'AKfycbyf3LSaFigy3zHlkJAU3E7w1LyDFyDnzrtTp_aSAbnP90U9_KJSkhXXIUyqWpi6YShg';
   const webAppUrl = `https://script.google.com/macros/s/${scriptId}/exec`;
   
   // Build suggested lawyers HTML
@@ -1554,7 +1558,10 @@ function submitAssignment(matterID, lawyerID, notes, e) {
     const data = loadSheetData(sheets);
     const lawyerData = buildLawyerMaps(data.lawyers);
     const ownerEmail = getActiveSpreadsheet().getOwner().getEmail();
-    const assigner = Session.getActiveUser().getEmail() || ownerEmail;
+    
+    // Use spreadsheet owner as assigner to avoid permission issues
+    const assigner = ownerEmail;
+    
     const timestamp = new Date();
 
     // Find the matter row

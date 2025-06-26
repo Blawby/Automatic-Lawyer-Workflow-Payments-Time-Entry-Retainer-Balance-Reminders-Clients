@@ -162,33 +162,60 @@ function renderTemplate(type, subtype, ...params) {
       },
       'DAILY_DIGEST': {
         'SUBJECT': 'Your Blawby Daily Summary',
-        'BODY': (lowBalanceClients, paymentSummary) => {
-          let body = '📬 Your Daily Blawby Summary\n\n';
+        'BODY': (lowBalanceClients, paymentSummary, newClientsCount, todayRevenue, mattersNeedingTime) => {
+          let body = 'Your Daily Blawby Summary\n\n';
           body += 'Here\'s a snapshot of client retainer activity and balances today.\n\n';
           
+          body += 'TODAY\'S ACTIVITY:\n';
+          body += `- New Clients: ${newClientsCount || 0}\n`;
+          body += `- Revenue: $${parseFloat(todayRevenue || 0).toFixed(2)}\n`;
+          
           if (paymentSummary) {
-            body += `💰 Total Payments Received: $${paymentSummary.total.toFixed(2)}\n`;
-            body += `👥 Clients Paid Today: ${paymentSummary.count}\n\n`;
+            body += `- Total Payments Received: $${parseFloat(paymentSummary.total || 0).toFixed(2)}\n`;
+            body += `- Clients Paid Today: ${paymentSummary.count}\n\n`;
           }
           
           if (lowBalanceClients.length === 0) {
-            body += '🎉 All client balances are in good standing. Great work!\n';
+            body += 'All client balances are in good standing. Great work!\n';
           } else {
-            body += `🔔 Clients Needing Attention (${lowBalanceClients.length}):\n\n`;
+            body += `CLIENTS NEEDING ATTENTION (${lowBalanceClients.length})\n\n`;
             lowBalanceClients.forEach(client => {
-              body += `${client.name}:\n`;
-              body += `  Balance: $${client.balance.toFixed(2)}\n`;
-              body += `  Target: $${client.targetBalance.toFixed(2)}\n`;
+              const balance = parseFloat(client.balance || 0);
+              const targetBalance = parseFloat(client.targetBalance || 0);
+              const topUpNeeded = Math.max(0, targetBalance - balance);
+              
+              body += `${client.name} (${client.email})\n`;
+              body += `  Balance: $${balance.toFixed(2)}\n`;
+              body += `  Target: $${targetBalance.toFixed(2)}\n`;
+              body += `  Top-up Needed: $${topUpNeeded.toFixed(2)}\n`;
               body += `  Last Activity: ${client.lastActivity || 'N/A'}\n`;
-              body += `  Email Sent: ${client.emailSent ? '✅ Yes' : '❌ No'}\n`;
-              if (client.balance <= 0) {
-                body += `  Status: 🚫 Services Paused\n`;
+              body += `  Email Sent: ${client.emailSent ? 'Yes' : 'No'}\n`;
+              body += `  Send Top-up Reminder: ${generateSendEmailUrl(client.clientID, 'low_balance')}\n`;
+              if (balance <= 0) {
+                body += `  Status: Services Paused\n`;
               } else {
-                body += `  Status: ⚠️ Low Balance\n`;
+                body += `  Status: Low Balance\n`;
               }
               body += '\n';
             });
-            body += '📝 Action recommended: Follow up with clients who haven\'t responded or whose services are paused.\n';
+            body += 'Action recommended: Follow up with clients who haven\'t responded or whose services are paused.\n';
+          }
+          
+          if (mattersNeedingTime && mattersNeedingTime.length > 0) {
+            body += '\nMATTERS NEEDING TIME ENTRIES:\n';
+            mattersNeedingTime.forEach(matter => {
+              body += `${matter.matterDescription} (${matter.clientName})\n`;
+              body += `  Client: ${matter.clientName} (${matter.clientEmail})\n`;
+              body += `  Matter ID: ${matter.matterID}\n`;
+              body += `  Matter Date: ${matter.matterDate}\n`;
+              body += `  Reason: ${matter.reason}\n`;
+              body += `  Last Payment Date: ${matter.lastPaymentDate}\n`;
+              body += `  Days Since Last Time Entry: ${matter.daysSinceLastTimeEntry}\n`;
+              body += `  Lawyer: ${matter.lawyerName} (${matter.lawyerEmail})\n`;
+              body += `  Add Time Entry: ${generateAddTimeEntryUrl(matter.matterID, matter.lawyerID)}\n`;
+              body += '\n';
+            });
+            body += 'Action recommended: Follow up with matters needing time entries.\n';
           }
           
           body += '\nThis summary was generated automatically by Blawby.';
@@ -197,7 +224,7 @@ function renderTemplate(type, subtype, ...params) {
       },
       'SERVICE_RESUMED': {
         'CLIENT_SUBJECT': 'Great news! Your services are back up and running',
-        'CLIENT_BODY': (clientName) => `Welcome back, ${clientName}! 🎉\n\nGreat news—your retainer has been topped up and your legal services are now fully active again!\n\n✅ All systems are go! We're ready to continue working on your matters.\n\nThanks for keeping your retainer current. This helps us provide you with the best possible service without any interruptions.\n\nIf you need anything or have questions about your case, don't hesitate to reach out. We're here to help!\n\nBest regards,\nYour Legal Team`,
+        'CLIENT_BODY': (clientName) => `Welcome back, ${clientName}!\n\nGreat news—your retainer has been topped up and your legal services are now fully active again!\n\nAll systems are go! We're ready to continue working on your matters.\n\nThanks for keeping your retainer current. This helps us provide you with the best possible service without any interruptions.\n\nIf you need anything or have questions about your case, don't hesitate to reach out. We're here to help!\n\nBest regards,\nYour Legal Team`,
         'OWNER_SUBJECT': (clientName) => `Service Resumed - ${clientName}`,
         'OWNER_BODY': (clientName) => `Services have been resumed for client ${clientName}.`
       },
@@ -243,6 +270,40 @@ function sendDailyBalanceDigest() {
     const clientsById = buildClientMap(data.clientData);
     const today = new Date().toISOString().split('T')[0];
     
+    // Calculate today's revenue and new clients
+    let todayRevenue = 0;
+    let newClientsCount = 0;
+    
+    // Calculate revenue from today's payments
+    for (const payment of data.paymentData.slice(1)) {
+      if (payment && Array.isArray(payment) && payment.length >= 3) {
+        const paymentDate = parseZapierTimestamp(payment[0]);
+        if (paymentDate && paymentDate.toISOString().split('T')[0] === today) {
+          const amount = parseFloat(payment[2]);
+          if (!isNaN(amount) && amount > 0) {
+            todayRevenue += amount;
+          }
+        }
+      }
+    }
+    
+    // Count new clients (clients created today)
+    for (const [clientID, row] of Object.entries(clientsById)) {
+      if (row && Array.isArray(row) && row.length >= 10) {
+        // Check if client was created today (this is a simplified check)
+        // In a real implementation, you might want to track creation dates
+        const clientEmail = row[0];
+        const hasPaymentsToday = data.paymentData.slice(1).some(payment => 
+          payment && Array.isArray(payment) && 
+          payment[1] === clientEmail && 
+          parseZapierTimestamp(payment[0])?.toISOString().split('T')[0] === today
+        );
+        if (hasPaymentsToday) {
+          newClientsCount++;
+        }
+      }
+    }
+    
     // Find clients with low balances
     const lowBalanceClients = [];
     const defaultTargetBalance = getSetting('Low Balance Threshold', 500);
@@ -266,7 +327,8 @@ function sendDailyBalanceDigest() {
           targetBalance: targetBalance.toFixed(2),
           topUp: topUp.toFixed(2),
           paymentLink,
-          lastActivity: balanceInfo.lastActivityDate ? balanceInfo.lastActivityDate.toISOString().split('T')[0] : 'Unknown'
+          lastActivity: balanceInfo.lastActivityDate ? balanceInfo.lastActivityDate.toISOString().split('T')[0] : 'Unknown',
+          emailSent: false // For now, always false since we're not tracking this yet
         });
       }
     }
@@ -289,27 +351,21 @@ Send All (${lowBalanceClients.length} emails): ${generateSendAllEmailsUrl(lowBal
 
 ` : '';
 
-    // Create digest content
-    const subject = `📊 Daily Balance Digest - ${today} (${lowBalanceClients.length} low balance clients)`;
-    const body = `
-📊 Daily Balance Digest
+    // Calculate payment summary
+    const paymentSummary = {
+      total: todayRevenue,
+      count: data.paymentData.slice(1).filter(payment => 
+        payment && Array.isArray(payment) && 
+        parseZapierTimestamp(payment[0])?.toISOString().split('T')[0] === today
+      ).length
+    };
 
-Date: ${today}
-Low Balance Clients: ${lowBalanceClients.length}
+    // Identify matters needing time entries
+    const mattersNeedingTime = identifyMattersNeedingTimeEntries(data, lawyerData, today);
 
-${lowBalanceClients.length > 0 ? `
-⚠️ Clients Needing Top-up
-
-${actionButtons}
-${sendAllButton}
-` : `
-✅ All Clients Have Sufficient Balance
-`}
-
----
-💡 Click the action links above to send low balance emails to clients.
-Service resumed emails are still sent automatically when balances become positive.
-    `;
+    // Create digest content using enhanced template
+    const subject = `Daily Balance Digest - ${today} (${lowBalanceClients.length} low balance clients, ${mattersNeedingTime.length} matters need time)`;
+    const body = renderTemplate('DAILY_DIGEST', 'BODY', lowBalanceClients, paymentSummary, newClientsCount, todayRevenue, mattersNeedingTime);
     
     // Send digest to firm
     sendEmail(firmEmail, subject, body);
@@ -388,7 +444,7 @@ function notifyServiceResumed(clientID, email, clientName, balance, today) {
  * Generate URL for sending individual low balance email
  */
 function generateSendEmailUrl(clientID, emailType) {
-  const scriptId = 'AKfycbxyfMbc05T93I4g86Tmqi57yEZ8YnGGzruduiSygSbTRjAa9ttE5NOPpCMZ5p0Xmgat';
+  const scriptId = 'AKfycbyRlOh_7iVEsJXG5y4ZNrJ32l-vVCH82F2km_WLrv3C0M4fRVPGw7H5bNszqCTpQf34';
   const webAppUrl = `https://script.google.com/macros/s/${scriptId}/exec`;
   return `${webAppUrl}?action=send_email&client_id=${encodeURIComponent(clientID)}&email_type=${emailType}`;
 }
@@ -397,9 +453,27 @@ function generateSendEmailUrl(clientID, emailType) {
  * Generate URL for sending all low balance emails
  */
 function generateSendAllEmailsUrl(clientIDs) {
-  const scriptId = 'AKfycbxyfMbc05T93I4g86Tmqi57yEZ8YnGGzruduiSygSbTRjAa9ttE5NOPpCMZ5p0Xmgat';
+  const scriptId = 'AKfycbyRlOh_7iVEsJXG5y4ZNrJ32l-vVCH82F2km_WLrv3C0M4fRVPGw7H5bNszqCTpQf34';
   const webAppUrl = `https://script.google.com/macros/s/${scriptId}/exec`;
   return `${webAppUrl}?action=send_all&client_ids=${encodeURIComponent(clientIDs.join(','))}`;
+}
+
+/**
+ * Generate URL for adding time entry
+ */
+function generateAddTimeEntryUrl(matterID, lawyerID) {
+  const scriptId = 'AKfycbyRlOh_7iVEsJXG5y4ZNrJ32l-vVCH82F2km_WLrv3C0M4fRVPGw7H5bNszqCTpQf34';
+  const webAppUrl = `https://script.google.com/macros/s/${scriptId}/exec`;
+  return `${webAppUrl}?action=add_time_entry&matter_id=${encodeURIComponent(matterID)}&lawyer_id=${encodeURIComponent(lawyerID)}`;
+}
+
+/**
+ * Generate URL for nudging lawyer about time entry
+ */
+function generateNudgeLawyerUrl(matterID, lawyerID) {
+  const scriptId = 'AKfycbyRlOh_7iVEsJXG5y4ZNrJ32l-vVCH82F2km_WLrv3C0M4fRVPGw7H5bNszqCTpQf34';
+  const webAppUrl = `https://script.google.com/macros/s/${scriptId}/exec`;
+  return `${webAppUrl}?action=nudge_lawyer&matter_id=${encodeURIComponent(matterID)}&lawyer_id=${encodeURIComponent(lawyerID)}`;
 }
 
 /**
@@ -411,11 +485,21 @@ function doGet(e) {
     const clientID = e.parameter.client_id;
     const emailType = e.parameter.email_type;
     const clientIDs = e.parameter.client_ids;
+    const matterID = e.parameter.matter_id;
+    const lawyerID = e.parameter.lawyer_id;
+    const hours = e.parameter.hours;
+    const description = e.parameter.description;
     
     if (action === 'send_email' && clientID && emailType === 'low_balance') {
       return sendLowBalanceEmailManual(clientID);
     } else if (action === 'send_all' && clientIDs) {
       return sendAllLowBalanceEmailsManual(clientIDs.split(','));
+    } else if (action === 'add_time_entry' && matterID && lawyerID) {
+      return addTimeEntryForm(matterID, lawyerID);
+    } else if (action === 'submit_time_entry' && matterID && lawyerID && hours && description) {
+      return submitTimeEntry(matterID, lawyerID, hours, description);
+    } else if (action === 'nudge_lawyer' && matterID && lawyerID) {
+      return nudgeLawyerForTimeEntry(matterID, lawyerID);
     } else {
       return HtmlService.createHtmlOutput('Invalid request');
     }
@@ -559,4 +643,505 @@ function sendAllLowBalanceEmailsManual(clientIDs) {
   }
   
   logEnd('sendAllLowBalanceEmailsManual');
+}
+
+/**
+ * Submit time entry (called from web app form)
+ */
+function submitTimeEntry(matterID, lawyerID, hours, description) {
+  logStart('submitTimeEntry');
+  
+  try {
+    // Get matter and lawyer info
+    const sheets = getSheets();
+    const data = loadSheetData(sheets);
+    const lawyerData = buildLawyerMaps(data.lawyers);
+    
+    const matter = data.matters.find(m => m && Array.isArray(m) && m[0] === matterID);
+    const lawyerName = lawyerData.names[lawyerID] || 'Unknown Lawyer';
+    const matterDescription = matter ? matter[3] : 'Unknown Matter';
+    const clientEmail = matter ? matter[1] : '';
+    
+    // Validate inputs
+    const hoursNum = parseFloat(hours);
+    if (isNaN(hoursNum) || hoursNum <= 0) {
+      throw new Error('Invalid hours value');
+    }
+    
+    if (!description || description.trim() === '') {
+      throw new Error('Description is required');
+    }
+    
+    // Add time entry to TimeLogs sheet
+    const timeLogsSheet = sheets.timeLogsSheet;
+    const today = new Date().toISOString().split('T')[0];
+    const newTimeEntry = [
+      today,           // Date
+      clientEmail,     // Client Email
+      matterID,        // Matter ID
+      lawyerID,        // Lawyer ID
+      hoursNum         // Hours
+    ];
+    
+    timeLogsSheet.appendRow(newTimeEntry);
+    
+    log(`✅ Time entry added: ${hoursNum} hours for matter ${matterID} by ${lawyerName}`);
+    
+    return HtmlService.createHtmlOutput(`
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+        <h2>Time Entry Added Successfully</h2>
+        <p><strong>Matter:</strong> ${matterDescription}</p>
+        <p><strong>Lawyer:</strong> ${lawyerName}</p>
+        <p><strong>Hours:</strong> ${hoursNum}</p>
+        <p><strong>Description:</strong> ${description}</p>
+        <p><strong>Date:</strong> ${today}</p>
+        <br>
+        <p>✅ Time entry has been added to the TimeLogs sheet.</p>
+        <a href="javascript:window.close()">Close</a>
+      </div>
+    `);
+    
+  } catch (error) {
+    logError('submitTimeEntry', error);
+    return HtmlService.createHtmlOutput(`
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+        <h2>Error</h2>
+        <p>Failed to add time entry: ${error.message}</p>
+        <a href="javascript:window.close()">Close</a>
+      </div>
+    `);
+  }
+  
+  logEnd('submitTimeEntry');
+}
+
+/**
+ * Generate time entry form
+ */
+function addTimeEntryForm(matterID, lawyerID) {
+  const sheets = getSheets();
+  const data = loadSheetData(sheets);
+  const lawyerData = buildLawyerMaps(data.lawyers);
+  
+  const matter = data.matters.find(m => m && Array.isArray(m) && m[0] === matterID);
+  const lawyerName = lawyerData.names[lawyerID] || 'Unknown Lawyer';
+  const lawyerEmail = lawyerData.emails[lawyerID] || 'No email found';
+  const matterDescription = matter ? matter[3] : 'Unknown Matter';
+  const clientEmail = matter ? matter[1] : '';
+  const practiceArea = matter && matter[7] ? matter[7] : 'General';
+  
+  // Find client name from client data
+  const client = data.clientData.find(c => c && Array.isArray(c) && c[0] === clientEmail);
+  const clientName = client && client[1] ? client[1] : 'Client name not set';
+  
+  // Get suggested lawyers based on practice area
+  const suggestedLawyers = suggestLawyersByPracticeArea(practiceArea, lawyerData);
+  
+  const scriptId = 'AKfycbyRlOh_7iVEsJXG5y4ZNrJ32l-vVCH82F2km_WLrv3C0M4fRVPGw7H5bNszqCTpQf34';
+  const webAppUrl = `https://script.google.com/macros/s/${scriptId}/exec`;
+  
+  // Build suggested lawyers HTML
+  let suggestedLawyersHtml = '';
+  if (suggestedLawyers.length > 0) {
+    suggestedLawyersHtml = `
+      <div style="background-color: #e8f5e8; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+        <h3 style="margin-top: 0; color: #333;">💡 Suggested Lawyers for ${practiceArea}</h3>
+        ${suggestedLawyers.map(lawyer => `
+          <div style="margin-bottom: 10px; padding: 8px; background-color: white; border-radius: 3px;">
+            <strong>${lawyer.name}</strong> (${lawyer.id}) - $${lawyer.rate}/hour<br>
+            <small style="color: #666;">${lawyer.email} | ${lawyer.practiceAreas}</small>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+  
+  return HtmlService.createHtmlOutput(`
+    <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px;">
+      <h2>Add Time Entry</h2>
+      
+      <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+        <h3 style="margin-top: 0; color: #333;">Matter Information</h3>
+        <p><strong>Matter ID:</strong> ${matterID}</p>
+        <p><strong>Matter Description:</strong> ${matterDescription}</p>
+        <p><strong>Practice Area:</strong> ${practiceArea}</p>
+        <p><strong>Status:</strong> ${matter ? matter[5] : 'Unknown'}</p>
+      </div>
+      
+      <div style="background-color: #e8f4fd; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+        <h3 style="margin-top: 0; color: #333;">Client Information</h3>
+        <p><strong>Client Name:</strong> ${clientName}</p>
+        <p><strong>Client Email:</strong> ${clientEmail}</p>
+      </div>
+      
+      <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+        <h3 style="margin-top: 0; color: #333;">Assigned Lawyer</h3>
+        <p><strong>Lawyer Name:</strong> ${lawyerName}</p>
+        <p><strong>Lawyer ID:</strong> ${lawyerID}</p>
+        <p><strong>Lawyer Email:</strong> ${lawyerEmail}</p>
+        <p><strong>Hourly Rate:</strong> $${lawyerData.rates[lawyerID] || 'Not set'}/hour</p>
+        <p><strong>Practice Areas:</strong> ${lawyerData.practiceAreas[lawyerID] || 'Not specified'}</p>
+      </div>
+      
+      ${suggestedLawyersHtml}
+      
+      <form id="timeEntryForm">
+        <input type="hidden" name="action" value="submit_time_entry">
+        <input type="hidden" name="matter_id" value="${matterID}">
+        <input type="hidden" name="lawyer_id" value="${lawyerID}">
+        
+        <div style="margin-bottom: 15px;">
+          <label for="hours" style="display: block; margin-bottom: 5px;"><strong>Hours (6-minute increments):</strong></label>
+          <select id="hours" name="hours" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            <option value="">Select hours...</option>
+            <option value="0.1">0.1 (6 minutes)</option>
+            <option value="0.2">0.2 (12 minutes)</option>
+            <option value="0.3">0.3 (18 minutes)</option>
+            <option value="0.4">0.4 (24 minutes)</option>
+            <option value="0.5">0.5 (30 minutes)</option>
+            <option value="0.6">0.6 (36 minutes)</option>
+            <option value="0.7">0.7 (42 minutes)</option>
+            <option value="0.8">0.8 (48 minutes)</option>
+            <option value="0.9">0.9 (54 minutes)</option>
+            <option value="1.0">1.0 (1 hour)</option>
+            <option value="1.1">1.1 (1 hour 6 minutes)</option>
+            <option value="1.2">1.2 (1 hour 12 minutes)</option>
+            <option value="1.5">1.5 (1 hour 30 minutes)</option>
+            <option value="2.0">2.0 (2 hours)</option>
+            <option value="2.5">2.5 (2 hours 30 minutes)</option>
+            <option value="3.0">3.0 (3 hours)</option>
+            <option value="4.0">4.0 (4 hours)</option>
+            <option value="5.0">5.0 (5 hours)</option>
+            <option value="6.0">6.0 (6 hours)</option>
+            <option value="7.0">7.0 (7 hours)</option>
+            <option value="8.0">8.0 (8 hours)</option>
+          </select>
+          <small style="color: #666;">Legal billing standard: 6-minute increments (0.1 hours)</small>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <label for="description" style="display: block; margin-bottom: 5px;"><strong>Description:</strong></label>
+          <textarea id="description" name="description" required 
+                    style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; height: 100px;"
+                    placeholder="Describe the work performed (e.g., 'Client consultation regarding contract review', 'Document preparation for filing', 'Research on case law')"></textarea>
+          <small style="color: #666;">Be specific about the work performed for accurate billing</small>
+        </div>
+        
+        <button type="submit" style="background-color: #4CAF50; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;">
+          Add Time Entry
+        </button>
+        <button type="button" onclick="window.close()" style="background-color: #f44336; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px; font-size: 16px;">
+          Cancel
+        </button>
+      </form>
+      
+      <div id="result" style="margin-top: 20px;"></div>
+      
+      <script>
+        document.getElementById('timeEntryForm').addEventListener('submit', function(e) {
+          e.preventDefault();
+          
+          const hours = document.getElementById('hours').value;
+          const description = document.getElementById('description').value;
+          const matterID = '${matterID}';
+          const lawyerID = '${lawyerID}';
+          
+          if (!hours || !description) {
+            document.getElementById('result').innerHTML = '<p style="color: red;">Please fill in all fields.</p>';
+            return;
+          }
+          
+          const params = new URLSearchParams({
+            action: 'submit_time_entry',
+            matter_id: matterID,
+            lawyer_id: lawyerID,
+            hours: hours,
+            description: description
+          });
+          
+          const url = '${webAppUrl}?' + params.toString();
+          
+          // Open in new window/tab to avoid iframe issues
+          window.open(url, '_blank');
+          
+          // Show success message
+          document.getElementById('result').innerHTML = '<p style="color: green;">✅ Time entry submitted! Check the new tab for confirmation.</p>';
+          
+          // Clear form
+          document.getElementById('hours').value = '';
+          document.getElementById('description').value = '';
+        });
+      </script>
+    </div>
+  `);
+}
+
+/**
+ * Identify matters that likely need time entries
+ * @param {Object} data - Sheet data
+ * @param {Object} lawyerData - Lawyer information
+ * @param {string} today - Today's date in YYYY-MM-DD format
+ * @return {Array} - Array of matters needing time entries
+ */
+function identifyMattersNeedingTimeEntries(data, lawyerData, today) {
+  try {
+    const mattersNeedingTime = [];
+    const todayDate = new Date(today);
+    const oneWeekAgo = new Date(todayDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const twoWeeksAgo = new Date(todayDate.getTime() - 14 * 24 * 60 * 60 * 1000);
+    
+    // Validate lawyer data
+    if (!lawyerData || !lawyerData.rates || !lawyerData.names || !lawyerData.emails) {
+      log('⚠️ Lawyer data is incomplete, skipping matter time entry detection');
+      return mattersNeedingTime;
+    }
+    
+    // Get all active matters
+    const activeMatters = data.matters.slice(1).filter(matter => 
+      matter && Array.isArray(matter) && 
+      matter[5] === 'Active' // Status column
+    );
+    
+    for (const matter of activeMatters) {
+      const matterID = matter[0];
+      const clientEmail = matter[1];
+      const clientName = matter[2] || 'Unknown Client';
+      const matterDescription = matter[3] || 'General Legal Matter';
+      const matterDate = new Date(matter[4]);
+      
+      // Find client info
+      const client = data.clientData.find(c => c && Array.isArray(c) && c[0] === clientEmail);
+      if (!client) continue;
+      
+      // Check if client has recent payments (within last 2 weeks)
+      const hasRecentPayments = data.paymentData.slice(1).some(payment => {
+        if (!payment || !Array.isArray(payment) || payment[1] !== clientEmail) return false;
+        const paymentDate = parseZapierTimestamp(payment[0]);
+        return paymentDate && paymentDate >= twoWeeksAgo;
+      });
+      
+      // Check if matter has recent time entries (within last week)
+      const hasRecentTimeEntries = data.timeLogs.slice(1).some(log => {
+        if (!log || !Array.isArray(log) || log[2] !== matterID) return false;
+        const logDate = new Date(log[0]);
+        return logDate >= oneWeekAgo;
+      });
+      
+      // Check if matter is relatively new (created within last month)
+      const isNewMatter = matterDate >= new Date(todayDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+      
+      // Determine if matter needs time entry based on indicators
+      let needsTimeEntry = false;
+      let reason = '';
+      
+      if (hasRecentPayments && !hasRecentTimeEntries) {
+        needsTimeEntry = true;
+        reason = 'Recent payment but no time entries';
+      } else if (isNewMatter && !hasRecentTimeEntries) {
+        needsTimeEntry = true;
+        reason = 'New matter with no time entries';
+      } else if (hasRecentPayments && isNewMatter) {
+        needsTimeEntry = true;
+        reason = 'New matter with recent payment';
+      }
+      
+      if (needsTimeEntry) {
+        // Find assigned lawyer (default to first lawyer if none assigned)
+        const assignedLawyer = data.timeLogs.slice(1).find(log => 
+          log && Array.isArray(log) && log[2] === matterID
+        );
+        const availableLawyers = Object.keys(lawyerData.rates);
+        const lawyerID = assignedLawyer ? assignedLawyer[3] : (availableLawyers.length > 0 ? availableLawyers[0] : null);
+        
+        if (lawyerID && lawyerData.names[lawyerID]) {
+          const lawyerName = lawyerData.names[lawyerID];
+          const lawyerEmail = lawyerData.emails[lawyerID] || '';
+          
+          mattersNeedingTime.push({
+            matterID,
+            clientEmail,
+            clientName,
+            matterDescription,
+            matterDate: matterDate.toISOString().split('T')[0],
+            lawyerID,
+            lawyerName,
+            lawyerEmail,
+            reason,
+            lastPaymentDate: getLastPaymentDate(clientEmail, data),
+            daysSinceLastTimeEntry: getDaysSinceLastTimeEntry(matterID, data, todayDate)
+          });
+        }
+      }
+    }
+    
+    return mattersNeedingTime;
+  } catch (error) {
+    logError('identifyMattersNeedingTimeEntries', error);
+    return [];
+  }
+}
+
+/**
+ * Get the last payment date for a client
+ * @param {string} clientEmail - Client email
+ * @param {Object} data - Sheet data
+ * @return {string|null} - Last payment date or null
+ */
+function getLastPaymentDate(clientEmail, data) {
+  const clientPayments = data.paymentData.slice(1)
+    .filter(payment => payment && Array.isArray(payment) && payment[1] === clientEmail)
+    .map(payment => parseZapierTimestamp(payment[0]))
+    .filter(date => date)
+    .sort((a, b) => b - a);
+  
+  return clientPayments.length > 0 ? clientPayments[0].toISOString().split('T')[0] : null;
+}
+
+/**
+ * Get days since last time entry for a matter
+ * @param {string} matterID - Matter ID
+ * @param {Object} data - Sheet data
+ * @param {Date} todayDate - Today's date
+ * @return {number} - Days since last time entry
+ */
+function getDaysSinceLastTimeEntry(matterID, data, todayDate) {
+  const matterTimeEntries = data.timeLogs.slice(1)
+    .filter(log => log && Array.isArray(log) && log[2] === matterID)
+    .map(log => new Date(log[0]))
+    .filter(date => !isNaN(date.getTime()))
+    .sort((a, b) => b - a);
+  
+  if (matterTimeEntries.length === 0) {
+    return 999; // No time entries ever
+  }
+  
+  const lastEntryDate = matterTimeEntries[0];
+  const diffTime = todayDate.getTime() - lastEntryDate.getTime();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * Suggest lawyers based on practice area
+ */
+function suggestLawyersByPracticeArea(practiceArea, lawyerData) {
+  if (!practiceArea || !lawyerData || !lawyerData.practiceAreas) {
+    return [];
+  }
+  
+  const suggestedLawyers = [];
+  const practiceAreaLower = practiceArea.toLowerCase();
+  
+  for (const [lawyerID, practiceAreasStr] of Object.entries(lawyerData.practiceAreas)) {
+    if (!practiceAreasStr) continue;
+    
+    const lawyerPracticeAreas = practiceAreasStr.toLowerCase().split(',').map(pa => pa.trim());
+    
+    // Check if any of the lawyer's practice areas match the matter's practice area
+    const hasMatchingPracticeArea = lawyerPracticeAreas.some(pa => 
+      pa.includes(practiceAreaLower) || practiceAreaLower.includes(pa)
+    );
+    
+    if (hasMatchingPracticeArea) {
+      suggestedLawyers.push({
+        id: lawyerID,
+        name: lawyerData.names[lawyerID] || 'Unknown',
+        email: lawyerData.emails[lawyerID] || '',
+        rate: lawyerData.rates[lawyerID] || 0,
+        practiceAreas: practiceAreasStr
+      });
+    }
+  }
+  
+  // Sort by rate (highest first) and then by name
+  return suggestedLawyers.sort((a, b) => {
+    if (b.rate !== a.rate) return b.rate - a.rate;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+/**
+ * Nudge lawyer for time entry (called from web app)
+ */
+function nudgeLawyerForTimeEntry(matterID, lawyerID) {
+  logStart('nudgeLawyerForTimeEntry');
+  
+  try {
+    // Get matter and lawyer info
+    const sheets = getSheets();
+    const data = loadSheetData(sheets);
+    const lawyerData = buildLawyerMaps(data.lawyers);
+    
+    const matter = data.matters.find(m => m && Array.isArray(m) && m[0] === matterID);
+    const lawyerName = lawyerData.names[lawyerID] || 'Unknown Lawyer';
+    const lawyerEmail = lawyerData.emails[lawyerID] || '';
+    const matterDescription = matter ? matter[3] : 'Unknown Matter';
+    const clientEmail = matter ? matter[1] : '';
+    const practiceArea = matter && matter[7] ? matter[7] : 'General';
+    
+    // Find client name from client data
+    const client = data.clientData.find(c => c && Array.isArray(c) && c[0] === clientEmail);
+    const clientName = client && client[1] ? client[1] : 'Client name not set';
+    
+    // Get spreadsheet owner email
+    const ownerEmail = getActiveSpreadsheet().getOwner().getEmail();
+    
+    // Generate time entry link
+    const timeEntryUrl = generateAddTimeEntryUrl(matterID, lawyerID);
+    
+    // Create email content
+    const subject = `Time Entry Reminder: ${matterDescription} - ${clientName}`;
+    
+    const emailBody = `Hi ${lawyerName},
+
+This is a friendly reminder to log your time for the following matter:
+
+Matter: ${matterDescription} (${matterID})
+Client: ${clientName} (${clientEmail})
+Practice Area: ${practiceArea}
+
+Please log your time entries using the link below:
+${timeEntryUrl}
+
+If you have any questions about this matter or need assistance, please don't hesitate to reach out.
+
+Best regards,
+${ownerEmail.split('@')[0]} (Firm Owner)`;
+
+    // Send email to lawyer and CC owner
+    const emailOptions = {
+      cc: ownerEmail,
+      name: 'Blawby Time Entry Reminder'
+    };
+    
+    MailApp.sendEmail(lawyerEmail, subject, emailBody, emailOptions);
+    
+    log(`✅ Nudge email sent to ${lawyerName} (${lawyerEmail}) for matter ${matterID}`);
+    
+    return HtmlService.createHtmlOutput(`
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+        <h2>✅ Nudge Email Sent</h2>
+        <p><strong>Lawyer:</strong> ${lawyerName} (${lawyerEmail})</p>
+        <p><strong>Matter:</strong> ${matterDescription} (${matterID})</p>
+        <p><strong>Client:</strong> ${clientName}</p>
+        <p><strong>Practice Area:</strong> ${practiceArea}</p>
+        <br>
+        <p>✅ A reminder email has been sent to ${lawyerName} with the time entry link.</p>
+        <p>The firm owner (${ownerEmail}) has been CC'd on the email.</p>
+        <br>
+        <a href="javascript:window.close()">Close</a>
+      </div>
+    `);
+    
+  } catch (error) {
+    logError('nudgeLawyerForTimeEntry', error);
+    return HtmlService.createHtmlOutput(`
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+        <h2>❌ Error</h2>
+        <p>Failed to send nudge email: ${error.message}</p>
+        <a href="javascript:window.close()">Close</a>
+      </div>
+    `);
+  }
+  
+  logEnd('nudgeLawyerForTimeEntry');
 }

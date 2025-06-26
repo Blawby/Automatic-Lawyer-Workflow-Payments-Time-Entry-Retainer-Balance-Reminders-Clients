@@ -1,111 +1,207 @@
-## 📊 [Blawby Sheets](https://blawby.com) - Free, Open-Source Legal Software for Lawyers
+# Blawby - Google Sheets Legal Retainer Management System
 
-A professional, [IOLTA-compliant](https://blawby.com/docs) retainer management system for law firms—built in Google Sheets. Designed to track retainers, billable hours, and automate payment workflows.
-**✅ 100% Free** | **✅ Open Source** | **✅ No Coding Needed**
+A comprehensive legal practice management system built on Google Sheets that automates client payment tracking, time logging, email notifications, and practice area management.
+
+## 🚀 Features
+
+### 📊 **Daily Digest & Analytics**
+- **Today's Activity Summary**: New clients, revenue, time entries, and matter updates
+- **Low Balance Alerts**: Automated detection and manual email sending
+- **Matter Management**: Track matters needing time entries with practice area matching
+- **Lawyer Performance**: Monitor time logging and suggest appropriate assignments
+
+### 💰 **Payment & Retainer Management**
+- **Automated Payment Processing**: Syncs with Blawby payment system
+- **Balance Tracking**: Real-time client balance calculations
+- **Top-up Reminders**: Manual email system for low balance notifications
+- **Payment History**: Complete payment tracking and reporting
+
+### ⏱️ **Time Entry System**
+- **Web-based Time Entry**: Professional forms with practice area context
+- **Legal Billing Standards**: 6-minute increments (0.1 hours)
+- **Lawyer Suggestions**: Smart matching based on practice areas
+- **Nudge System**: Professional reminder emails to lawyers
+
+### 👩‍⚖️ **Practice Area Management**
+- **Lawyer Specializations**: Track practice areas for each lawyer
+- **Smart Matter Assignment**: Suggest appropriate lawyers based on practice area
+- **Enhanced Time Entry**: Context-aware forms with matter and client details
+
+### 📧 **Email Automation**
+- **Service Resumption**: Automatic notifications when clients top up
+- **Manual Email Control**: Owner-controlled low balance reminders
+- **Professional Templates**: Clean, professional email formatting
+- **Lawyer Nudges**: Automated reminders with direct time entry links
+
+## 🏗️ System Architecture
+
+### **Core Sheets**
+- **Welcome**: System settings and lawyer configuration
+- **Clients**: Client information and balance tracking
+- **Matters**: Matter details with practice area assignment
+- **TimeLogs**: Time entry tracking with lawyer and matter association
+- **Payments**: Payment processing and history
+- **LowBalanceWarnings**: Automated low balance detection
+
+### **Web App Integration**
+- **Action Buttons**: Direct links for email sending and time entry
+- **Professional Forms**: Enhanced time entry with context
+- **Lawyer Nudges**: Automated reminder system
+- **Secure Access**: Google Apps Script web app deployment
+
+## 📋 Setup Instructions
+
+### **1. Initial Configuration**
+1. Copy the Google Sheets template
+2. Set up your Blawby payment URL in the Welcome sheet
+3. Configure low balance threshold
+4. Add lawyers with practice areas
+
+### **2. Lawyer Setup**
+In the Welcome sheet, add lawyers with:
+- **Email**: Lawyer's email address
+- **Name**: Full name
+- **Rate**: Hourly billing rate
+- **Lawyer ID**: Unique identifier
+- **Practice Areas**: Comma-separated list (e.g., "Corporate Law, Contracts")
+
+### **3. Practice Areas**
+Common practice areas include:
+- Corporate Law, Contracts
+- Litigation, Family Law
+- Real Estate, Property Law
+- Criminal Defense
+- Employment Law
+- Intellectual Property
+- Tax Law
+- Bankruptcy
+- Personal Injury
+- Immigration Law
+
+### **4. Web App Deployment**
+1. Deploy as web app in Google Apps Script
+2. Set "Execute as" to "Me"
+3. Set "Who has access" to "Anyone"
+4. Update script ID in the code
+
+## 🔄 Daily Workflow
+
+### **Automated Processes**
+1. **Payment Sync**: New payments automatically create clients/matters
+2. **Balance Calculation**: Real-time balance updates
+3. **Service Resumption**: Automatic notifications when clients top up
+4. **Matter Detection**: Identify matters needing time entries
+
+### **Manual Actions (Daily Digest)**
+1. **Review Today's Activity**: New clients, revenue, time entries
+2. **Send Low Balance Emails**: Manual control over client reminders
+3. **Nudge Lawyers**: Professional reminders for time entries
+4. **Add Time Entries**: Direct access to time entry forms
+
+## 📧 Email Templates
+
+### **Daily Digest**
+- Today's activity summary
+- Low balance client list with action buttons
+- Matters needing time entries with lawyer suggestions
+- Revenue and client statistics
+
+### **Low Balance Reminders**
+- Professional client communication
+- Direct payment links
+- Balance information and top-up amounts
+
+### **Lawyer Nudges**
+- Matter context and client information
+- Direct time entry links
+- Practice area matching
+- CC to firm owner for transparency
+
+## ⚙️ Configuration
+
+### **System Settings (Welcome Sheet)**
+- **Blawby Payment URL**: Your payment page URL
+- **Default Currency**: USD, EUR, GBP, CAD, AUD
+- **Low Balance Threshold**: Target balance for all clients
+
+### **Lawyer Configuration**
+- **Practice Areas**: Comma-separated specialties
+- **Hourly Rates**: Individual billing rates
+- **Email Addresses**: For notifications and nudges
+
+## 🔧 Technical Details
+
+### **File Structure**
+- `Code.gs`: Main entry points and validation
+- `ClientSync.gs`: Payment and client processing
+- `EmailFunctions.gs`: Email templates and web app functions
+- `EmailTemplates.gs`: Email template system
+- `UtilityFunctions.gs`: Helper functions and sheet setup
+- `Constants.gs`: System constants and column definitions
+
+### **Web App Actions**
+- `send_email`: Send individual low balance emails
+- `send_all`: Send all low balance emails
+- `add_time_entry`: Show time entry form
+- `submit_time_entry`: Process time entry submission
+- `nudge_lawyer`: Send lawyer reminder emails
+
+### **Data Validation**
+- Email format validation
+- Payment amount validation
+- Lawyer data completeness checks
+- Matter status tracking
+
+## 🎯 Best Practices
+
+### **Daily Operations**
+1. **Review Daily Digest**: Check for low balance clients and matters needing attention
+2. **Send Reminders**: Use manual email control for client communications
+3. **Nudge Lawyers**: Send professional reminders for time entries
+4. **Monitor Practice Areas**: Ensure matters are assigned to appropriate lawyers
+
+### **Client Management**
+1. **Set Target Balances**: Configure appropriate thresholds per client
+2. **Track Payment History**: Monitor client payment patterns
+3. **Update Client Information**: Keep client names and details current
+4. **Review Matter Status**: Track active vs. completed matters
+
+### **Time Entry Management**
+1. **Use Practice Area Matching**: Assign matters to appropriate lawyers
+2. **Regular Time Logging**: Encourage consistent time entry
+3. **Professional Nudges**: Use automated reminders for missing entries
+4. **Review Time Patterns**: Monitor lawyer productivity and matter progress
+
+## 🚀 Future Enhancements
+
+### **Planned Features**
+1. **Enhanced Today's Activity**: More detailed analytics and insights
+2. **Calendar Integration**: Meeting and call tracking
+3. **Risk Management**: Automated risk flagging and alerts
+4. **Advanced Reporting**: Detailed performance and financial reports
+5. **Client Portal**: Direct client access to balances and payments
+
+### **Analytics Improvements**
+- Time tracking insights and gaps
+- Matter movement and status changes
+- Client interaction tracking
+- Risk flagging and follow-up automation
+
+## 📞 Support
+
+For questions or issues:
+1. Check the Welcome sheet configuration
+2. Review the daily digest for system status
+3. Validate email templates and web app deployment
+4. Ensure all required sheets are properly set up
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
 
-## 🚀 Quick Start – Free Legal Software Setup (No Coding!)
-
-### 1. Get Your Copy
-
-1. 👉 [Click here to copy the template](https://docs.google.com/spreadsheets/d/1DO0IOXluqBD6QZ7cIteS1clIz6dymNy4ODbcS4cxKjY/copy)
-2. Rename for your firm: e.g., "Smith Law - Retainer System"
-3. Click "Make a copy"
-
-> Uses only Google Sheets. No paid apps, subscriptions, or plugins required.
-
----
-
-## 💼 What is Blawby Sheets?
-
-Blawby Sheets is a **free and open-source legal software platform** for lawyers. Built using Google Sheets and Apps Script, it automates:
-
-* Retainer tracking & trust accounting (IOLTA-compliant)
-* Time logging & matter management
-* Automated email reminders
-* Payment intake & low balance alerts
-
-Great for solo lawyers, boutique firms, and legal clinics.
-
----
-
-## 💸 Payment Automation with [Blawby Payments](https://blawby.com)
-
-### ✅ Using [Blawby Payments](https://blawby.com):
-
-* Client payments are **auto-detected** via Gmail
-* System **auto-generates payment links** for low balances
-* Clients get notified when services resume
-* **No manual input** needed
-
-**Expected URL Pattern:** `https://app.blawby.com/YOUR_FIRM/pay`
-* Example: `https://app.blawby.com/northcarolinalegalservices/pay`
-* The system will validate this pattern and warn if incorrect
-
-> For details, see [Blawby Payments pricing](https://blawby.com/pricing)
-
-### ❗ Using Other Payment Methods?
-
-* You must **manually enter payments** into the Payments sheet
-* Payment links will **not** be generated
-* Notifications will still be triggered daily as usual
-* **No Gmail integration** - payments won't be auto-detected
-
-> To unlock full automation, connect your [Blawby Payments link](https://blawby.com/payments) with the correct URL pattern.
-
----
-
-## 📋 Sheet Overview
-
-| Sheet    | Purpose                          | Editable?       |
-| -------- | -------------------------------- | --------------- |
-| Welcome  | Firm settings & lawyer config    | ✅ Yes           |
-| Clients  | Retainer balances & payment info | ⚙️ Auto-updated |
-| Payments | Track payment activity           | ⚙️ Auto-updated |
-| TimeLogs | Log billable time                | ✅ Yes           |
-| Matters  | Manage case and billing data     | ⚙️ Auto-updated |
-
----
-
-## ✉️ Gmail Email Automation (No Zapier)
-
-All emails are sent via Gmail API:
-
-* **Low balance alerts** with payment links
-* **Service resumed** confirmations
-* **Daily firm summary** with client status
-* **Test emails** via "Send Test Emails" menu (sends one of each email type)
-
-> 💡 **Safe Mode**: By default, **Activate Live Emails** is set to `FALSE` to prevent accidental emails to clients. Enable it in the Welcome sheet when ready to send real emails. This is the **only setting** that controls all email automation.
-
----
-
-## 🧠 Smart Features for Law Firms
-
-* ⚖️ IOLTA trust compliance tracking
-* 🔁 Auto-matter and client creation
-* 📬 Automatic Gmail payment processing
-* 📧 Email automation via Gmail API
-* 🧾 HTML invoices and notifications
-
----
-
-## 🆓 Why Use Blawby Sheets?
-
-* ✅ **Free software for lawyers**
-* ✅ **Open source legal tool** you can audit and adapt
-* ✅ **Google Sheets-based** – simple and powerful
-* ✅ **Email automation built-in**
-* ✅ **No external platforms needed** – works in your Google Workspace
-* ✅ **Secure** – all data stays in your account
-* ✅ **Simplified setup** – only one toggle for email automation
-
----
-
-## 🔌 Developer-Friendly
-
-Blawby Sheets is fully open source and welcomes contributions from the community. If you encounter a bug or have a feature idea, please open an issue or submit a pull request on GitHub. We actively monitor [GitHub Issues](https://github.com/Blawby/Automatic-Lawyer-Workflow-Payments-Time-Entry-Retainer-Balance-Reminders-Clients/issues) and encourage collaboration.
+**Blawby** - Streamlining legal practice management with Google Sheets automation.
 
 ```
 .

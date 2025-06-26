@@ -120,7 +120,9 @@ function createMatterForNewClient(mattersSheet, clientEmail, clientID) {
     "", // Client Name - will be filled when they update client info
     "General Legal Matter", // Default description
     today.toDateString(),
-    "Active"
+    "Active",
+    "", // Case Value
+    "General" // Practice Area - default to General
   ];
   
   mattersSheet.appendRow(newMatterRow);

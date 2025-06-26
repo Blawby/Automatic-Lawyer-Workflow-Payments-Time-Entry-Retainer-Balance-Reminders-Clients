@@ -106,12 +106,6 @@ function validateRequiredSettings() {
   const warnings = [];
   
   try {
-    // Check Firm Email
-    const firmEmail = getSetting(SETTINGS_KEYS.FIRM_EMAIL);
-    if (!firmEmail || !firmEmail.includes('@') || firmEmail === 'your-email@example.com') {
-      issues.push("Firm Email is not set. Please set your email address in the Welcome sheet.");
-    }
-    
     // Check Blawby Payment URL
     const paymentUrl = getSetting(SETTINGS_KEYS.BASE_PAYMENT_URL);
     if (!paymentUrl || paymentUrl === "https://app.blawby.com/pay") {

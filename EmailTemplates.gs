@@ -5,7 +5,7 @@ const TEMPLATES = {
   LOW_BALANCE: {
     CLIENT_SUBJECT: (clientName) => `Your retainer needs a quick top-up, ${clientName}`,
     CLIENT_BODY: (clientName, balance, targetBalance, paymentLink) => `
-Hi ${clientName}! 👋
+Hi ${clientName}!
 
 We wanted to give you a friendly heads up about your retainer balance.
 
@@ -46,11 +46,11 @@ This is an automated notification from your Blawby system.
   SERVICE_RESUMED: {
     CLIENT_SUBJECT: "Great news! Your services are back up and running",
     CLIENT_BODY: (clientName) => `
-Welcome back, ${clientName}! 🎉
+Welcome back, ${clientName}!
 
 Great news—your retainer has been topped up and your legal services are now fully active again!
 
-✅ All systems are go! We're ready to continue working on your matters.
+All systems are go! We're ready to continue working on your matters.
 
 Thanks for keeping your retainer current. This helps us provide you with the best possible service without any interruptions.
 
@@ -70,32 +70,61 @@ The client's balance has been topped up and services are now active.
   },
   DAILY_DIGEST: {
     SUBJECT: "Your Blawby Daily Summary",
-    BODY: (lowBalanceClients, paymentSummary) => `
-📬 Your Daily Blawby Summary
+    BODY: (lowBalanceClients, paymentSummary, newClientsCount, todayRevenue, mattersNeedingTime) => `
+Your Daily Blawby Summary
 
 Here's a snapshot of client retainer activity and balances today.
 
-Total Payments Received: $${paymentSummary.total.toFixed(2)}
-Clients Paid Today: ${paymentSummary.count}
+TODAY'S ACTIVITY:
+- New Clients: ${newClientsCount}
+- Revenue: $${parseFloat(todayRevenue || 0).toFixed(2)}
+- Total Payments Received: $${parseFloat(paymentSummary.total || 0).toFixed(2)}
+- Clients Paid Today: ${paymentSummary.count}
 
 ${lowBalanceClients.length === 0
-  ? `🎉 All client balances are in good standing. Great work!`
+  ? `All client balances are in good standing. Great work!`
   : `
-🔔 Clients Needing Attention (${lowBalanceClients.length})
+CLIENTS NEEDING ATTENTION (${lowBalanceClients.length})
 
-${lowBalanceClients.map(client => `
-${client.name}
-- Balance: $${client.balance.toFixed(2)}
-- Target: $${client.targetBalance.toFixed(2)}
+${lowBalanceClients.map(client => {
+  const balance = parseFloat(client.balance || 0);
+  const targetBalance = parseFloat(client.targetBalance || 0);
+  const topUpNeeded = Math.max(0, targetBalance - balance);
+  
+  return `
+${client.name} (${client.email})
+- Balance: $${balance.toFixed(2)}
+- Target: $${targetBalance.toFixed(2)}
+- Top-up Needed: $${topUpNeeded.toFixed(2)}
 - Last Activity: ${client.lastActivity || 'N/A'}
-- Email Sent: ${client.emailSent ? '✅ Yes' : '❌ No'}
-${client.balance <= 0
-  ? '- Status: 🚫 Services Paused'
-  : '- Status: ⚠️ Low Balance'}
+- Email Sent: ${client.emailSent ? 'Yes' : 'No'}
+- Send Top-up Reminder: ${generateSendEmailUrl(client.clientID, 'low_balance')}
+${balance <= 0
+  ? '- Status: Services Paused'
+  : '- Status: Low Balance'}
+
+`;
+}).join('')}
+Action recommended: Follow up with clients who haven't responded or whose services are paused.
+`}
+
+${mattersNeedingTime.length > 0 ? `
+MATTERS NEEDING TIME ENTRIES (${mattersNeedingTime.length})
+
+${mattersNeedingTime.map(matter => `
+${matter.matterDescription} - ${matter.clientName} (${matter.clientEmail})
+- Matter ID: ${matter.matterID}
+- Client: ${matter.clientName} (${matter.clientEmail})
+- Assigned Lawyer: ${matter.lawyerName} (${matter.lawyerEmail})
+- Reason: ${matter.reason}
+- Last Payment: ${matter.lastPaymentDate || 'None'}
+- Days Since Last Time Entry: ${matter.daysSinceLastTimeEntry}
+- Add Time Entry: ${generateAddTimeEntryUrl(matter.matterID, matter.lawyerID)}
+- Nudge Lawyer: ${generateNudgeLawyerUrl(matter.matterID, matter.lawyerID)}
 
 `).join('')}
-📝 Action recommended: Follow up with clients who haven't responded or whose services are paused.
-`}
+Action recommended: Lawyers should add time entries for these matters. Use "Nudge Lawyer" to send a reminder email.
+` : ''}
 
 This summary was generated automatically by Blawby. Let us know if you'd like to tweak what you see here.
     `

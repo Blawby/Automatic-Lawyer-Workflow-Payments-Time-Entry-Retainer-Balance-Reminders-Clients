@@ -319,16 +319,20 @@ function loadSettings() {
 function buildLawyerMaps(lawyers) {
   const rates = {};
   const emails = {};
+  const names = {};
+  const practiceAreas = {};
   
   for (let i = 1; i < lawyers.length; i++) {
-    const [email, name, rate, lawyerID] = lawyers[i];
+    const [email, name, rate, lawyerID, practiceAreasStr] = lawyers[i];
     if (!lawyerID) continue;
     
     rates[lawyerID] = parseFloat(rate) || 0;
     if (email) emails[lawyerID] = email;
+    if (name) names[lawyerID] = name;
+    if (practiceAreasStr) practiceAreas[lawyerID] = practiceAreasStr;
   }
   
-  return { rates, emails };
+  return { rates, emails, names, practiceAreas };
 }
 
 function buildClientMap(clientData) {
@@ -430,7 +434,8 @@ function setupMattersSheet(sheet) {
     "Description",
     "Date Created",
     "Status",
-    "Case Value"
+    "Case Value",
+    "Practice Area"
   ];
   setupSheet(sheet, headers);
 }
@@ -488,27 +493,27 @@ function setupWelcomeSheet(ss) {
   
   // Set up the content - clean and focused on configuration only
   const content = [
-    ["Welcome to Blawby Retainer Management", "", "", ""],
-    ["", "", "", ""],
-    ["⚙️ System Settings", "", "", ""],
-    ["Setting", "Value", "Description", ""],
-    ["Blawby Payment URL", preservedValues[0] || "https://app.blawby.com/pay", "Your Blawby payment page URL", ""],
-    ["Default Currency", preservedValues[1] || "USD", "Default currency for all payments", ""],
-    ["Low Balance Threshold", preservedValues[2] || "500", "Target balance amount for all clients", ""],
-    ["", "", "", ""],
-    ["👩‍⚖️ Lawyers", "", "", ""],
-    ["Email", "Name", "Rate", "Lawyer ID"],
-    ["lawyer1@email.com", "Jane Smith", "250", "JS"],
-    ["lawyer2@email.com", "John Doe", "300", "JD"],
-    ["", "", "", ""],
-    ["", "", "", ""],
-    ["", "", "", ""],
-    ["", "", "", ""],
-    ["", "", "", ""]
+    ["Welcome to Blawby Retainer Management", "", "", "", ""],
+    ["", "", "", "", ""],
+    ["⚙️ System Settings", "", "", "", ""],
+    ["Setting", "Value", "Description", "", ""],
+    ["Blawby Payment URL", preservedValues[0] || "https://app.blawby.com/pay", "Your Blawby payment page URL", "", ""],
+    ["Default Currency", preservedValues[1] || "USD", "Default currency for all payments", "", ""],
+    ["Low Balance Threshold", preservedValues[2] || "500", "Target balance amount for all clients", "", ""],
+    ["", "", "", "", ""],
+    ["👩‍⚖️ Lawyers", "", "", "", ""],
+    ["Email", "Name", "Rate", "Lawyer ID", "Practice Areas"],
+    ["lawyer1@email.com", "Jane Smith", "250", "JS", "Corporate Law, Contracts"],
+    ["lawyer2@email.com", "John Doe", "300", "JD", "Litigation, Family Law"],
+    ["", "", "", "", ""],
+    ["", "", "", "", ""],
+    ["", "", "", "", ""],
+    ["", "", "", "", ""],
+    ["", "", "", "", ""]
   ];
   
   // Write content to sheet with exact column count
-  welcomeSheet.getRange(1, 1, content.length, 4).setValues(content);
+  welcomeSheet.getRange(1, 1, content.length, 5).setValues(content);
 
   // --- Restore preserved values into the Value column ---
   if (preservedValues.length > 0) {
@@ -525,7 +530,9 @@ function setupWelcomeSheet(ss) {
     for (let i = 0; i < Math.min(preservedLawyers.length, 5); i++) {
       const lawyer = preservedLawyers[i];
       if (lawyer[0] && lawyer[0].includes('@')) {
-        welcomeSheet.getRange(13 + i, 1, 1, 4).setValues([lawyer]);
+        // Ensure we have 5 columns (add empty practice areas if missing)
+        const lawyerWithPracticeAreas = [...lawyer.slice(0, 4), lawyer[4] || ''];
+        welcomeSheet.getRange(13 + i, 1, 1, 5).setValues([lawyerWithPracticeAreas]);
       }
     }
   }
@@ -538,7 +545,7 @@ function getLawyersFromWelcomeSheet(welcomeSheet) {
   // Lawyers data starts 2 rows below header (header + column names)
   const lawyers = values.slice(lawyerHeaderRow + 2).filter(row => row[0] && row[0].toString().includes('@'));
   // Add header row for compatibility with buildLawyerMaps
-  return [["Email", "Name", "Rate", "Lawyer ID"], ...lawyers];
+  return [["Email", "Name", "Rate", "Lawyer ID", "Practice Areas"], ...lawyers];
 }
 
 /**

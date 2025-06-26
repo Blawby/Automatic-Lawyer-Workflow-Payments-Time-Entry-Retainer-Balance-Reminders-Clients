@@ -114,7 +114,7 @@ function validateRequiredSettings() {
     
     // Check Blawby Payment URL
     const paymentUrl = getSetting(SETTINGS_KEYS.BASE_PAYMENT_URL);
-    if (!paymentUrl || paymentUrl === DEFAULT_SETTINGS[SETTINGS_KEYS.BASE_PAYMENT_URL]) {
+    if (!paymentUrl || paymentUrl === "https://app.blawby.com/pay") {
       issues.push("Blawby Payment URL is not configured. Please set your payment URL in the Welcome sheet.");
     } else {
       // Validate Blawby URL pattern

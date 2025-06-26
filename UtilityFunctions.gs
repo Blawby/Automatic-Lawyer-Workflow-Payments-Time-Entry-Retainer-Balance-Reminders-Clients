@@ -76,7 +76,7 @@ function detectEmail() {
 function fixFirmEmailField() {
   try {
     const welcomeSheet = getSheet("Welcome");
-    const firmEmailCell = welcomeSheet.getRange(9, 2); // Firm Email is in row 9, column 2
+    const firmEmailCell = welcomeSheet.getRange(8, 2); // Firm Email is in row 8, column 2
     const currentValue = firmEmailCell.getValue();
     
     // Check if the current value is invalid
@@ -301,9 +301,9 @@ function loadSheetData(sheets) {
 
 function loadSettings() {
   const welcomeSheet = getSheet("Welcome");
-  const settingsData = welcomeSheet.getRange(5, 1, 6, 2).getValues(); // Get settings from Welcome sheet (rows 5-10, columns 1-2)
+  const settingsData = welcomeSheet.getRange(5, 1, 4, 2).getValues(); // Get settings from Welcome sheet (rows 5-8, columns 1-2)
   console.log('🟦 Raw settingsData from Welcome sheet:', JSON.stringify(settingsData));
-  const settings = { ...DEFAULT_SETTINGS }; // Start with defaults
+  const settings = { ...SETTINGS_DEFAULTS }; // Start with defaults
   
   // Process each setting row
   for (const [key, value] of settingsData) {
@@ -347,7 +347,7 @@ function loadSettings() {
   }
   
   // Ensure required settings are present with defaults
-  Object.entries(DEFAULT_SETTINGS).forEach(([key, defaultValue]) => {
+  Object.entries(SETTINGS_DEFAULTS).forEach(([key, defaultValue]) => {
     if (!settings[key]) {
       settings[key] = defaultValue;
     }
@@ -557,7 +557,7 @@ function setupWelcomeSheet(ss) {
     ["Blawby Payment URL", preservedValues[0] || "https://app.blawby.com/pay", "Your Blawby payment page URL", ""],
     ["Default Currency", preservedValues[1] || "USD", "Default currency for all payments", ""],
     ["Low Balance Threshold", preservedValues[2] || "500", "Target balance amount for all clients", ""],
-    ["Firm Email", preservedValues[3] || ownerEmail, "Email address for system notifications", ""],
+    ["Firm Email", preservedValues[3] || ownerEmail, "Email address for daily digest and notifications", ""],
     ["", "", "", ""],
     ["👩‍⚖️ Lawyers", "", "", ""],
     ["Email", "Name", "Rate", "Lawyer ID"],

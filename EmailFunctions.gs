@@ -162,7 +162,7 @@ function renderTemplate(type, subtype, ...params) {
       },
       'DAILY_DIGEST': {
         'SUBJECT': 'Your Blawby Daily Summary',
-        'BODY': (lowBalanceClients, paymentSummary, newClientsCount, todayRevenue, mattersNeedingTime) => {
+        'BODY': (lowBalanceClients, paymentSummary, newClientsCount, todayRevenue, mattersNeedingTime, enhancedAnalytics) => {
           let body = 'Your Daily Blawby Summary\n\n';
           body += 'Here\'s a snapshot of client retainer activity and balances today.\n\n';
           
@@ -250,132 +250,42 @@ function renderTemplate(type, subtype, ...params) {
  * Send daily balance digest with action buttons for manual email sending
  * This replaces the old automatic email sending system
  */
-function sendDailyBalanceDigest() {
-  logStart('sendDailyBalanceDigest');
+function sendDailyDigest() {
+  logStart('sendDailyDigest');
   
   try {
-    log('📧 Sending daily balance digest with action buttons...');
-    
-    const firmEmail = getFirmEmail();
-    if (!firmEmail || !firmEmail.includes('@') || firmEmail === 'your-email@example.com') {
-      log('❌ Firm email not configured - cannot send daily digest');
-      logEnd('sendDailyBalanceDigest');
-      return;
-    }
-    
-    // Get current data
     const sheets = getSheets();
     const data = loadSheetData(sheets);
     const lawyerData = buildLawyerMaps(data.lawyers);
-    const clientsById = buildClientMap(data.clientData);
     const today = new Date().toISOString().split('T')[0];
     
-    // Calculate today's revenue and new clients
-    let todayRevenue = 0;
-    let newClientsCount = 0;
-    
-    // Calculate revenue from today's payments
-    for (const payment of data.paymentData.slice(1)) {
-      if (payment && Array.isArray(payment) && payment.length >= 3) {
-        const paymentDate = parseZapierTimestamp(payment[0]);
-        if (paymentDate && paymentDate.toISOString().split('T')[0] === today) {
-          const amount = parseFloat(payment[2]);
-          if (!isNaN(amount) && amount > 0) {
-            todayRevenue += amount;
-          }
-        }
-      }
-    }
-    
-    // Count new clients (clients created today)
-    for (const [clientID, row] of Object.entries(clientsById)) {
-      if (row && Array.isArray(row) && row.length >= 10) {
-        // Check if client was created today (this is a simplified check)
-        // In a real implementation, you might want to track creation dates
-        const clientEmail = row[0];
-        const hasPaymentsToday = data.paymentData.slice(1).some(payment => 
-          payment && Array.isArray(payment) && 
-          payment[1] === clientEmail && 
-          parseZapierTimestamp(payment[0])?.toISOString().split('T')[0] === today
-        );
-        if (hasPaymentsToday) {
-          newClientsCount++;
-        }
-      }
-    }
-    
-    // Find clients with low balances
-    const lowBalanceClients = [];
-    const defaultTargetBalance = getSetting('Low Balance Threshold', 500);
-    
-    for (const [clientID, row] of Object.entries(clientsById)) {
-      const email = row[0];
-      const clientName = row[1] || "Client";
-      let targetBalance = parseFloat(row[2]) || defaultTargetBalance;
-      
-      const balanceInfo = calculateClientBalance(clientID, email, data, lawyerData.rates);
-      const balance = balanceInfo.totalPaid - balanceInfo.totalUsed;
-      const topUp = Math.max(0, targetBalance - balance);
-      
-      if (topUp > 0) {
-        const paymentLink = `${getSetting(SETTINGS_KEYS.BASE_PAYMENT_URL)}?amount=${Math.round(topUp * 100)}`;
-        lowBalanceClients.push({
-          clientID,
-          email,
-          name: clientName,
-          balance: balance.toFixed(2),
-          targetBalance: targetBalance.toFixed(2),
-          topUp: topUp.toFixed(2),
-          paymentLink,
-          lastActivity: balanceInfo.lastActivityDate ? balanceInfo.lastActivityDate.toISOString().split('T')[0] : 'Unknown',
-          emailSent: false // For now, always false since we're not tracking this yet
-        });
-      }
-    }
-    
-    // Generate action buttons for each low balance client
-    const actionButtons = lowBalanceClients.map(client => {
-      const sendUrl = generateSendEmailUrl(client.clientID, 'low_balance');
-      return `
-${client.name} (${client.email})
-Balance: $${client.balance} | Target: $${client.targetBalance} | Top-up needed: $${client.topUp}
-Send Low Balance Email: ${sendUrl}
-
-`;
-    }).join('');
-
-    // Generate "Send All" button if there are low balance clients
-    const sendAllButton = lowBalanceClients.length > 0 ? `
-Send All Low Balance Emails:
-Send All (${lowBalanceClients.length} emails): ${generateSendAllEmailsUrl(lowBalanceClients.map(c => c.clientID))}
-
-` : '';
-
-    // Calculate payment summary
-    const paymentSummary = {
-      total: todayRevenue,
-      count: data.paymentData.slice(1).filter(payment => 
-        payment && Array.isArray(payment) && 
-        parseZapierTimestamp(payment[0])?.toISOString().split('T')[0] === today
-      ).length
-    };
-
-    // Identify matters needing time entries
+    // Get basic summary data
+    const paymentSummary = getPaymentSummary(data, today);
+    const newClientsCount = getNewClientsCount(data, today);
+    const todayRevenue = getTodayRevenue(data, today);
+    const lowBalanceClients = getLowBalanceClients(data, lawyerData);
     const mattersNeedingTime = identifyMattersNeedingTimeEntries(data, lawyerData, today);
-
-    // Create digest content using enhanced template
-    const subject = `Daily Balance Digest - ${today} (${lowBalanceClients.length} low balance clients, ${mattersNeedingTime.length} matters need time)`;
-    const body = renderTemplate('DAILY_DIGEST', 'BODY', lowBalanceClients, paymentSummary, newClientsCount, todayRevenue, mattersNeedingTime);
     
-    // Send digest to firm
-    sendEmail(firmEmail, subject, body);
-    log(`✅ Daily balance digest sent to ${firmEmail} with ${lowBalanceClients.length} low balance clients`);
+    // Get enhanced analytics
+    const enhancedAnalytics = getEnhancedAnalytics(data, lawyerData, today);
+    
+    const subject = `Daily Balance Digest - ${today} (${lowBalanceClients.length} low balance clients, ${mattersNeedingTime.length} matters need time)`;
+    const body = renderTemplate('DAILY_DIGEST', 'BODY', lowBalanceClients, paymentSummary, newClientsCount, todayRevenue, mattersNeedingTime, enhancedAnalytics);
+    
+    // Send to spreadsheet owner
+    const ownerEmail = getActiveSpreadsheet().getOwner().getEmail();
+    
+    MailApp.sendEmail(ownerEmail, subject, body);
+    
+    log(`✅ Daily digest sent to ${ownerEmail}`);
+    log(`📊 Summary: ${lowBalanceClients.length} low balance clients, ${mattersNeedingTime.length} matters need time`);
     
   } catch (error) {
-    logError('sendDailyBalanceDigest', error);
+    logError('sendDailyDigest', error);
+    throw error;
   }
   
-  logEnd('sendDailyBalanceDigest');
+  logEnd('sendDailyDigest');
 }
 
 /**
@@ -1144,4 +1054,294 @@ ${ownerEmail.split('@')[0]} (Firm Owner)`;
   }
   
   logEnd('nudgeLawyerForTimeEntry');
+}
+
+/**
+ * Get enhanced analytics data for today's activity
+ */
+function getEnhancedAnalytics(data, lawyerData, today) {
+  const todayDate = new Date(today);
+  const yesterday = new Date(todayDate.getTime() - 24 * 60 * 60 * 1000);
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
+  
+  return {
+    timeTracking: getTimeTrackingInsights(data, lawyerData, today, yesterdayStr),
+    matterMovement: getMatterMovement(data, today),
+    clientInteractions: getClientInteractions(data, today),
+    riskFlags: getRiskFlags(data, lawyerData, today)
+  };
+}
+
+/**
+ * Get time tracking insights
+ */
+function getTimeTrackingInsights(data, lawyerData, today, yesterday) {
+  const todayTimeEntries = data.timeLogs.slice(1).filter(log => {
+    if (!log || !Array.isArray(log) || log.length < 5) return false;
+    const logDate = new Date(log[0]);
+    return logDate.toISOString().split('T')[0] === today;
+  });
+  
+  const yesterdayTimeEntries = data.timeLogs.slice(1).filter(log => {
+    if (!log || !Array.isArray(log) || log.length < 5) return false;
+    const logDate = new Date(log[0]);
+    return logDate.toISOString().split('T')[0] === yesterday;
+  });
+  
+  // Calculate total hours today
+  const totalHoursToday = todayTimeEntries.reduce((sum, log) => {
+    return sum + (parseFloat(log[4]) || 0);
+  }, 0);
+  
+  // Get lawyers with time today
+  const lawyersWithTimeToday = {};
+  todayTimeEntries.forEach(log => {
+    const lawyerID = log[3];
+    const hours = parseFloat(log[4]) || 0;
+    if (lawyerID) {
+      lawyersWithTimeToday[lawyerID] = (lawyersWithTimeToday[lawyerID] || 0) + hours;
+    }
+  });
+  
+  // Get lawyers with no time today
+  const allLawyerIDs = Object.keys(lawyerData.rates);
+  const lawyersWithNoTime = allLawyerIDs.filter(lawyerID => 
+    !lawyersWithTimeToday[lawyerID]
+  );
+  
+  // Find matters active today with no time
+  const mattersWithTimeToday = new Set(todayTimeEntries.map(log => log[2]).filter(Boolean));
+  const activeMatters = data.matters.slice(1).filter(matter => 
+    matter && Array.isArray(matter) && matter[5] === 'Active'
+  );
+  const mattersActiveTodayWithNoTime = activeMatters.filter(matter => 
+    !mattersWithTimeToday.has(matter[0])
+  );
+  
+  // Find time gaps (matters worked on yesterday, but no time today)
+  const mattersWithTimeYesterday = new Set(yesterdayTimeEntries.map(log => log[2]).filter(Boolean));
+  const timeGaps = Array.from(mattersWithTimeYesterday).filter(matterID => 
+    !mattersWithTimeToday.has(matterID)
+  );
+  
+  return {
+    totalHoursToday,
+    lawyersWithTimeToday,
+    lawyersWithNoTime,
+    mattersActiveTodayWithNoTime: mattersActiveTodayWithNoTime.length,
+    timeGaps
+  };
+}
+
+/**
+ * Get matter movement data
+ */
+function getMatterMovement(data, today) {
+  const todayDate = new Date(today);
+  const todayStr = todayDate.toISOString().split('T')[0];
+  
+  // Find new matters opened today
+  const newMatters = data.matters.slice(1).filter(matter => {
+    if (!matter || !Array.isArray(matter) || !matter[4]) return false;
+    const matterDate = new Date(matter[4]);
+    return matterDate.toISOString().split('T')[0] === todayStr;
+  });
+  
+  // Find matters with status changes (this would need to be tracked in a separate sheet)
+  // For now, we'll return basic stats
+  const activeMatters = data.matters.slice(1).filter(matter => 
+    matter && Array.isArray(matter) && matter[5] === 'Active'
+  );
+  
+  const completedMatters = data.matters.slice(1).filter(matter => 
+    matter && Array.isArray(matter) && matter[5] === 'Completed'
+  );
+  
+  return {
+    newMatters,
+    activeMatters: activeMatters.length,
+    completedMatters: completedMatters.length
+  };
+}
+
+/**
+ * Get client interactions (placeholder for future Calendar API integration)
+ */
+function getClientInteractions(data, today) {
+  // This would integrate with Calendar API and email tracking
+  // For now, return placeholder data
+  return {
+    clientEmailsReceived: 0, // Would be populated from Gmail API
+    callsScheduled: 0, // Would be populated from Calendar API
+    meetingsToday: 0 // Would be populated from Calendar API
+  };
+}
+
+/**
+ * Get risk flags
+ */
+function getRiskFlags(data, lawyerData, today) {
+  const todayDate = new Date(today);
+  const sevenDaysAgo = new Date(todayDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const fiveDaysAgo = new Date(todayDate.getTime() - 5 * 24 * 60 * 60 * 1000);
+  
+  // Find matters with no time entry in 10+ days
+  const mattersWithNoRecentTime = [];
+  const activeMatters = data.matters.slice(1).filter(matter => 
+    matter && Array.isArray(matter) && matter[5] === 'Active'
+  );
+  
+  for (const matter of activeMatters) {
+    const matterID = matter[0];
+    const lastTimeEntry = data.timeLogs.slice(1)
+      .filter(log => log && Array.isArray(log) && log[2] === matterID)
+      .sort((a, b) => new Date(b[0]) - new Date(a[0]))[0];
+    
+    if (lastTimeEntry) {
+      const lastEntryDate = new Date(lastTimeEntry[0]);
+      const daysSinceLastEntry = Math.ceil((todayDate - lastEntryDate) / (1000 * 60 * 60 * 24));
+      
+      if (daysSinceLastEntry > 10) {
+        mattersWithNoRecentTime.push({
+          matterID,
+          matterDescription: matter[3],
+          clientName: matter[2],
+          daysSinceLastEntry
+        });
+      }
+    }
+  }
+  
+  // Find clients with balance below $100 and no top-up in 5+ days
+  const clientsAtRisk = [];
+  for (const client of data.clientData.slice(1)) {
+    if (!client || !Array.isArray(client)) continue;
+    
+    const balance = parseFloat(client[6]) || 0;
+    if (balance < 100) {
+      const lastPayment = data.paymentData.slice(1)
+        .filter(p => p && Array.isArray(p) && p[1] === client[0])
+        .sort((a, b) => new Date(b[0]) - new Date(a[0]))[0];
+      
+      if (lastPayment) {
+        const lastPaymentDate = parseZapierTimestamp(lastPayment[0]);
+        const daysSinceLastPayment = Math.ceil((todayDate - lastPaymentDate) / (1000 * 60 * 60 * 24));
+        
+        if (daysSinceLastPayment > 5) {
+          clientsAtRisk.push({
+            clientEmail: client[0],
+            clientName: client[1],
+            balance,
+            daysSinceLastPayment
+          });
+        }
+      }
+    }
+  }
+  
+  return {
+    mattersWithNoRecentTime,
+    clientsAtRisk
+  };
+}
+
+/**
+ * Get payment summary for today
+ */
+function getPaymentSummary(data, today) {
+  const todayPayments = data.paymentData.slice(1).filter(payment => {
+    if (!payment || !Array.isArray(payment) || payment.length < 3) return false;
+    const paymentDate = parseZapierTimestamp(payment[0]);
+    return paymentDate && paymentDate.toISOString().split('T')[0] === today;
+  });
+  
+  const total = todayPayments.reduce((sum, payment) => {
+    return sum + (parseFloat(payment[2]) || 0);
+  }, 0);
+  
+  return {
+    total,
+    count: todayPayments.length
+  };
+}
+
+/**
+ * Get count of new clients today
+ */
+function getNewClientsCount(data, today) {
+  // Count clients who made their first payment today
+  const todayPayments = data.paymentData.slice(1).filter(payment => {
+    if (!payment || !Array.isArray(payment) || payment.length < 3) return false;
+    const paymentDate = parseZapierTimestamp(payment[0]);
+    return paymentDate && paymentDate.toISOString().split('T')[0] === today;
+  });
+  
+  const clientEmailsWithPaymentsToday = new Set(todayPayments.map(p => p[1]));
+  let newClientsCount = 0;
+  
+  for (const clientEmail of clientEmailsWithPaymentsToday) {
+    // Check if this is their first payment
+    const allPaymentsForClient = data.paymentData.slice(1).filter(p => 
+      p && Array.isArray(p) && p[1] === clientEmail
+    );
+    
+    if (allPaymentsForClient.length === 1) {
+      newClientsCount++;
+    }
+  }
+  
+  return newClientsCount;
+}
+
+/**
+ * Get today's revenue
+ */
+function getTodayRevenue(data, today) {
+  const todayPayments = data.paymentData.slice(1).filter(payment => {
+    if (!payment || !Array.isArray(payment) || payment.length < 3) return false;
+    const paymentDate = parseZapierTimestamp(payment[0]);
+    return paymentDate && paymentDate.toISOString().split('T')[0] === today;
+  });
+  
+  return todayPayments.reduce((sum, payment) => {
+    return sum + (parseFloat(payment[2]) || 0);
+  }, 0);
+}
+
+/**
+ * Get low balance clients
+ */
+function getLowBalanceClients(data, lawyerData) {
+  const lowBalanceClients = [];
+  const defaultTargetBalance = getSetting('Low Balance Threshold', 500);
+  
+  for (const client of data.clientData.slice(1)) {
+    if (!client || !Array.isArray(client) || client.length < 10) continue;
+    
+    const email = client[0];
+    const clientName = client[1] || "Client";
+    const clientID = client[9];
+    let targetBalance = parseFloat(client[2]) || defaultTargetBalance;
+    
+    const balanceInfo = calculateClientBalance(clientID, email, data, lawyerData.rates);
+    const balance = balanceInfo.totalPaid - balanceInfo.totalUsed;
+    const topUp = Math.max(0, targetBalance - balance);
+    
+    if (topUp > 0) {
+      const paymentLink = `${getSetting(SETTINGS_KEYS.BASE_PAYMENT_URL)}?amount=${Math.round(topUp * 100)}`;
+      lowBalanceClients.push({
+        clientID,
+        email,
+        name: clientName,
+        balance: balance.toFixed(2),
+        targetBalance: targetBalance.toFixed(2),
+        topUp: topUp.toFixed(2),
+        paymentLink,
+        lastActivity: balanceInfo.lastActivityDate ? balanceInfo.lastActivityDate.toISOString().split('T')[0] : 'Unknown',
+        emailSent: false // For now, always false since we're not tracking this yet
+      });
+    }
+  }
+  
+  return lowBalanceClients;
 }

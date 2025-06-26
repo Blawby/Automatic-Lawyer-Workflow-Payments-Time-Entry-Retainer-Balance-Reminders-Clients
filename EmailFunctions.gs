@@ -8,30 +8,20 @@
  * @param {Object} options - Additional options
  */
 function sendEmailViaGmailAPI(recipient, subject, body, options = {}) {
-  const isTest = isTestMode();
   const firmEmail = getFirmEmail();
   
-  const finalRecipient = isTest ? firmEmail : recipient;
-  const finalSubject = isTest ? `[TEST] ${subject}` : subject;
-  
   // Validate email address
-  if (!finalRecipient || !finalRecipient.includes('@') || finalRecipient === 'your-email@example.com') {
-    const errorMsg = `Invalid email recipient: "${finalRecipient}". Please set your email address in the Welcome sheet under 'Firm Email' setting.`;
+  if (!recipient || !recipient.includes('@') || recipient === 'your-email@example.com') {
+    const errorMsg = `Invalid email recipient: "${recipient}". Please set your email address in the Welcome sheet under 'Firm Email' setting.`;
     logError('sendEmailViaGmailAPI', new Error(errorMsg));
     throw new Error(errorMsg);
   }
   
-  // Enhanced logging for test mode
-  if (isTest) {
-    log(`🧪 TEST MODE: Redirecting email from ${recipient} → ${finalRecipient}`);
-    log(`📧 Sending [TEST] email to: ${finalRecipient} | Subject: ${finalSubject}`);
-  } else {
-    log(`📧 Sending email to: ${finalRecipient} | Subject: ${finalSubject}`);
-  }
+  log(`📧 Sending email to: ${recipient} | Subject: ${subject}`);
   
   try {
     // Create email message using Gmail API
-    const message = createGmailMessage(finalRecipient, finalSubject, body, options);
+    const message = createGmailMessage(recipient, subject, body, options);
     
     // Log email format
     if (options.isHtml) {
@@ -43,11 +33,7 @@ function sendEmailViaGmailAPI(recipient, subject, body, options = {}) {
     // Send via Gmail API
     Gmail.Users.Messages.send(message, 'me');
     
-    if (isTest) {
-      log(`✅ [TEST] Email sent successfully to ${finalRecipient} (originally intended for ${recipient})`);
-    } else {
-      log(`✅ Email sent successfully to ${finalRecipient}`);
-    }
+    log(`✅ Email sent successfully to ${recipient}`);
   } catch (error) {
     logError('sendEmailViaGmailAPI', error);
     throw error;
@@ -285,8 +271,8 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
   log(`   - Test mode: ${isTestMode() ? 'YES' : 'NO'}`);
   log(`   - Firm email: ${getFirmEmail()}`);
   
-  // Check if email already sent today (skip this check in test mode)
-  if (!isTestMode() && props.getProperty(emailKey)) {
+  // Check if email already sent today
+  if (props.getProperty(emailKey)) {
     log(`📧 Low balance email already sent today for ${clientName}`);
     logEnd('sendLowBalanceEmail');
     return false;
@@ -298,13 +284,6 @@ function sendLowBalanceEmail(clientID, email, clientName, balance, targetBalance
     log(`❌ Cannot send low balance email to ${clientName}: Email quota exceeded (${quota.used}/${quota.total} emails used)`);
     logEnd('sendLowBalanceEmail');
     return false;
-  }
-  
-  // Log test mode behavior
-  if (isTestMode()) {
-    log(`🧪 Test mode active — allowing low balance email resend for ${clientName}`);
-    log(`🧪 Email key: ${emailKey}`);
-    log(`🧪 Current flag value: ${props.getProperty(emailKey) || 'not set'}`);
   }
   
   try {
@@ -400,8 +379,8 @@ function sendDailyBalanceDigest() {
       }
     }
     
-    // Only send if there are low balances or in test mode
-    if (lowBalanceClients.length === 0 && !isTestMode()) {
+    // Only send if there are low balances
+    if (lowBalanceClients.length === 0) {
       log('✅ No low balance clients, skipping daily digest email');
       logEnd('sendDailyBalanceDigest');
       return;
@@ -448,8 +427,8 @@ function notifyServiceResumed(clientID, email, clientName, balance, today) {
     const props = PropertiesService.getScriptProperties();
     const emailKey = `service_resumed_${clientID}_${today}`;
     
-    // Check if notification already sent today (skip this check in test mode)
-    if (!isTestMode() && props.getProperty(emailKey)) {
+    // Check if notification already sent today
+    if (props.getProperty(emailKey)) {
       log(`📧 Service resumed notification already sent today for ${clientName}`);
       logEnd('notifyServiceResumed');
       return;

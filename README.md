@@ -75,7 +75,9 @@ All emails are sent via Gmail API:
 * **Low balance alerts** with payment links
 * **Service resumed** confirmations
 * **Daily firm summary** with client status
-* **Test mode** previews emails without sending to clients
+* **Test emails** via "Send Test Emails" menu (sends one of each email type)
+
+> 💡 **Test Mode**: Disabled by default to prevent email spam. Use "📧 Send Test Emails" from the Blawby menu to test all email types at once.
 
 ---
 

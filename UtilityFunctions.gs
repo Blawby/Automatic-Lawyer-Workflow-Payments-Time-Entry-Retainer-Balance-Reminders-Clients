@@ -630,7 +630,7 @@ function setupWelcomeSheet(ss) {
     ["Low Balance Threshold", preservedValues[2] || "500", "Target balance amount for all clients", ""],
     ["Email Notifications", preservedValues[3] || "TRUE", "Send email notifications", ""],
     ["Firm Email", preservedValues[4] || ownerEmail, "Email address for system notifications", ""],
-    ["Test Mode", preservedValues[5] || "TRUE", "Enable test mode for safe testing", ""],
+    ["Test Mode", preservedValues[5] || "FALSE", "Enable test mode for safe testing", ""],
     ["", "", "", ""],
     ["👩‍⚖️ Lawyers", "", "", ""],
     ["Email", "Name", "Rate", "Lawyer ID"],

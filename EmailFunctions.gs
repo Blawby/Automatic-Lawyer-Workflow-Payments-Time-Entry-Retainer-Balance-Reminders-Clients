@@ -245,8 +245,21 @@ function sendDailyDigest() {
     // Get unassigned matters
     const unassignedMatters = getUnassignedMatters(data, lawyerData);
     
+    // Create structured digest data
+    const rawDigestData = {
+      lowBalanceClients,
+      paymentSummary,
+      newClientsCount,
+      todayRevenue,
+      mattersNeedingTime,
+      enhancedAnalytics,
+      unassignedMatters,
+      today
+    };
     
-    // Generate email using centralized system
+    const digestData = createDigestData(rawDigestData);
+    
+    // Generate email using the new structured approach
     const emailData = {
       lowBalanceClients,
       paymentSummary,

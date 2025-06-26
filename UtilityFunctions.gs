@@ -626,19 +626,6 @@ function buildActionLink(actionType, params = {}) {
 }
 
 /**
- * Format a number as currency
- * @param {number} amount - The amount to format
- * @param {string} currency - The currency symbol (default: '$')
- * @return {string} - Formatted currency string
- */
-function formatMoney(amount, currency = '$') {
-  if (amount === null || amount === undefined || isNaN(amount)) {
-    return `${currency}0.00`;
-  }
-  return `${currency}${parseFloat(amount).toFixed(2)}`;
-}
-
-/**
  * Pluralize a word based on count
  * @param {number} count - The count
  * @param {string} singular - The singular form
@@ -780,5 +767,55 @@ const Format = {
       return `(${cleaned.slice(0,3)}) ${cleaned.slice(3,6)}-${cleaned.slice(6)}`;
     }
     return phone;
+  },
+  
+  /**
+   * Format relative time (e.g., "2 days ago")
+   * @param {Date|string} date - Date to format
+   * @return {string} - Relative time string
+   */
+  relativeTime: (date) => {
+    if (!date) return 'N/A';
+    const d = new Date(date);
+    const now = new Date();
+    const diffTime = now.getTime() - d.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays > 0) return `${diffDays} days ago`;
+    return `${Math.abs(diffDays)} days from now`;
+  },
+  
+  /**
+   * Format number with commas
+   * @param {number|string} value - Value to format
+   * @return {string} - Formatted number with commas
+   */
+  number: (value) => {
+    const num = Number(value || 0);
+    return num.toLocaleString();
+  },
+  
+  /**
+   * Format text with proper capitalization
+   * @param {string} text - Text to capitalize
+   * @return {string} - Capitalized text
+   */
+  title: (text) => {
+    if (!text) return '';
+    return text.replace(/\b\w/g, l => l.toUpperCase());
+  },
+  
+  /**
+   * Truncate text to specified length
+   * @param {string} text - Text to truncate
+   * @param {number} maxLength - Maximum length
+   * @param {string} suffix - Suffix to add
+   * @return {string} - Truncated text
+   */
+  truncate: (text, maxLength, suffix = '...') => {
+    if (!text || text.length <= maxLength) return text;
+    return text.substring(0, maxLength - suffix.length) + suffix;
   }
 }; 

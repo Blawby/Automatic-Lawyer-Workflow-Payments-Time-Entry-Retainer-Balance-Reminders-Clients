@@ -240,6 +240,286 @@ The client's balance has been topped up and services are now active.
       return body;
     }
   },
+  DAILY_DIGEST_HTML: {
+    SUBJECT: "Your Daily Blawby Brief",
+    BODY: (lowBalanceClients, paymentSummary, newClientsCount, todayRevenue, mattersNeedingTime, enhancedAnalytics, unassignedMatters) => {
+      const today = new Date().toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+      
+      let body = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Blawby Brief - ${today}</title>
+</head>
+<body style="font-family: 'Proxima Nova', Arial, sans-serif; margin: 0; padding: 0; background-color: #f8fafc; color: #1e293b;">
+<div style="width: 100%; max-width: 600px; margin: 0 auto; padding: 20px; box-sizing: border-box;">
+    
+    <!-- Header -->
+    <div style="text-align: center; padding: 20px 0;">
+        <h1 style="color: #1e3a8a; font-size: 28px; font-weight: 600; margin: 0;">Your Daily Blawby Brief</h1>
+        <p style="color: #64748b; font-size: 16px; margin: 8px 0 0 0;">${today}</p>
+    </div>
+    
+    <!-- Intro -->
+    <div style="background-color: #ffffff; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0;">
+            Here's your intelligent daily briefing. You have open tasks and matter updates that need review. Key action items are summarized below.
+        </p>
+    </div>
+    
+    <!-- Today's Snapshot Card -->
+    <div style="background-color: #ffffff; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <h2 style="color: #1e3a8a; font-size: 20px; font-weight: 600; margin: 0 0 16px 0;">📊 Today's Snapshot</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div style="padding: 12px; background-color: #f8fafc; border-radius: 8px;">
+                <div style="color: #64748b; font-size: 14px; font-weight: 500;">New Clients</div>
+                <div style="color: #1e293b; font-size: 18px; font-weight: 600;">${newClientsCount}</div>
+            </div>
+            <div style="padding: 12px; background-color: #f8fafc; border-radius: 8px;">
+                <div style="color: #64748b; font-size: 14px; font-weight: 500;">New Matters</div>
+                <div style="color: #1e293b; font-size: 18px; font-weight: 600;">${enhancedAnalytics.matterMovement.newMatters.length}</div>
+            </div>
+            <div style="padding: 12px; background-color: #f8fafc; border-radius: 8px;">
+                <div style="color: #64748b; font-size: 14px; font-weight: 500;">Revenue Received</div>
+                <div style="color: #1e293b; font-size: 18px; font-weight: 600;">$${todayRevenue.toFixed(2)}</div>
+            </div>
+            <div style="padding: 12px; background-color: #f8fafc; border-radius: 8px;">
+                <div style="color: #64748b; font-size: 14px; font-weight: 500;">Time Logged</div>
+                <div style="color: #1e293b; font-size: 18px; font-weight: 600;">${enhancedAnalytics.timeTracking.totalHoursToday.toFixed(1)}h</div>
+            </div>
+            <div style="padding: 12px; background-color: #f8fafc; border-radius: 8px;">
+                <div style="color: #64748b; font-size: 14px; font-weight: 500;">Lawyers Active</div>
+                <div style="color: #1e293b; font-size: 18px; font-weight: 600;">${Object.keys(enhancedAnalytics.timeTracking.lawyersWithTimeToday).length}</div>
+            </div>
+            <div style="padding: 12px; background-color: #f8fafc; border-radius: 8px;">
+                <div style="color: #64748b; font-size: 14px; font-weight: 500;">Matters Needing Time</div>
+                <div style="color: #1e293b; font-size: 18px; font-weight: 600;">${mattersNeedingTime.length}</div>
+            </div>
+        </div>
+    </div>`;
+      
+      // Key Action Items Section
+      let hasActions = false;
+      
+      // Unassigned Matters
+      if (unassignedMatters && unassignedMatters.length > 0) {
+        hasActions = true;
+        body += `
+    <!-- Unassigned Matters Card -->
+    <div style="background-color: #ffffff; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <h2 style="color: #1e3a8a; font-size: 20px; font-weight: 600; margin: 0 0 16px 0;">🔔 Assign Unassigned Matter${unassignedMatters.length > 1 ? 's' : ''}</h2>`;
+        
+        unassignedMatters.slice(0, 3).forEach(matter => {
+          const openedDate = matter.openedDate ? new Date(matter.openedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Unknown';
+          const priority = matter.daysSinceOpened > 7 ? '🔥 Urgent' : matter.daysSinceOpened > 3 ? '⏳ Pending' : '🆕 New';
+          const priorityColor = matter.daysSinceOpened > 7 ? '#dc2626' : matter.daysSinceOpened > 3 ? '#f59e0b' : '#059669';
+          
+          body += `
+        <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                <div>
+                    <div style="color: ${priorityColor}; font-size: 14px; font-weight: 600; margin-bottom: 4px;">${priority}</div>
+                    <div style="color: #1e293b; font-size: 16px; font-weight: 600;">${matter.matterDescription}</div>
+                    <div style="color: #64748b; font-size: 14px;">Client: ${matter.clientName}</div>
+                </div>
+            </div>
+            <div style="color: #64748b; font-size: 14px; margin-bottom: 12px;">
+                <div>Practice Area: ${matter.practiceArea}</div>
+                <div>Opened: ${openedDate} (${matter.daysSinceOpened} days ago)</div>
+                <div>Suggested: ${matter.suggestedLawyers.length > 0 ? matter.suggestedLawyers.map(l => l.name).join(', ') : '(No specialist available)'}</div>
+            </div>
+            <a href="${generateAssignMatterUrl(matter.matterID, matter.practiceArea)}" 
+               style="display: inline-block; padding: 12px 24px; background-color: #1e3a8a; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 14px;">
+                Assign to Lawyer
+            </a>
+        </div>`;
+        });
+        
+        if (unassignedMatters.length > 3) {
+          body += `
+        <div style="text-align: center; color: #64748b; font-size: 14px;">
+            ... and ${unassignedMatters.length - 3} more matters need assignment
+        </div>`;
+        }
+        
+        body += `
+    </div>`;
+      }
+      
+      // Matters Needing Time Entries
+      if (mattersNeedingTime.length > 0) {
+        hasActions = true;
+        body += `
+    <!-- Matters Needing Time Card -->
+    <div style="background-color: #ffffff; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <h2 style="color: #1e3a8a; font-size: 20px; font-weight: 600; margin: 0 0 16px 0;">📋 Matters Needing Time Entries</h2>`;
+        
+        mattersNeedingTime.slice(0, 3).forEach(matter => {
+          const urgency = matter.daysSinceLastTimeEntry > 14 ? '🔥 Overdue' : matter.daysSinceLastTimeEntry > 7 ? '⚠️ Needs Attention' : '📝 Due Soon';
+          const urgencyColor = matter.daysSinceLastTimeEntry > 14 ? '#dc2626' : matter.daysSinceLastTimeEntry > 7 ? '#f59e0b' : '#059669';
+          
+          // Email preview for nudge
+          const nudgeSubject = `Time Entry Reminder - ${matter.matterDescription}`;
+          const nudgeBody = `Hi ${matter.lawyerName},\n\nThis is a friendly reminder that the matter "${matter.matterDescription}" for client ${matter.clientName} needs a time entry.\n\nIt has been ${matter.daysSinceLastTimeEntry} days since the last time entry was logged.\n\nPlease log your time when convenient.\n\nBest regards,\nYour Legal Team`;
+          
+          body += `
+        <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                <div>
+                    <div style="color: ${urgencyColor}; font-size: 14px; font-weight: 600; margin-bottom: 4px;">${urgency}</div>
+                    <div style="color: #1e293b; font-size: 16px; font-weight: 600;">${matter.matterDescription}</div>
+                    <div style="color: #64748b; font-size: 14px;">Client: ${matter.clientName}</div>
+                </div>
+            </div>
+            <div style="color: #64748b; font-size: 14px; margin-bottom: 12px;">
+                <div>Assigned: ${matter.lawyerName}</div>
+                <div>Reason: ${matter.reason}</div>
+                <div>Days since last entry: ${matter.daysSinceLastTimeEntry}</div>
+            </div>
+            
+            <!-- Email Preview -->
+            <div style="background-color: #f8fafc; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+                <div style="color: #64748b; font-size: 12px; font-weight: 600; margin-bottom: 8px;">📧 Email Preview:</div>
+                <div style="color: #1e293b; font-size: 13px; line-height: 1.4;">
+                    <div style="font-weight: 600; margin-bottom: 4px;">Subject: ${nudgeSubject}</div>
+                    <div style="color: #64748b; font-size: 12px; white-space: pre-line;">${nudgeBody.substring(0, 150)}${nudgeBody.length > 150 ? '...' : ''}</div>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 8px;">
+                <a href="${generateAddTimeEntryUrl(matter.matterID, matter.lawyerID)}" 
+                   style="display: inline-block; padding: 10px 16px; background-color: #059669; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 13px;">
+                    Add Time Entry
+                </a>
+                <a href="${generateNudgeLawyerUrl(matter.matterID, matter.lawyerID)}" 
+                   style="display: inline-block; padding: 10px 16px; background-color: #1e3a8a; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 13px;">
+                    Send Nudge
+                </a>
+            </div>
+        </div>`;
+        });
+        
+        if (mattersNeedingTime.length > 3) {
+          body += `
+        <div style="text-align: center; color: #64748b; font-size: 14px;">
+            ... and ${mattersNeedingTime.length - 3} more matters need time entries
+        </div>`;
+        }
+        
+        body += `
+    </div>`;
+      }
+      
+      // Low Balance Clients
+      if (lowBalanceClients.length > 0) {
+        hasActions = true;
+        body += `
+    <!-- Low Balance Clients Card -->
+    <div style="background-color: #ffffff; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <h2 style="color: #1e3a8a; font-size: 20px; font-weight: 600; margin: 0 0 16px 0;">💰 Client Retainer Alert${lowBalanceClients.length > 1 ? 's' : ''}</h2>`;
+        
+        lowBalanceClients.slice(0, 3).forEach(client => {
+          const balance = parseFloat(client.balance);
+          const status = balance <= 0 ? '🚫 Services Paused' : '💰 Low Balance';
+          const statusColor = balance <= 0 ? '#dc2626' : '#f59e0b';
+          
+          // Email preview for low balance reminder
+          const reminderSubject = `Retainer Balance Update – Action Needed`;
+          const reminderBody = `Dear ${client.name},\n\nWe hope you're doing well. Our records show your current retainer balance is $${client.balance}, below your target of $${client.targetBalance}.\n\nPlease top up by $${client.topUp} to continue uninterrupted services.\n\nThank you,\nYour Legal Team`;
+          
+          body += `
+        <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                <div>
+                    <div style="color: ${statusColor}; font-size: 14px; font-weight: 600; margin-bottom: 4px;">${status}</div>
+                    <div style="color: #1e293b; font-size: 16px; font-weight: 600;">${client.name}</div>
+                    <div style="color: #64748b; font-size: 14px;">${client.email}</div>
+                </div>
+            </div>
+            <div style="color: #64748b; font-size: 14px; margin-bottom: 12px;">
+                <div>Balance: $${client.balance} | Target: $${client.targetBalance}</div>
+                <div>Top-up needed: $${client.topUp}</div>
+            </div>
+            
+            <!-- Email Preview -->
+            <div style="background-color: #f8fafc; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+                <div style="color: #64748b; font-size: 12px; font-weight: 600; margin-bottom: 8px;">📧 Email Preview:</div>
+                <div style="color: #1e293b; font-size: 13px; line-height: 1.4;">
+                    <div style="font-weight: 600; margin-bottom: 4px;">Subject: ${reminderSubject}</div>
+                    <div style="color: #64748b; font-size: 12px; white-space: pre-line;">${reminderBody.substring(0, 150)}${reminderBody.length > 150 ? '...' : ''}</div>
+                </div>
+            </div>
+            
+            <a href="${generateSendEmailUrl(client.clientID, 'low_balance')}" 
+               style="display: inline-block; padding: 12px 24px; background-color: #1e3a8a; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 14px;">
+                Send Reminder
+            </a>
+        </div>`;
+        });
+        
+        if (lowBalanceClients.length > 3) {
+          body += `
+        <div style="text-align: center; color: #64748b; font-size: 14px;">
+            ... and ${lowBalanceClients.length - 3} more clients need attention
+        </div>`;
+        }
+        
+        body += `
+    </div>`;
+      }
+      
+      // All Systems Running Smoothly
+      if (!hasActions) {
+        body += `
+    <!-- All Good Card -->
+    <div style="background-color: #ffffff; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <div style="text-align: center; color: #059669;">
+            <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
+            <h2 style="color: #059669; font-size: 20px; font-weight: 600; margin: 0 0 8px 0;">All Systems Running Smoothly</h2>
+            <p style="color: #64748b; font-size: 16px; margin: 0;">No immediate actions needed today.</p>
+        </div>
+    </div>`;
+      }
+      
+      // Bulk Actions
+      const totalActions = (unassignedMatters ? unassignedMatters.length : 0) + 
+                          enhancedAnalytics.timeTracking.lawyersWithNoTime.length + 
+                          mattersNeedingTime.length + 
+                          lowBalanceClients.length;
+      
+      if (totalActions > 3 && lowBalanceClients.length > 1) {
+        body += `
+    <!-- Bulk Actions Card -->
+    <div style="background-color: #ffffff; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <h2 style="color: #1e3a8a; font-size: 20px; font-weight: 600; margin: 0 0 16px 0;">📧 Bulk Actions</h2>
+        <a href="${generateSendAllEmailsUrl(lowBalanceClients.map(c => c.clientID))}" 
+           style="display: inline-block; padding: 12px 24px; background-color: #dc2626; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 14px;">
+            Send All ${lowBalanceClients.length} Low Balance Reminders
+        </a>
+    </div>`;
+      }
+      
+      // Footer
+      body += `
+    <!-- Footer -->
+    <div style="text-align: center; padding: 20px; color: #64748b; font-size: 14px;">
+        <p style="margin: 0 0 8px 0;">Need changes to your summary? Let us know — Blawby is always learning.</p>
+        <p style="margin: 0;">Powered by <a href="https://blawby.com" style="color: #1e3a8a;">Blawby</a></p>
+    </div>
+</div>
+</body>
+</html>`;
+      
+      return body;
+    }
+  },
 };
 
 // ========== TEMPLATE LOADER SYSTEM ==========

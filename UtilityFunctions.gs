@@ -435,7 +435,9 @@ function setupMattersSheet(sheet) {
     "Date Created",
     "Status",
     "Case Value",
-    "Practice Area"
+    "Practice Area",
+    "Assigned Lawyer",
+    "Assigned Lawyer Email"
   ];
   setupSheet(sheet, headers);
 }

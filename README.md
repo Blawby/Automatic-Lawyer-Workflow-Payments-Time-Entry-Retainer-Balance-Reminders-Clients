@@ -1,11 +1,15 @@
 # Blawby - Google Sheets Legal Retainer Management System
 
-A comprehensive legal practice management system built on Google Sheets that automates client payment tracking, time logging, email notifications, and practice area management.
+A comprehensive legal practice management system built on Google Sheets that automates client payment tracking, time logging, email notifications, and practice area management with professional daily briefings and smart matter assignment.
 
 ## 🚀 Features
 
 ### 📊 **Daily Digest & Analytics**
 - **Today's Activity Summary**: New clients, revenue, time entries, and matter updates
+- **Unassigned Matters Detection**: Smart identification of matters needing lawyer assignment
+- **Lawyer Suggestions**: Practice area-based recommendations for matter assignment
+- **Email Previews**: See exactly what emails will be sent before taking action
+- **Professional HTML Design**: Card-based layout with navy blue theme
 - **Low Balance Alerts**: Automated detection and manual email sending
 - **Matter Management**: Track matters needing time entries with practice area matching
 - **Lawyer Performance**: Monitor time logging and suggest appropriate assignments
@@ -20,18 +24,26 @@ A comprehensive legal practice management system built on Google Sheets that aut
 - **Web-based Time Entry**: Professional forms with practice area context
 - **Legal Billing Standards**: 6-minute increments (0.1 hours)
 - **Lawyer Suggestions**: Smart matching based on practice areas
-- **Nudge System**: Professional reminder emails to lawyers
+- **Nudge System**: Professional reminder emails to lawyers with email previews
 
 ### 👩‍⚖️ **Practice Area Management**
 - **Lawyer Specializations**: Track practice areas for each lawyer
 - **Smart Matter Assignment**: Suggest appropriate lawyers based on practice area
 - **Enhanced Time Entry**: Context-aware forms with matter and client details
 
+### 🎯 **Unassigned Matters Management**
+- **Automatic Detection**: Identifies matters without time entries (unassigned)
+- **Practice Area Matching**: Suggests lawyers based on matter practice area
+- **Assignment Forms**: Professional web forms for matter assignment
+- **Assignment Logging**: Complete audit trail of matter assignments
+- **Lawyer Notifications**: Automatic emails to assigned lawyers
+
 ### 📧 **Email Automation**
 - **Service Resumption**: Automatic notifications when clients top up
 - **Manual Email Control**: Owner-controlled low balance reminders
-- **Professional Templates**: Clean, professional email formatting
+- **Professional HTML Templates**: Modern, responsive email design
 - **Lawyer Nudges**: Automated reminders with direct time entry links
+- **Email Previews**: Full preview of emails before sending
 
 ## 🏗️ System Architecture
 
@@ -42,11 +54,13 @@ A comprehensive legal practice management system built on Google Sheets that aut
 - **TimeLogs**: Time entry tracking with lawyer and matter association
 - **Payments**: Payment processing and history
 - **LowBalanceWarnings**: Automated low balance detection
+- **Assignment Log**: Audit trail of matter assignments (auto-created)
 
 ### **Web App Integration**
 - **Action Buttons**: Direct links for email sending and time entry
 - **Professional Forms**: Enhanced time entry with context
-- **Lawyer Nudges**: Automated reminder system
+- **Matter Assignment**: Complete assignment workflow with forms
+- **Lawyer Nudges**: Automated reminder system with email previews
 - **Secure Access**: Google Apps Script web app deployment
 
 ## 📋 Setup Instructions
@@ -82,7 +96,7 @@ Common practice areas include:
 1. Deploy as web app in Google Apps Script
 2. Set "Execute as" to "Me"
 3. Set "Who has access" to "Anyone"
-4. Update script ID in the code
+4. Update script ID in the code for all action links
 
 ## 🔄 Daily Workflow
 
@@ -91,31 +105,44 @@ Common practice areas include:
 2. **Balance Calculation**: Real-time balance updates
 3. **Service Resumption**: Automatic notifications when clients top up
 4. **Matter Detection**: Identify matters needing time entries
+5. **Unassigned Matter Detection**: Find matters without lawyer assignments
 
 ### **Manual Actions (Daily Digest)**
 1. **Review Today's Activity**: New clients, revenue, time entries
-2. **Send Low Balance Emails**: Manual control over client reminders
-3. **Nudge Lawyers**: Professional reminders for time entries
-4. **Add Time Entries**: Direct access to time entry forms
+2. **Assign Unassigned Matters**: Use practice area suggestions to assign lawyers
+3. **Send Low Balance Emails**: Manual control over client reminders with email previews
+4. **Nudge Lawyers**: Professional reminders for time entries with email previews
+5. **Add Time Entries**: Direct access to time entry forms
 
 ## 📧 Email Templates
 
-### **Daily Digest**
-- Today's activity summary
-- Low balance client list with action buttons
-- Matters needing time entries with lawyer suggestions
+### **Daily Digest (HTML)**
+- Professional card-based design with navy blue theme
+- Today's activity summary in grid layout
+- Unassigned matters with lawyer suggestions
+- Low balance client list with email previews
+- Matters needing time entries with email previews
 - Revenue and client statistics
+- Styled action buttons for all operations
 
 ### **Low Balance Reminders**
 - Professional client communication
 - Direct payment links
 - Balance information and top-up amounts
+- Email previews before sending
 
 ### **Lawyer Nudges**
 - Matter context and client information
 - Direct time entry links
 - Practice area matching
 - CC to firm owner for transparency
+- Email previews before sending
+
+### **Matter Assignment Notifications**
+- New matter assignment details
+- Matter description and client information
+- Assignment notes and context
+- Direct access to matter information
 
 ## ⚙️ Configuration
 
@@ -134,8 +161,8 @@ Common practice areas include:
 ### **File Structure**
 - `Code.gs`: Main entry points and validation
 - `ClientSync.gs`: Payment and client processing
-- `EmailFunctions.gs`: Email templates and web app functions
-- `EmailTemplates.gs`: Email template system
+- `EmailFunctions.gs`: Email templates, web app functions, and assignment system
+- `EmailTemplates.gs`: Email template system with HTML support
 - `UtilityFunctions.gs`: Helper functions and sheet setup
 - `Constants.gs`: System constants and column definitions
 
@@ -145,32 +172,8 @@ Common practice areas include:
 - `add_time_entry`: Show time entry form
 - `submit_time_entry`: Process time entry submission
 - `nudge_lawyer`: Send lawyer reminder emails
-
-### **Data Validation**
-- Email format validation
-- Payment amount validation
-- Lawyer data completeness checks
-- Matter status tracking
-
-## 🎯 Best Practices
-
-### **Daily Operations**
-1. **Review Daily Digest**: Check for low balance clients and matters needing attention
-2. **Send Reminders**: Use manual email control for client communications
-3. **Nudge Lawyers**: Send professional reminders for time entries
-4. **Monitor Practice Areas**: Ensure matters are assigned to appropriate lawyers
-
-### **Client Management**
-1. **Set Target Balances**: Configure appropriate thresholds per client
-2. **Track Payment History**: Monitor client payment patterns
-3. **Update Client Information**: Keep client names and details current
-4. **Review Matter Status**: Track active vs. completed matters
-
-### **Time Entry Management**
-1. **Use Practice Area Matching**: Assign matters to appropriate lawyers
-2. **Regular Time Logging**: Encourage consistent time entry
-3. **Professional Nudges**: Use automated reminders for missing entries
-4. **Review Time Patterns**: Monitor lawyer productivity and matter progress
+- `assign_matter`: Show matter assignment form
+- `submit_assignment`: Process matter assignment
 
 ## 🚀 Future Enhancements
 
@@ -187,40 +190,24 @@ Common practice areas include:
 - Client interaction tracking
 - Risk flagging and follow-up automation
 
-## 📞 Support
+## 🚀 Recent Enhancements
 
-For questions or issues:
-1. Check the Welcome sheet configuration
-2. Review the daily digest for system status
-3. Validate email templates and web app deployment
-4. Ensure all required sheets are properly set up
+### **Professional Email Design**
+- **HTML Email Templates**: Modern, responsive design with card-based layout
+- **Email Previews**: See exactly what emails will be sent before taking action
+- **Styled Action Buttons**: Professional buttons instead of plain links
+- **Mobile-Responsive**: Optimized for all device sizes
 
-## 📄 License
+### **Unassigned Matters System**
+- **Automatic Detection**: Identifies matters without time entries
+- **Practice Area Matching**: Smart lawyer suggestions based on matter type
+- **Assignment Workflow**: Complete form-based assignment process
+- **Assignment Logging**: Full audit trail of all assignments
+- **Lawyer Notifications**: Automatic emails to assigned lawyers
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
----
-
-**Blawby** - Streamlining legal practice management with Google Sheets automation.
-
-```
-.
-├── Code.gs              # Triggers + Menu System
-├── ClientSync.gs        # Balance & matter logic
-├── Constants.gs         # Settings & metadata
-├── EmailFunctions.gs    # Gmail API + test mode
-├── EmailTemplates.gs    # HTML template engine
-└── UtilityFunctions.gs  # Logging & helpers
-```
-
-Full source at: [github.com/Blawby](https://github.com/Blawby/Automatic-Lawyer-Workflow-Payments-Time-Entry-Retainer-Balance-Reminders-Clients)
-
----
-
-## 🔗 Learn More
-
-* [Website](https://blawby.com)
-* [Documentation](https://blawby.com/docs)
-* [Blawby Payments Pricing](https://blawby.com/pricing)
-* [GitHub](https://github.com/Blawby/Automatic-Lawyer-Workflow-Payments-Time-Entry-Retainer-Balance-Reminders-Clients)
-* [Contact Support](mailto:support@blawby.com)
+### **Enhanced Daily Digest**
+- **Professional Layout**: Card-based design with clear sections
+- **Priority Indicators**: Visual urgency indicators (🔥 Urgent, ⏳ Pending, 🆕 New)
+- **Email Previews**: Full preview of emails before sending
+- **Action Context**: Complete context for each action item
+- **Bulk Operations**: Efficient handling of multiple items

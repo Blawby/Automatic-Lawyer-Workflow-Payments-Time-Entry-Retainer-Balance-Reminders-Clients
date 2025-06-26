@@ -1567,8 +1567,19 @@ function submitAssignment(matterID, lawyerID, notes, e) {
     // Find the matter row
     const matters = mattersSheet.getDataRange().getValues();
     const header = matters[0];
-    const assignedLawyerCol = header.indexOf('Assigned Lawyer') + 1;
-    const assignedLawyerEmailCol = header.indexOf('Assigned Lawyer Email') + 1;
+    let assignedLawyerCol = header.indexOf('Assigned Lawyer') + 1;
+    let assignedLawyerEmailCol = header.indexOf('Assigned Lawyer Email') + 1;
+    
+    // If columns don't exist, add them
+    if (assignedLawyerCol === 0) {
+      mattersSheet.getRange(1, header.length + 1).setValue('Assigned Lawyer');
+      assignedLawyerCol = header.length + 1;
+    }
+    if (assignedLawyerEmailCol === 0) {
+      mattersSheet.getRange(1, header.length + 2).setValue('Assigned Lawyer Email');
+      assignedLawyerEmailCol = header.length + 2;
+    }
+    
     let rowIdx = -1;
     for (let i = 1; i < matters.length; i++) {
       if (matters[i][0] === matterID) {
@@ -1576,8 +1587,8 @@ function submitAssignment(matterID, lawyerID, notes, e) {
         break;
       }
     }
-    if (rowIdx === -1 || assignedLawyerCol === 0) {
-      return HtmlService.createHtmlOutput('<p style="color:red;">Error: Could not find matter or Assigned Lawyer column.</p>');
+    if (rowIdx === -1) {
+      return HtmlService.createHtmlOutput('<p style="color:red;">Error: Could not find matter with ID: ' + matterID + '</p>');
     }
 
     // Update the assigned lawyer in the sheet

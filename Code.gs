@@ -308,13 +308,13 @@ function executeSyncOperations(sheets) {
       // Continue with other operations even if this fails
     }
     
-    // 3. Send daily balance digest (notifies about low balances)
-    log("📧 Sending daily balance digest...");
+    // 3. Send daily digest
+    log("📧 Sending daily digest...");
     try {
-      sendDailyBalanceDigest();
-      log("✅ Daily balance digest completed");
+      sendDailyDigest();
+      log("✅ Daily digest completed");
     } catch (error) {
-      logError('sendDailyBalanceDigest', error);
+      logError('sendDailyDigest', error);
       // Continue with other operations even if this fails
     }
     
@@ -411,7 +411,7 @@ function manualSendDigest() {
       return;
     }
     
-    sendDailyBalanceDigest();
+    sendDailyDigest();
     
     const ui = SpreadsheetApp.getUi();
     ui.alert(
@@ -834,7 +834,7 @@ function onOpen(e) {
   ui.createMenu('Blawby')
     .addItem('🔧 Setup System', 'setupSystem')
     .addItem('🔍 Validate Configuration', 'validateConfiguration')
-    .addItem('📊 Send Daily Digest', 'sendDailyBalanceDigest')
+    .addItem('📊 Send Daily Digest', 'sendDailyDigest')
     .addSeparator()
     .addItem('🔄 Daily Sync', 'userDailySync')
     .addItem('📧 Process Gmail Payments', 'processGmailPayments')
@@ -1589,11 +1589,11 @@ function stepByStepSync() {
     ui.alert('Step 7', 'Testing email sending...', ui.ButtonSet.OK);
     
     try {
-      sendDailyBalanceDigest();
+      sendDailyDigest();
       log('✅ Step 7 passed: Email sending OK');
-    } catch (emailError) {
-      log(`❌ Step 7 failed: Email sending error - ${emailError.message}`);
-      throw new Error(`Email sending issue: ${emailError.message}`);
+    } catch (error) {
+      logError('sendDailyDigest', error);
+      throw new Error(`Email sending issue: ${error.message}`);
     }
     
     log('✅ All steps completed successfully!');

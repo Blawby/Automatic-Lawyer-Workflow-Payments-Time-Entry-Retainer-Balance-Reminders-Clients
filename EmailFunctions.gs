@@ -162,7 +162,7 @@ function renderTemplate(type, subtype, ...params) {
       },
       'DAILY_DIGEST': {
         'SUBJECT': 'Your Blawby Daily Summary',
-        'BODY': (lowBalanceClients, paymentSummary, newClientsCount, todayRevenue, mattersNeedingTime, enhancedAnalytics) => {
+        'BODY': (lowBalanceClients, paymentSummary, newClientsCount, todayRevenue, mattersNeedingTime, enhancedAnalytics, unassignedMatters) => {
           let body = 'Your Daily Blawby Summary\n\n';
           body += 'Here\'s a snapshot of client retainer activity and balances today.\n\n';
           
@@ -269,8 +269,11 @@ function sendDailyDigest() {
     // Get enhanced analytics
     const enhancedAnalytics = getEnhancedAnalytics(data, lawyerData, today);
     
-    const subject = `Daily Balance Digest - ${today} (${lowBalanceClients.length} low balance clients, ${mattersNeedingTime.length} matters need time)`;
-    const body = renderTemplate('DAILY_DIGEST', 'BODY', lowBalanceClients, paymentSummary, newClientsCount, todayRevenue, mattersNeedingTime, enhancedAnalytics);
+    // Get unassigned matters
+    const unassignedMatters = getUnassignedMatters(data, lawyerData);
+    
+    const subject = `Daily Balance Digest - ${today} (${lowBalanceClients.length} low balance clients, ${mattersNeedingTime.length} matters need time, ${unassignedMatters.length} unassigned matters)`;
+    const body = renderTemplate('DAILY_DIGEST', 'BODY', lowBalanceClients, paymentSummary, newClientsCount, todayRevenue, mattersNeedingTime, enhancedAnalytics, unassignedMatters);
     
     // Send to spreadsheet owner
     const ownerEmail = getActiveSpreadsheet().getOwner().getEmail();
@@ -410,6 +413,10 @@ function doGet(e) {
       return submitTimeEntry(matterID, lawyerID, hours, description);
     } else if (action === 'nudge_lawyer' && matterID && lawyerID) {
       return nudgeLawyerForTimeEntry(matterID, lawyerID);
+    } else if (action === 'assign_matter' && matterID) {
+      return assignMatterForm(matterID, e.parameter.practice_area);
+    } else if (action === 'submit_assignment' && matterID && e.parameter.lawyer_id) {
+      return submitAssignment(matterID, e.parameter.lawyer_id, e.parameter.notes, e);
     } else {
       return HtmlService.createHtmlOutput('Invalid request');
     }
@@ -647,7 +654,7 @@ function addTimeEntryForm(matterID, lawyerID) {
   // Get suggested lawyers based on practice area
   const suggestedLawyers = suggestLawyersByPracticeArea(practiceArea, lawyerData);
   
-  const scriptId = 'AKfycbyRlOh_7iVEsJXG5y4ZNrJ32l-vVCH82F2km_WLrv3C0M4fRVPGw7H5bNszqCTpQf34';
+  const scriptId = 'AKfycbyTH2ZENNYm7J3dM-Y6ltGAYtp39CsmzNP4TZvabK8OjfeaQjN5mNhb46p8OtXiZyhZ';
   const webAppUrl = `https://script.google.com/macros/s/${scriptId}/exec`;
   
   // Build suggested lawyers HTML
@@ -1344,4 +1351,316 @@ function getLowBalanceClients(data, lawyerData) {
   }
   
   return lowBalanceClients;
+}
+
+/**
+ * Get unassigned matters with lawyer suggestions
+ */
+function getUnassignedMatters(data, lawyerData) {
+  const unassignedMatters = [];
+  
+  // Get all active matters
+  const activeMatters = data.matters.slice(1).filter(matter => 
+    matter && Array.isArray(matter) && matter[5] === 'Active'
+  );
+  
+  for (const matter of activeMatters) {
+    const matterID = matter[0];
+    const clientEmail = matter[1];
+    const clientName = matter[2] || 'Unknown Client';
+    const matterDescription = matter[3] || 'General Legal Matter';
+    const practiceArea = matter[7] || 'General';
+    const openedDate = matter[4];
+    
+    // Check if matter has any time entries (indicates assignment)
+    const hasTimeEntries = data.timeLogs.slice(1).some(log => 
+      log && Array.isArray(log) && log[2] === matterID
+    );
+    
+    // If no time entries, consider it unassigned
+    if (!hasTimeEntries) {
+      const suggestedLawyers = getSuggestedLawyers(practiceArea, lawyerData);
+      
+      unassignedMatters.push({
+        matterID,
+        clientEmail,
+        clientName,
+        matterDescription,
+        practiceArea,
+        openedDate,
+        suggestedLawyers,
+        daysSinceOpened: openedDate ? Math.ceil((new Date() - new Date(openedDate)) / (1000 * 60 * 60 * 24)) : 0
+      });
+    }
+  }
+  
+  // Sort by days since opened (oldest first)
+  return unassignedMatters.sort((a, b) => b.daysSinceOpened - a.daysSinceOpened);
+}
+
+/**
+ * Generate URL for assigning matter to lawyer
+ */
+function generateAssignMatterUrl(matterID, practiceArea) {
+  const scriptId = 'AKfycbyRlOh_7iVEsJXG5y4ZNrJ32l-vVCH82F2km_WLrv3C0M4fRVPGw7H5bNszqCTpQf34';
+  const webAppUrl = `https://script.google.com/macros/s/${scriptId}/exec`;
+  return `${webAppUrl}?action=assign_matter&matter_id=${encodeURIComponent(matterID)}&practice_area=${encodeURIComponent(practiceArea)}`;
+}
+
+/**
+ * Generate matter assignment form
+ */
+function assignMatterForm(matterID, practiceArea) {
+  const sheets = getSheets();
+  const data = loadSheetData(sheets);
+  const lawyerData = buildLawyerMaps(data.lawyers);
+  
+  const matter = data.matters.find(m => m && Array.isArray(m) && m[0] === matterID);
+  const matterDescription = matter ? matter[3] : 'Unknown Matter';
+  const clientEmail = matter ? matter[1] : '';
+  const clientName = matter ? matter[2] : 'Unknown Client';
+  const openedDate = matter && matter[4] ? new Date(matter[4]).toLocaleDateString() : 'Unknown';
+  
+  // Get suggested lawyers for this practice area
+  const suggestedLawyers = getSuggestedLawyers(practiceArea, lawyerData);
+  
+  // Get all lawyers for the dropdown
+  const allLawyers = [];
+  for (const [lawyerID, name] of Object.entries(lawyerData.names)) {
+    allLawyers.push({
+      id: lawyerID,
+      name: name,
+      email: lawyerData.emails[lawyerID] || '',
+      rate: lawyerData.rates[lawyerID] || 0,
+      practiceAreas: lawyerData.practiceAreas[lawyerID] || ''
+    });
+  }
+  
+  // Sort by name
+  allLawyers.sort((a, b) => a.name.localeCompare(b.name));
+  
+  const scriptId = 'AKfycbyTH2ZENNYm7J3dM-Y6ltGAYtp39CsmzNP4TZvabK8OjfeaQjN5mNhb46p8OtXiZyhZ';
+  const webAppUrl = `https://script.google.com/macros/s/${scriptId}/exec`;
+  
+  // Build suggested lawyers HTML
+  let suggestedLawyersHtml = '';
+  if (suggestedLawyers.length > 0) {
+    suggestedLawyersHtml = `
+      <div style="background-color: #e8f5e8; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+        <h3 style="margin-top: 0; color: #333;">💡 Suggested Lawyers for ${practiceArea}</h3>
+        ${suggestedLawyers.map(lawyer => `
+          <div style="margin-bottom: 10px; padding: 8px; background-color: white; border-radius: 3px;">
+            <strong>${lawyer.name}</strong> (${lawyer.id}) - $${lawyer.rate}/hour<br>
+            <small style="color: #666;">${lawyer.email} | ${lawyer.practiceAreas}</small>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+  
+  return HtmlService.createHtmlOutput(`
+    <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px;">
+      <h2>Assign Matter to Lawyer</h2>
+      
+      <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+        <h3 style="margin-top: 0; color: #333;">Matter Information</h3>
+        <p><strong>Matter ID:</strong> ${matterID}</p>
+        <p><strong>Description:</strong> ${matterDescription}</p>
+        <p><strong>Client:</strong> ${clientName} (${clientEmail})</p>
+        <p><strong>Practice Area:</strong> ${practiceArea}</p>
+        <p><strong>Opened:</strong> ${openedDate}</p>
+      </div>
+      
+      ${suggestedLawyersHtml}
+      
+      <form id="assignMatterForm">
+        <input type="hidden" name="action" value="submit_assignment">
+        <input type="hidden" name="matter_id" value="${matterID}">
+        
+        <div style="margin-bottom: 15px;">
+          <label for="lawyer_id" style="display: block; margin-bottom: 5px;"><strong>Assign to Lawyer:</strong></label>
+          <select id="lawyer_id" name="lawyer_id" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            <option value="">Select a lawyer...</option>
+            ${allLawyers.map(lawyer => `
+              <option value="${lawyer.id}" ${suggestedLawyers.some(s => s.id === lawyer.id) ? 'style="font-weight: bold; background-color: #e8f5e8;"' : ''}>
+                ${lawyer.name} (${lawyer.id}) - $${lawyer.rate}/hour - ${lawyer.practiceAreas}
+              </option>
+            `).join('')}
+          </select>
+          <small style="color: #666;">Bold options are suggested based on practice area</small>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <label for="notes" style="display: block; margin-bottom: 5px;"><strong>Assignment Notes (Optional):</strong></label>
+          <textarea id="notes" name="notes" 
+                    style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; height: 80px;"
+                    placeholder="Any notes about this assignment..."></textarea>
+        </div>
+        
+        <button type="submit" style="background-color: #4CAF50; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;">
+          Assign Matter
+        </button>
+        <button type="button" onclick="window.close()" style="background-color: #f44336; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px; font-size: 16px;">
+          Cancel
+        </button>
+      </form>
+      
+      <div id="result" style="margin-top: 20px;"></div>
+      
+      <script>
+        document.getElementById('assignMatterForm').addEventListener('submit', function(e) {
+          e.preventDefault();
+          
+          const lawyerID = document.getElementById('lawyer_id').value;
+          const notes = document.getElementById('notes').value;
+          const matterID = '${matterID}';
+          
+          if (!lawyerID) {
+            document.getElementById('result').innerHTML = '<p style="color: red;">Please select a lawyer.</p>';
+            return;
+          }
+          
+          const params = new URLSearchParams({
+            action: 'submit_assignment',
+            matter_id: matterID,
+            lawyer_id: lawyerID,
+            notes: notes
+          });
+          
+          const url = '${webAppUrl}?' + params.toString();
+          
+          // Open in new window/tab to avoid iframe issues
+          window.open(url, '_blank');
+          
+          // Show success message
+          document.getElementById('result').innerHTML = '<p style="color: green;">✅ Matter assignment submitted! Check the new tab for confirmation.</p>';
+          
+          // Clear form
+          document.getElementById('lawyer_id').value = '';
+          document.getElementById('notes').value = '';
+        });
+      </script>
+    </div>
+  `);
+}
+
+/**
+ * Handle matter assignment submission: update sheet, log, notify
+ */
+function submitAssignment(matterID, lawyerID, notes, e) {
+  try {
+    const sheets = getSheets();
+    const mattersSheet = sheets.mattersSheet;
+    const data = loadSheetData(sheets);
+    const lawyerData = buildLawyerMaps(data.lawyers);
+    const ownerEmail = getActiveSpreadsheet().getOwner().getEmail();
+    const assigner = Session.getActiveUser().getEmail() || ownerEmail;
+    const timestamp = new Date();
+
+    // Find the matter row
+    const matters = mattersSheet.getDataRange().getValues();
+    const header = matters[0];
+    const assignedLawyerCol = header.indexOf('Assigned Lawyer') + 1;
+    const assignedLawyerEmailCol = header.indexOf('Assigned Lawyer Email') + 1;
+    let rowIdx = -1;
+    for (let i = 1; i < matters.length; i++) {
+      if (matters[i][0] === matterID) {
+        rowIdx = i + 1; // 1-based for Sheets
+        break;
+      }
+    }
+    if (rowIdx === -1 || assignedLawyerCol === 0) {
+      return HtmlService.createHtmlOutput('<p style="color:red;">Error: Could not find matter or Assigned Lawyer column.</p>');
+    }
+
+    // Update the assigned lawyer in the sheet
+    mattersSheet.getRange(rowIdx, assignedLawyerCol).setValue(lawyerData.names[lawyerID] || lawyerID);
+    if (assignedLawyerEmailCol > 0) {
+      mattersSheet.getRange(rowIdx, assignedLawyerEmailCol).setValue(lawyerData.emails[lawyerID] || '');
+    }
+
+    // Log the assignment (optional, if Assignment Log sheet exists)
+    let logSheet;
+    try {
+      logSheet = sheets.assignmentLogSheet || SpreadsheetApp.getActive().getSheetByName('Assignment Log');
+      if (!logSheet) {
+        logSheet = SpreadsheetApp.getActive().insertSheet('Assignment Log');
+        logSheet.appendRow(['Timestamp', 'Matter ID', 'Matter Description', 'Assigned Lawyer', 'Lawyer Email', 'Assigner', 'Notes']);
+      }
+    } catch (err) {}
+    if (logSheet) {
+      const matter = data.matters.find(m => m && Array.isArray(m) && m[0] === matterID);
+      logSheet.appendRow([
+        timestamp,
+        matterID,
+        matter ? matter[3] : '',
+        lawyerData.names[lawyerID] || lawyerID,
+        lawyerData.emails[lawyerID] || '',
+        assigner,
+        notes || ''
+      ]);
+    }
+
+    // Send notification email
+    const lawyerEmail = lawyerData.emails[lawyerID];
+    const matter = data.matters.find(m => m && Array.isArray(m) && m[0] === matterID);
+    const clientName = matter ? matter[2] : '';
+    const matterDesc = matter ? matter[3] : '';
+    const subject = `New Matter Assigned: ${matterDesc}`;
+    let emailBody = `You have been assigned a new matter.\n\n`;
+    emailBody += `Matter: ${matterDesc}\nClient: ${clientName}\nMatter ID: ${matterID}\n`;
+    if (notes) emailBody += `\nNotes: ${notes}\n`;
+    emailBody += `\nPlease log in to Blawby to review and begin work.`;
+    if (lawyerEmail) {
+      MailApp.sendEmail({
+        to: lawyerEmail,
+        cc: ownerEmail,
+        subject: subject,
+        body: emailBody
+      });
+    }
+
+    return HtmlService.createHtmlOutput('<p style="color:green;">✅ Matter assigned and lawyer notified!</p>');
+  } catch (error) {
+    return HtmlService.createHtmlOutput(`<p style=\"color:red;\">Error: ${error.message}</p>`);
+  }
+}
+
+/**
+ * Get suggested lawyers for a practice area
+ */
+function getSuggestedLawyers(practiceArea, lawyerData) {
+  if (!practiceArea || !lawyerData || !lawyerData.practiceAreas) {
+    return [];
+  }
+  
+  const suggestedLawyers = [];
+  const practiceAreaLower = practiceArea.toLowerCase();
+  
+  for (const [lawyerID, practiceAreasStr] of Object.entries(lawyerData.practiceAreas)) {
+    if (!practiceAreasStr) continue;
+    
+    const lawyerPracticeAreas = practiceAreasStr.toLowerCase().split(',').map(pa => pa.trim());
+    
+    // Check if any of the lawyer's practice areas match the matter's practice area
+    const hasMatchingPracticeArea = lawyerPracticeAreas.some(pa => 
+      pa.includes(practiceAreaLower) || practiceAreaLower.includes(pa)
+    );
+    
+    if (hasMatchingPracticeArea) {
+      suggestedLawyers.push({
+        id: lawyerID,
+        name: lawyerData.names[lawyerID] || lawyerID,
+        email: lawyerData.emails[lawyerID] || '',
+        rate: lawyerData.rates[lawyerID] || 0,
+        practiceAreas: practiceAreasStr
+      });
+    }
+  }
+  
+  // Sort by rate (highest first) and then by name
+  return suggestedLawyers.sort((a, b) => {
+    if (b.rate !== a.rate) return b.rate - a.rate;
+    return a.name.localeCompare(b.name);
+  });
 }

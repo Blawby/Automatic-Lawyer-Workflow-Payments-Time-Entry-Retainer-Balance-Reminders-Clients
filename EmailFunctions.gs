@@ -396,7 +396,7 @@ function notifyServiceResumed(clientID, email, clientName, balance, today) {
  * Generate URL for sending individual low balance email
  */
 function generateSendEmailUrl(clientID, emailType) {
-  const scriptId = ScriptApp.getScriptId();
+  const scriptId = 'AKfycbxyfMbc05T93I4g86Tmqi57yEZ8YnGGzruduiSygSbTRjAa9ttE5NOPpCMZ5p0Xmgat';
   const webAppUrl = `https://script.google.com/macros/s/${scriptId}/exec`;
   return `${webAppUrl}?action=send_email&client_id=${encodeURIComponent(clientID)}&email_type=${emailType}`;
 }
@@ -405,7 +405,7 @@ function generateSendEmailUrl(clientID, emailType) {
  * Generate URL for sending all low balance emails
  */
 function generateSendAllEmailsUrl(clientIDs) {
-  const scriptId = ScriptApp.getScriptId();
+  const scriptId = 'AKfycbxyfMbc05T93I4g86Tmqi57yEZ8YnGGzruduiSygSbTRjAa9ttE5NOPpCMZ5p0Xmgat';
   const webAppUrl = `https://script.google.com/macros/s/${scriptId}/exec`;
   return `${webAppUrl}?action=send_all&client_ids=${encodeURIComponent(clientIDs.join(','))}`;
 }

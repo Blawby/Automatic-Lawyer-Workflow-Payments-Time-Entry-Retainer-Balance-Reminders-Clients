@@ -542,6 +542,7 @@ function setupWelcomeSheet(ss) {
   }
 }
 
+
 function getLawyersFromWelcomeSheet(welcomeSheet) {
   const values = welcomeSheet.getDataRange().getValues();
   const lawyerHeaderRow = values.findIndex(row => row[0] && row[0].toString().includes('Lawyers'));
